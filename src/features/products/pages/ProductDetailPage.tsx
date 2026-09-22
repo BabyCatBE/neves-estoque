@@ -15,6 +15,8 @@ import { getProductErrorMessage, productNameSchema } from "../lib/productValidat
 
 const productsKey = ["products", "active"] as const;
 
+type ExitReviewMode = "back" | "cancel" | null;
+
 export function ProductDetailPage() {
   const { productId } = useParams();
   const navigate = useNavigate();
@@ -25,6 +27,7 @@ export function ProductDetailPage() {
   const [categoryId, setCategoryId] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [exitReview, setExitReview] = useState<ExitReviewMode>(null);
 
   const productQuery = useQuery({
     queryKey: ["products", "detail", productId],
@@ -79,6 +82,36 @@ export function ProductDetailPage() {
     Boolean(productQuery.data) &&
     (name !== productQuery.data?.name || categoryId !== (productQuery.data?.categoryId ?? ""));
 
+  const changeSummary = useMemo(() => {
+    if (!productQuery.data) return [];
+
+    const changes: Array<{ label: string; before: string; after: string }> = [];
+
+    if (name !== productQuery.data.name) {
+      changes.push({
+        label: "Nome",
+        before: productQuery.data.name,
+        after: name.trim() || "—"
+      });
+    }
+
+    if (categoryId !== (productQuery.data.categoryId ?? "")) {
+      changes.push({
+        label: "Categoria",
+        before: currentCategoryName,
+        after: selectedCategoryName || "Sem categoria"
+      });
+    }
+
+    return changes;
+  }, [
+    categoryId,
+    currentCategoryName,
+    name,
+    productQuery.data,
+    selectedCategoryName
+  ]);
+
   const startEditing = () => {
     if (!productQuery.data) return;
     setName(productQuery.data.name);
@@ -88,22 +121,44 @@ export function ProductDetailPage() {
     setEditing(true);
   };
 
-  const cancelEditing = () => {
-    if (dirty && !window.confirm("Descartar as alterações feitas neste produto?")) return;
-    setEditing(false);
-    setActionError(null);
+  const resetDraft = () => {
     setName(productQuery.data?.name ?? "");
     setCategoryId(productQuery.data?.categoryId ?? "");
+    setActionError(null);
+  };
+
+  const cancelEditing = () => {
+    if (dirty) {
+      setExitReview("cancel");
+      return;
+    }
+
+    resetDraft();
+    setEditing(false);
   };
 
   const leaveProduct = () => {
     if (editing && dirty) {
-      const leave = window.confirm(
-        "Existem alterações não salvas. Deseja descartá-las e voltar para Produtos?"
-      );
-      if (!leave) return;
+      setExitReview("back");
+      return;
     }
+
     navigate("/produtos/lista");
+  };
+
+  const continueEditing = () => {
+    setExitReview(null);
+  };
+
+  const discardChanges = () => {
+    const mode = exitReview;
+    setExitReview(null);
+    resetDraft();
+    setEditing(false);
+
+    if (mode === "back") {
+      navigate("/produtos/lista");
+    }
   };
 
   const deleteProduct = async () => {
@@ -132,7 +187,7 @@ export function ProductDetailPage() {
     }
   };
 
-  const save = async () => {
+  const save = async (navigateAfterSave = false) => {
     if (!productQuery.data) return;
 
     setActionError(null);
@@ -156,7 +211,12 @@ export function ProductDetailPage() {
         categoryId
       });
       setEditing(false);
+      setExitReview(null);
       setNotice("Produto atualizado com sucesso.");
+
+      if (navigateAfterSave) {
+        navigate("/produtos/lista");
+      }
     } catch (error) {
       setActionError(getProductErrorMessage(error));
     }
@@ -281,7 +341,7 @@ export function ProductDetailPage() {
                 </Button>
                 <Button
                   disabled={!dirty || updateMutation.isPending}
-                  onClick={() => void save()}
+                  onClick={() => void save(false)}
                 >
                   {updateMutation.isPending ? "Salvando…" : "Salvar alterações"}
                 </Button>
@@ -366,6 +426,65 @@ export function ProductDetailPage() {
               </details>
             </Card>
           </div>
+
+          {exitReview ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="product-change-summary-title"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6"
+            >
+              <Card className="w-full max-w-lg p-5 shadow-xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
+                  Alterações não salvas
+                </p>
+                <h3
+                  id="product-change-summary-title"
+                  className="mt-1 text-xl font-semibold text-zinc-950"
+                >
+                  Revise antes de sair
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">
+                  Escolha se deseja salvar, descartar ou continuar editando este produto.
+                </p>
+
+                <div className="mt-4 space-y-3 rounded-xl bg-zinc-50 p-4">
+                  {changeSummary.map((change) => (
+                    <div key={change.label} className="text-sm">
+                      <p className="font-semibold text-zinc-800">{change.label}</p>
+                      <p className="mt-1 break-words text-zinc-500">
+                        {change.before} <span aria-hidden="true">→</span>{" "}
+                        <span className="font-medium text-zinc-900">{change.after}</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    variant="ghost"
+                    disabled={updateMutation.isPending}
+                    onClick={continueEditing}
+                  >
+                    Continuar editando
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={updateMutation.isPending}
+                    onClick={discardChanges}
+                  >
+                    Descartar alterações
+                  </Button>
+                  <Button
+                    disabled={updateMutation.isPending}
+                    onClick={() => void save(exitReview === "back")}
+                  >
+                    {updateMutation.isPending ? "Salvando…" : "Salvar alterações"}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          ) : null}
         </section>
       ) : null}
     </AppShell>
