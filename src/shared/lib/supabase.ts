@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "../types/database.types";
 import { hasSupabaseConfig, publicEnv } from "./env";
 
 export const supabase = hasSupabaseConfig
-  ? createClient(publicEnv.VITE_SUPABASE_URL!, publicEnv.VITE_SUPABASE_PUBLISHABLE_KEY!)
+  ? createClient<Database>(
+      publicEnv.VITE_SUPABASE_URL!,
+      publicEnv.VITE_SUPABASE_PUBLISHABLE_KEY!
+    )
   : null;
