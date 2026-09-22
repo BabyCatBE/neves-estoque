@@ -14,11 +14,13 @@ export function LoginPage() {
   return (
     <AppShell title="Acesso">
       <section className="mx-auto max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-xl font-bold text-red-700">
-          N
-        </div>
+        <img
+          src="/brand/neves-logo.webp"
+          alt="Panificadora Neves"
+          className="mx-auto w-48 rounded-2xl shadow-sm"
+        />
 
-        <h2 className="mt-5 text-xl font-semibold">Entrar no Neves Estoque</h2>
+        <h2 className="mt-6 text-xl font-semibold">Entrar no Neves Estoque</h2>
         <p className="mt-2 text-sm leading-6 text-zinc-600">
           Use uma das contas Google autorizadas pela Panificadora Neves.
         </p>
