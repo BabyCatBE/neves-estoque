@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type PointerEvent as ReactPointerEvent } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
@@ -68,13 +68,13 @@ export function CategoriesPage() {
     handleSubmit,
     reset,
     setError,
-    watch,
+    control,
     formState: { errors }
   } = useForm<CategoryForm>({
     defaultValues: { name: "" }
   });
 
-  const createName = watch("name");
+  const createName = useWatch({ control, name: "name" }) ?? "";
 
   const refreshCategories = async () => {
     await queryClient.invalidateQueries({ queryKey: categoriesKey });
