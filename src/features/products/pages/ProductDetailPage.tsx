@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type SelectHTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { TextField } from "../../../shared/components/ui/TextField";
@@ -28,6 +29,7 @@ export function ProductDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [exitReview, setExitReview] = useState<ExitReviewMode>(null);
+  const [deleteReviewOpen, setDeleteReviewOpen] = useState(false);
 
   const productQuery = useQuery({
     queryKey: ["products", "detail", productId],
@@ -161,26 +163,20 @@ export function ProductDetailPage() {
     }
   };
 
-  const deleteProduct = async () => {
+  const deleteProduct = () => {
     if (!productQuery.data) return;
 
     setActionError(null);
     setNotice(null);
+    setDeleteReviewOpen(true);
+  };
 
-    const quantity = productQuery.data.currentQuantity;
-    const stockWarning =
-      quantity !== null && quantity > 0
-        ? ` Este produto ainda possui ${formatQuantity(quantity, productQuery.data.unit)} em estoque. Ao excluir, ele sairá imediatamente do catálogo e dos cálculos ativos.`
-        : "";
-
-    const confirmed = window.confirm(
-      `Excluir o produto “${productQuery.data.name}”?${stockWarning} Ele ficará na lixeira por 7 dias e poderá ser restaurado nesse período.`
-    );
-
-    if (!confirmed) return;
+  const confirmDeleteProduct = async () => {
+    if (!productQuery.data) return;
 
     try {
       await deleteMutation.mutateAsync(productQuery.data.id);
+      setDeleteReviewOpen(false);
       navigate("/produtos/lista");
     } catch (error) {
       setActionError(getProductErrorMessage(error));
@@ -426,6 +422,30 @@ export function ProductDetailPage() {
               </details>
             </Card>
           </div>
+
+          <ConfirmDialog
+            open={deleteReviewOpen}
+            variant="danger"
+            title="Excluir produto?"
+            description={
+              productQuery.data
+                ? `Excluir o produto “${productQuery.data.name}”?${
+                    productQuery.data.currentQuantity !== null &&
+                    productQuery.data.currentQuantity > 0
+                      ? ` Este produto ainda possui ${formatQuantity(
+                          productQuery.data.currentQuantity,
+                          productQuery.data.unit
+                        )} em estoque. Ao excluir, ele sairá imediatamente do catálogo e dos cálculos ativos.`
+                      : ""
+                  } Ele ficará na lixeira por 7 dias e poderá ser restaurado nesse período.`
+                : ""
+            }
+            confirmLabel="Excluir produto"
+            pendingLabel="Excluindo…"
+            isPending={deleteMutation.isPending}
+            onCancel={() => setDeleteReviewOpen(false)}
+            onConfirm={() => void confirmDeleteProduct()}
+          />
 
           {exitReview ? (
             <div
