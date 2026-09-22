@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AppShell } from "../../../shared/components/AppShell";
+import { APP_VERSION, SHOW_DEVELOPMENT_VERSION } from "../../../shared/config/appVersion";
 
 const modules = [
   ["Estoque Atual", "/estoque", "Posição derivada da última conferência válida e entradas posteriores."],
@@ -19,8 +20,16 @@ export function HomePage() {
       <section>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <span className="inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-              DEV
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+              <span>DEV</span>
+              {SHOW_DEVELOPMENT_VERSION ? (
+                <>
+                  <span aria-hidden="true" className="text-amber-600">
+                    •
+                  </span>
+                  <span>v{APP_VERSION}</span>
+                </>
+              ) : null}
             </span>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight">Controle de estoque</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
