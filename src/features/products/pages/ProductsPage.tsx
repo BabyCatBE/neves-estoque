@@ -421,34 +421,41 @@ function ProductCard({
   compact?: boolean;
 }) {
   return (
-    <Card className={compact ? "p-4 shadow-none" : "p-4"}>
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700">
-          <ProductIcon />
+    <Link
+      to={`/produtos/${product.id}`}
+      className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+    >
+      <Card
+        className={`${compact ? "p-4 shadow-none" : "p-4"} h-full transition hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md`}
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700">
+            <ProductIcon />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="break-words font-semibold text-zinc-900">{product.name}</h3>
+            <p className="mt-1 text-xs text-zinc-500">
+              {categoryName} · {product.unit}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="break-words font-semibold text-zinc-900">{product.name}</h3>
-          <p className="mt-1 text-xs text-zinc-500">
-            {categoryName} · {product.unit}
-          </p>
-        </div>
-      </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-zinc-100 pt-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-wide text-zinc-400">Estoque atual</p>
-          <p className="mt-1 text-sm font-semibold text-zinc-800">
-            {formatQuantity(product.currentQuantity, product.unit)}
-          </p>
+        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-zinc-100 pt-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-zinc-400">Estoque atual</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-800">
+              {formatQuantity(product.currentQuantity, product.unit)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-zinc-400">Preço atual</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-800">
+              {formatPrice(product.currentPrice)}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-[11px] uppercase tracking-wide text-zinc-400">Preço atual</p>
-          <p className="mt-1 text-sm font-semibold text-zinc-800">
-            {formatPrice(product.currentPrice)}
-          </p>
-        </div>
-      </div>
-    </Card>
+      </Card>
+    </Link>
   );
 }
 
