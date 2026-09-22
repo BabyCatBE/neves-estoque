@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AppShell } from "../../../shared/components/AppShell";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import {
   listRestorableTrashItems,
   restoreTrashItem,
+  type TrashItem,
   type TrashItemType
 } from "../api/trash";
 
@@ -18,6 +20,7 @@ export function TrashPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingRestore, setPendingRestore] = useState<TrashItem | null>(null);
 
   const trashQuery = useQuery({
     queryKey: trashKey,
@@ -42,20 +45,21 @@ export function TrashPage() {
     return all.filter((item) => item.type === filter);
   }, [filter, trashQuery.data]);
 
-  const restore = async (item: (typeof items)[number]) => {
+  const restore = (item: TrashItem) => {
     setNotice(null);
     setActionError(null);
+    setPendingRestore(item);
+  };
 
-    const confirmed = window.confirm(
-      `Restaurar ${item.type === "product" ? "o produto" : "a categoria"} “${item.name}”?`
-    );
-    if (!confirmed) return;
+  const confirmRestore = async () => {
+    if (!pendingRestore) return;
 
     try {
-      await restoreMutation.mutateAsync({ id: item.id, type: item.type });
+      await restoreMutation.mutateAsync({ id: pendingRestore.id, type: pendingRestore.type });
       setNotice(
-        `${item.type === "product" ? "Produto" : "Categoria"} “${item.name}” restaurado com sucesso.`
+        `${pendingRestore.type === "product" ? "Produto" : "Categoria"} “${pendingRestore.name}” restaurado com sucesso.`
       );
+      setPendingRestore(null);
     } catch (error) {
       setActionError(getTrashErrorMessage(error));
     }
@@ -158,6 +162,22 @@ export function TrashPage() {
             </Card>
           ))}
         </div>
+        <ConfirmDialog
+          open={Boolean(pendingRestore)}
+          title={pendingRestore?.type === "product" ? "Restaurar produto?" : "Restaurar categoria?"}
+          description={
+            pendingRestore
+              ? pendingRestore.type === "product"
+                ? `Restaurar o produto “${pendingRestore.name}”? Ele voltará para a posição manual anterior na categoria.`
+                : `Restaurar a categoria “${pendingRestore.name}”? Ela voltará para a posição manual anterior.`
+              : ""
+          }
+          confirmLabel={pendingRestore?.type === "product" ? "Restaurar produto" : "Restaurar categoria"}
+          pendingLabel="Restaurando…"
+          isPending={restoreMutation.isPending}
+          onCancel={() => setPendingRestore(null)}
+          onConfirm={() => void confirmRestore()}
+        />
       </section>
     </AppShell>
   );
