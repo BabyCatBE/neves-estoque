@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AppShell } from "../../../shared/components/AppShell";
 import { APP_VERSION, SHOW_DEVELOPMENT_VERSION } from "../../../shared/config/appVersion";
+import { listRestorableTrashItems } from "../../trash/api/trash";
 
 const modules = [
   ["Estoque Atual", "/estoque", "Posição derivada da última conferência válida e entradas posteriores."],
@@ -14,6 +16,12 @@ const modules = [
 
 export function HomePage() {
   const { session, roleName, deviceId, signOut } = useAuth();
+  const alertsQuery = useQuery({
+    queryKey: ["trash", "restorable"],
+    queryFn: listRestorableTrashItems,
+    staleTime: 30_000
+  });
+  const hasAlerts = (alertsQuery.data?.length ?? 0) > 0;
 
   return (
     <AppShell>
@@ -34,10 +42,16 @@ export function HomePage() {
               </span>
               <Link
                 to="/alertas"
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 transition hover:border-amber-300 hover:bg-amber-100"
+                aria-label={hasAlerts ? "Abrir Alertas" : "Abrir Alertas — nenhum alerta ativo"}
+                title={hasAlerts ? "Alertas" : "Nenhum alerta ativo"}
+                className={
+                  hasAlerts
+                    ? "inline-flex min-h-8 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 transition hover:border-amber-300 hover:bg-amber-100"
+                    : "inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-500 transition hover:border-zinc-300 hover:bg-zinc-200 hover:text-zinc-700"
+                }
               >
                 <AlertIcon />
-                Alertas
+                {hasAlerts ? <span>Alertas</span> : null}
               </Link>
             </div>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight">Controle de estoque</h2>
