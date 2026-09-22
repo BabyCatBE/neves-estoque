@@ -3,6 +3,7 @@ import { useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { TextField } from "../../../shared/components/ui/TextField";
@@ -57,6 +58,7 @@ export function CategoriesPage() {
   const [illustrationSaving, setIllustrationSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<CategoryListItem | null>(null);
 
   const categoriesQuery = useQuery({
     queryKey: categoriesKey,
@@ -272,7 +274,7 @@ export function CategoriesPage() {
     }
   };
 
-  const deleteCategory = async (category: CategoryListItem) => {
+  const deleteCategory = (category: CategoryListItem) => {
     setNotice(null);
     setActionError(null);
 
@@ -281,14 +283,15 @@ export function CategoriesPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Excluir a categoria “${category.name}”? Ela irá para a lixeira e poderá ser restaurada por 7 dias.`
-    );
+    setPendingDelete(category);
+  };
 
-    if (!confirmed) return;
+  const confirmDeleteCategory = async () => {
+    if (!pendingDelete) return;
 
     try {
-      await deleteMutation.mutateAsync(category.id);
+      await deleteMutation.mutateAsync(pendingDelete.id);
+      setPendingDelete(null);
       setNotice("Categoria enviada para a lixeira.");
     } catch (error) {
       setActionError(getCategoryErrorMessage(error));
@@ -660,6 +663,21 @@ export function CategoriesPage() {
             </Card>
           ))}
         </div>
+        <ConfirmDialog
+          open={Boolean(pendingDelete)}
+          variant="danger"
+          title="Excluir categoria?"
+          description={
+            pendingDelete
+              ? `Excluir a categoria “${pendingDelete.name}”? Ela irá para a lixeira e poderá ser restaurada por 7 dias.`
+              : ""
+          }
+          confirmLabel="Excluir categoria"
+          pendingLabel="Excluindo…"
+          isPending={deleteMutation.isPending}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void confirmDeleteCategory()}
+        />
       </section>
     </AppShell>
   );
