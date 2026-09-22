@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatSupplierPhoneInput,
   parseOptionalInteger,
   supplierCompanySchema,
   supplierNameSchema,
@@ -11,7 +12,20 @@ describe("supplierValidation", () => {
   it("normaliza campos obrigatórios", () => {
     expect(supplierNameSchema.parse("  João  ")).toBe("João");
     expect(supplierCompanySchema.parse("  Empresa X  ")).toBe("Empresa X");
-    expect(supplierPhoneSchema.parse("  (75) 99999-0000  ")).toBe("(75) 99999-0000");
+    expect(supplierPhoneSchema.parse("  (75) 9 9999-0000  ")).toBe("75999990000");
+  });
+
+  it("formata telefone durante o preenchimento", () => {
+    expect(formatSupplierPhoneInput("75")).toBe("(75");
+    expect(formatSupplierPhoneInput("759")).toBe("(75) 9");
+    expect(formatSupplierPhoneInput("7599999")).toBe("(75) 9 9999");
+    expect(formatSupplierPhoneInput("75999990000")).toBe("(75) 9 9999-0000");
+    expect(formatSupplierPhoneInput("759999900001234")).toBe("(75) 9 9999-0000");
+  });
+
+  it("exige exatamente 11 dígitos no telefone", () => {
+    expect(() => supplierPhoneSchema.parse("7599999000")).toThrow("11 dígitos");
+    expect(() => supplierPhoneSchema.parse("759999900000")).toThrow("11 dígitos");
   });
 
   it("aceita inteiro opcional vazio", () => {
