@@ -5,6 +5,14 @@ import { hasSupabaseConfig, publicEnv } from "./env";
 export const supabase = hasSupabaseConfig
   ? createClient<Database>(
       publicEnv.VITE_SUPABASE_URL!,
-      publicEnv.VITE_SUPABASE_PUBLISHABLE_KEY!
+      publicEnv.VITE_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        auth: {
+          flowType: "pkce",
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      }
     )
   : null;
