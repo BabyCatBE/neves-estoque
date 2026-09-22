@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { Link } from "react-router-dom";
+import nevesLogo from "../../assets/neves-logo.webp";
 
 type Props = PropsWithChildren<{ title?: string; showBack?: boolean }>;
 
@@ -17,10 +18,10 @@ export function AppShell({ children, title = "Neves Estoque", showBack = false }
             </Link>
           ) : null}
           <img
-            src="/brand/neves-logo.webp"
+            src={nevesLogo}
             alt=""
             aria-hidden="true"
-            className="h-10 w-10 rounded-xl object-cover shadow-sm"
+            className="h-10 w-20 rounded-lg object-contain shadow-sm"
           />
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-700">
