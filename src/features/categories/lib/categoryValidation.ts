@@ -20,6 +20,13 @@ export function getCategoryErrorMessage(error: unknown) {
     ) {
       return "A categoria só pode ser excluída quando estiver vazia.";
     }
+
+    if (
+      typeof candidate.message === "string" &&
+      candidate.message.includes("Prazo de restauração expirado")
+    ) {
+      return "O prazo de 7 dias para restaurar esta categoria expirou.";
+    }
   }
 
   return "Não foi possível salvar a categoria. Tente novamente.";
