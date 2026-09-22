@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type SelectHTMLAttributes } from "react";
+import {
+  useMemo,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type SelectHTMLAttributes
+} from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
@@ -10,8 +15,15 @@ import {
   createProduct,
   listActiveProducts,
   listProductCategories,
+  reorderProducts,
   type ProductListItem
 } from "../api/products";
+import {
+  buildProductOrderDraft,
+  changedProductOrders,
+  moveProductInCategory,
+  type ProductOrderDraft
+} from "../lib/reorderProducts";
 import {
   getProductErrorMessage,
   parseOptionalNonNegativeDecimal,
@@ -38,6 +50,10 @@ export function ProductsPage() {
   const [creating, setCreating] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("alphabetical");
   const [search, setSearch] = useState("");
+  const [reordering, setReordering] = useState(false);
+  const [originalOrder, setOriginalOrder] = useState<ProductOrderDraft>({});
+  const [draftOrder, setDraftOrder] = useState<ProductOrderDraft>({});
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -74,6 +90,13 @@ export function ProductsPage() {
         queryClient.invalidateQueries({ queryKey: productsKey }),
         queryClient.invalidateQueries({ queryKey: ["categories", "active"] })
       ]);
+    }
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: reorderProducts,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: productsKey });
     }
   });
 
@@ -143,6 +166,114 @@ export function ProductsPage() {
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
   }, [productsQuery.data, search]);
 
+  const canReorder = useMemo(() => {
+    const grouped = buildProductOrderDraft(productsQuery.data ?? []);
+    return Object.values(grouped).some((items) => items.length >= 2);
+  }, [productsQuery.data]);
+
+  const beginReordering = () => {
+    const order = buildProductOrderDraft(productsQuery.data ?? []);
+    if (!Object.values(order).some((items) => items.length >= 2)) return;
+
+    setCreating(false);
+    reset();
+    setSearch("");
+    setViewMode("category");
+    setNotice(null);
+    setActionError(null);
+    setOriginalOrder(order);
+    setDraftOrder(order);
+    setDraggingId(null);
+    setReordering(true);
+  };
+
+  const cancelReordering = () => {
+    setReordering(false);
+    setOriginalOrder({});
+    setDraftOrder({});
+    setDraggingId(null);
+    setActionError(null);
+  };
+
+  const saveReordering = async () => {
+    const changes = changedProductOrders(originalOrder, draftOrder);
+
+    if (changes.length === 0) {
+      cancelReordering();
+      setNotice("A ordem dos produtos não foi alterada.");
+      return;
+    }
+
+    setNotice(null);
+    setActionError(null);
+
+    try {
+      await reorderMutation.mutateAsync(changes);
+      setReordering(false);
+      setOriginalOrder({});
+      setDraftOrder({});
+      setDraggingId(null);
+      setNotice("Ordem dos produtos atualizada com sucesso.");
+    } catch {
+      setActionError(
+        "Não foi possível salvar a nova ordem. Nenhuma alteração parcial deve ser considerada oficial."
+      );
+      await productsQuery.refetch();
+    }
+  };
+
+  const moveProduct = (categoryId: string, productId: string, direction: -1 | 1) => {
+    setDraftOrder((current) => {
+      const items = current[categoryId];
+      if (!items) return current;
+
+      const index = items.findIndex((item) => item.id === productId);
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || targetIndex >= items.length) return current;
+
+      const target = items[targetIndex];
+      if (!target) return current;
+
+      return moveProductInCategory(current, categoryId, productId, target.id);
+    });
+  };
+
+  const beginDrag = (event: ReactPointerEvent<HTMLButtonElement>, productId: string) => {
+    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingId(productId);
+  };
+
+  const drag = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    categoryId: string,
+    productId: string
+  ) => {
+    if (draggingId !== productId) return;
+
+    event.preventDefault();
+
+    const target = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>("[data-product-sort-id]");
+
+    const targetId = target?.dataset.productSortId;
+    const targetCategoryId = target?.dataset.categoryId;
+
+    if (!targetId || targetId === productId || targetCategoryId !== categoryId) return;
+
+    setDraftOrder((current) =>
+      moveProductInCategory(current, categoryId, productId, targetId)
+    );
+  };
+
+  const endDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setDraggingId(null);
+  };
+
   const hasCategories = (categoriesQuery.data?.length ?? 0) > 0;
   const isLoading = productsQuery.isPending || categoriesQuery.isPending;
   const hasError = productsQuery.isError || categoriesQuery.isError;
@@ -158,17 +289,44 @@ export function ProductsPage() {
             </p>
           </div>
 
-          <Button
-            disabled={!hasCategories || createMutation.isPending}
-            onClick={() => {
-              setNotice(null);
-              setActionError(null);
-              setCreating((value) => !value);
-              reset();
-            }}
-          >
-            {creating ? "Cancelar" : "+ Novo produto"}
-          </Button>
+          {reordering ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="ghost"
+                disabled={reorderMutation.isPending}
+                onClick={cancelReordering}
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={reorderMutation.isPending}
+                onClick={() => void saveReordering()}
+              >
+                {reorderMutation.isPending ? "Salvando…" : "Salvar ordem"}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                disabled={!canReorder || createMutation.isPending}
+                onClick={beginReordering}
+              >
+                Reordenar produtos
+              </Button>
+              <Button
+                disabled={!hasCategories || createMutation.isPending}
+                onClick={() => {
+                  setNotice(null);
+                  setActionError(null);
+                  setCreating((value) => !value);
+                  reset();
+                }}
+              >
+                {creating ? "Cancelar" : "+ Novo produto"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {!hasCategories && !categoriesQuery.isPending ? (
@@ -180,7 +338,7 @@ export function ProductsPage() {
           </div>
         ) : null}
 
-        {creating ? (
+        {creating && !reordering ? (
           <Card className="mt-5 p-5">
             <form onSubmit={onCreate}>
               <div className="grid gap-4 lg:grid-cols-2">
@@ -273,38 +431,40 @@ export function ProductsPage() {
           </div>
         ) : null}
 
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="w-full sm:max-w-md">
-            <TextField
-              label="Pesquisar"
-              placeholder="Digite qualquer trecho do nome"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
+        {!reordering ? (
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="w-full sm:max-w-md">
+              <TextField
+                label="Pesquisar"
+                placeholder="Digite qualquer trecho do nome"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
 
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={viewMode === "category" ? "primary" : "secondary"}
-              onClick={() => setViewMode("category")}
-            >
-              Por categoria
-            </Button>
-            <Button
-              size="sm"
-              variant={viewMode === "alphabetical" ? "primary" : "secondary"}
-              onClick={() => setViewMode("alphabetical")}
-            >
-              Alfabética
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={viewMode === "category" ? "primary" : "secondary"}
+                onClick={() => setViewMode("category")}
+              >
+                Por categoria
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "alphabetical" ? "primary" : "secondary"}
+                onClick={() => setViewMode("alphabetical")}
+              >
+                Alfabética
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-          Primeiro incremento operacional de Produtos: listagem, busca, visualização por categoria ou
-          alfabética e cadastro completo conectado ao banco real. Edição, lixeira e reordenação de
-          produtos entram nos próximos incrementos.
+          {reordering
+            ? "Modo de reordenação ativo: arraste produtos apenas dentro da própria categoria ou use Subir/Descer. A nova ordem só vira oficial ao tocar em Salvar ordem."
+            : "Produtos já possuem cadastro, busca, visão alfabética ou por categoria e tela individual com edição de Nome/Categoria. A reordenação manual fica disponível quando alguma categoria possuir dois ou mais produtos."}
         </div>
 
         {isLoading ? (
@@ -329,7 +489,7 @@ export function ProductsPage() {
           </Card>
         ) : null}
 
-        {!isLoading && !hasError && filteredProducts.length === 0 ? (
+        {!isLoading && !hasError && !reordering && filteredProducts.length === 0 ? (
           <Card className="mt-5 p-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-700">
               <ProductIcon />
@@ -345,7 +505,82 @@ export function ProductsPage() {
           </Card>
         ) : null}
 
-        {!isLoading && !hasError && filteredProducts.length > 0 && viewMode === "alphabetical" ? (
+        {!isLoading && !hasError && reordering ? (
+          <div className="mt-5 space-y-4">
+            {categoriesQuery.data?.map((category) => {
+              const products = draftOrder[category.id] ?? [];
+              if (products.length === 0) return null;
+
+              return (
+                <Card key={category.id} className="overflow-hidden">
+                  <div className="border-b border-zinc-100 px-5 py-4">
+                    <h3 className="font-semibold text-zinc-900">{category.name}</h3>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {products.length === 1 ? "1 produto" : `${products.length} produtos`}
+                    </p>
+                  </div>
+
+                  <div className="divide-y divide-zinc-100">
+                    {products.map((product, index) => (
+                      <div
+                        key={product.id}
+                        data-product-sort-id={product.id}
+                        data-category-id={category.id}
+                        className={`flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center ${
+                          draggingId === product.id ? "bg-red-50" : ""
+                        }`}
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <button
+                            type="button"
+                            aria-label={`Arrastar ${product.name}`}
+                            aria-pressed={draggingId === product.id}
+                            className="flex h-10 w-10 shrink-0 touch-none select-none items-center justify-center rounded-xl bg-red-50 text-red-700 transition hover:bg-red-100 active:cursor-grabbing"
+                            onPointerDown={(event) => beginDrag(event, product.id)}
+                            onPointerMove={(event) => drag(event, category.id, product.id)}
+                            onPointerUp={endDrag}
+                            onPointerCancel={endDrag}
+                          >
+                            <DragHandleIcon />
+                          </button>
+
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                              Posição {index + 1}
+                            </p>
+                            <p className="truncate font-semibold text-zinc-900">{product.name}</p>
+                            <p className="mt-0.5 text-xs text-zinc-500">{product.unit}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={index === 0 || reorderMutation.isPending}
+                            onClick={() => moveProduct(category.id, product.id, -1)}
+                          >
+                            ↑ Subir
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={index === products.length - 1 || reorderMutation.isPending}
+                            onClick={() => moveProduct(category.id, product.id, 1)}
+                          >
+                            ↓ Descer
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {!isLoading && !hasError && !reordering && filteredProducts.length > 0 && viewMode === "alphabetical" ? (
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {filteredProducts.map((product) => (
               <ProductCard
@@ -357,7 +592,7 @@ export function ProductsPage() {
           </div>
         ) : null}
 
-        {!isLoading && !hasError && filteredProducts.length > 0 && viewMode === "category" ? (
+        {!isLoading && !hasError && !reordering && filteredProducts.length > 0 && viewMode === "category" ? (
           <div className="mt-5 space-y-3">
             {categoriesQuery.data?.map((category) => {
               const products = filteredProducts
@@ -494,6 +729,19 @@ function ProductIcon() {
         strokeLinejoin="round"
       />
       <path d="m6 7.5 6 3.5 6-3.5M12 11v9" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+function DragHandleIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+      <circle cx="8" cy="7" r="1.5" />
+      <circle cx="16" cy="7" r="1.5" />
+      <circle cx="8" cy="12" r="1.5" />
+      <circle cx="16" cy="12" r="1.5" />
+      <circle cx="8" cy="17" r="1.5" />
+      <circle cx="16" cy="17" r="1.5" />
     </svg>
   );
 }
