@@ -36,7 +36,7 @@ const productCategoriesKey = ["products", "categories"] as const;
 export function ProductsPage() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("category");
+  const [viewMode, setViewMode] = useState<ViewMode>("alphabetical");
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
