@@ -582,6 +582,10 @@ export type Database = {
           is_allowed: boolean
         }[]
       }
+      reorder_categories: {
+        Args: { p_category_ids: string[] }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
