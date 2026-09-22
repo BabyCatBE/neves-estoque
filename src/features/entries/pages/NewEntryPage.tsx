@@ -10,6 +10,7 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { listActiveProducts, type ProductListItem } from "../../products/api/products";
 import { createQuickSupplier, listActiveSuppliers } from "../../suppliers/api/suppliers";
 import { createEntry } from "../api/entries";
+import { useControlKeyPressed } from "../lib/useControlKeyPressed";
 import {
   buildEffectiveAt,
   formatMoney,
@@ -35,6 +36,7 @@ export function NewEntryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { deviceId } = useAuth();
+  const controlKeyPressed = useControlKeyPressed();
   const [supplierId, setSupplierId] = useState("");
   const [supplierSearch, setSupplierSearch] = useState("");
   const [supplierActiveIndex, setSupplierActiveIndex] = useState(0);
@@ -93,7 +95,7 @@ export function NewEntryPage() {
   };
 
   const handleSupplierSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.ctrlKey || event.metaKey) return;
+    if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
     if (!supplierSearch) return;
 
     const optionCount = supplierSuggestions.length + 1;
@@ -134,7 +136,7 @@ export function NewEntryPage() {
   }, [productSearch, productsQuery.data]);
 
   const handleProductSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.ctrlKey || event.metaKey) return;
+    if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
     if (!productSearch || productSuggestions.length === 0) return;
 
     if (event.key === "ArrowDown") {
@@ -317,7 +319,7 @@ export function NewEntryPage() {
         className="pb-28"
         onKeyDown={(event) => {
           if (
-            (event.ctrlKey || event.metaKey) &&
+            (event.ctrlKey || event.metaKey || controlKeyPressed.current) &&
             event.key === "Enter" &&
             !showQuickSupplier &&
             !duplicateProduct &&
@@ -509,7 +511,7 @@ export function NewEntryPage() {
                       }
                     }}
                     onKeyDown={(event) => {
-                      if (event.ctrlKey || event.metaKey) return;
+                      if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
                       if (event.key === "Enter") {
                         event.preventDefault();
                         if (validateQuantityNow(item)) {
@@ -539,7 +541,7 @@ export function NewEntryPage() {
                       }
                     }}
                     onKeyDown={(event) => {
-                      if (event.ctrlKey || event.metaKey) return;
+                      if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
                       if (event.key === "Enter") {
                         event.preventDefault();
                         if (validatePriceNow(item)) {

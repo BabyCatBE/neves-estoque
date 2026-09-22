@@ -10,6 +10,7 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { listActiveProducts, type ProductListItem } from "../../products/api/products";
 import { listActiveSuppliers } from "../../suppliers/api/suppliers";
 import { getEntryDetails, updateEntry, type EntryDetails } from "../api/entries";
+import { useControlKeyPressed } from "../lib/useControlKeyPressed";
 import {
   buildEffectiveAt,
   formatMoney,
@@ -44,6 +45,7 @@ export function EditEntryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { deviceId } = useAuth();
+  const controlKeyPressed = useControlKeyPressed();
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [itemErrors, setItemErrors] = useState<ItemFieldErrors>({});
   const [productSearch, setProductSearch] = useState("");
@@ -126,7 +128,7 @@ export function EditEntryPage() {
   };
 
   const handleProductSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.ctrlKey || event.metaKey) return;
+    if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
     if (!productSearch || productSuggestions.length === 0) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -249,7 +251,7 @@ export function EditEntryPage() {
         className="pb-28"
         onKeyDown={(event) => {
           if (
-            (event.ctrlKey || event.metaKey) &&
+            (event.ctrlKey || event.metaKey || controlKeyPressed.current) &&
             event.key === "Enter" &&
             dirty &&
             !missingPriceReview &&
@@ -367,7 +369,7 @@ export function EditEntryPage() {
                       }
                     }}
                     onKeyDown={(event) => {
-                      if (event.ctrlKey || event.metaKey) return;
+                      if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
                       if (event.key === "Enter") {
                         event.preventDefault();
                         if (validateQuantityNow(item)) {
@@ -397,7 +399,7 @@ export function EditEntryPage() {
                       }
                     }}
                     onKeyDown={(event) => {
-                      if (event.ctrlKey || event.metaKey) return;
+                      if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
                       if (event.key === "Enter") {
                         event.preventDefault();
                         if (validatePriceNow(item)) {

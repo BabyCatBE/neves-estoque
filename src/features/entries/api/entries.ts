@@ -206,3 +206,24 @@ export async function getEntryDetails(entryId: string): Promise<EntryDetails> {
     items
   };
 }
+
+
+export async function softDeleteEntry(input: { entryId: string; deviceId: string }) {
+  const client = requireClient();
+  const { error } = await client.rpc("soft_delete_entry", {
+    p_entry_id: input.entryId,
+    p_device_id: input.deviceId
+  });
+
+  if (error) throw error;
+}
+
+export async function restoreEntry(input: { entryId: string; deviceId: string }) {
+  const client = requireClient();
+  const { error } = await client.rpc("restore_entry", {
+    p_entry_id: input.entryId,
+    p_device_id: input.deviceId
+  });
+
+  if (error) throw error;
+}

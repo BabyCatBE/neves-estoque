@@ -4,6 +4,7 @@ import { AppShell } from "../../../shared/components/AppShell";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
+import { useAuth } from "../../auth/context/AuthContext";
 import { listRestorableTrashItems, restoreTrashItem, type TrashItem, type TrashItemType } from "../api/trash";
 
 type Filter = "all" | TrashItemType;
@@ -11,6 +12,7 @@ const trashKey = ["trash", "restorable"] as const;
 
 export function TrashPage() {
   const queryClient = useQueryClient();
+  const { deviceId } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -19,14 +21,15 @@ export function TrashPage() {
   const trashQuery = useQuery({ queryKey: trashKey, queryFn: listRestorableTrashItems });
 
   const restoreMutation = useMutation({
-    mutationFn: restoreTrashItem,
+    mutationFn: (item: Pick<TrashItem, "id" | "type">) => restoreTrashItem(item, deviceId),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: trashKey }),
         queryClient.invalidateQueries({ queryKey: ["products", "active"] }),
         queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
         queryClient.invalidateQueries({ queryKey: ["products", "categories"] }),
-        queryClient.invalidateQueries({ queryKey: ["suppliers"] })
+        queryClient.invalidateQueries({ queryKey: ["suppliers"] }),
+        queryClient.invalidateQueries({ queryKey: ["entries"] })
       ]);
     }
   });
@@ -54,7 +57,7 @@ export function TrashPage() {
       <section>
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Itens excluídos</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">Produtos, categorias e fornecedores permanecem restauráveis por 7 dias. Depois desse prazo, deixam de aparecer aqui.</p>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">Produtos, categorias, fornecedores e Entradas permanecem restauráveis por 7 dias. Depois desse prazo, deixam de aparecer aqui.</p>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
@@ -62,13 +65,14 @@ export function TrashPage() {
           <FilterButton active={filter === "product"} onClick={() => setFilter("product")}>Produtos</FilterButton>
           <FilterButton active={filter === "category"} onClick={() => setFilter("category")}>Categorias</FilterButton>
           <FilterButton active={filter === "supplier"} onClick={() => setFilter("supplier")}>Fornecedores</FilterButton>
+          <FilterButton active={filter === "entry"} onClick={() => setFilter("entry")}>Entradas</FilterButton>
         </div>
 
         {notice ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div> : null}
         {actionError ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</div> : null}
 
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-          A Lixeira Universal já restaura Produtos, Categorias e Fornecedores. Exclusão definitiva e “Esvaziar lixeira” continuam reservados para uma etapa posterior com confirmação reforçada.
+          A Lixeira Universal já restaura Produtos, Categorias, Fornecedores e Entradas. Restaurar uma Entrada recoloca seus efeitos nos cálculos ativos. Exclusão definitiva e “Esvaziar lixeira” continuam reservados para uma etapa posterior com confirmação reforçada.
         </div>
 
         {trashQuery.isPending ? <Card className="mt-5 p-5 text-sm text-zinc-600">Carregando lixeira…</Card> : null}
@@ -130,12 +134,14 @@ function FilterButton({ active, children, onClick }: { active: boolean; children
 function trashTypeLabel(type: TrashItemType) {
   if (type === "product") return "Produto";
   if (type === "supplier") return "Fornecedor";
+  if (type === "entry") return "Entrada";
   return "Categoria";
 }
 
 function restoreDescription(item: TrashItem) {
   if (item.type === "product") return `Restaurar o produto “${item.name}”? Ele voltará para a posição manual anterior na categoria.`;
   if (item.type === "supplier") return `Restaurar o fornecedor “${item.name}”? Ele voltará ao cadastro ativo e poderá ser usado em novas Entradas.`;
+  if (item.type === "entry") return `Restaurar a Entrada de “${item.name}”? Ela voltará ao Histórico ativo e seus efeitos serão recolocados automaticamente nos cálculos atuais de estoque e preço.`;
   return `Restaurar a categoria “${item.name}”? Ela voltará para a posição manual anterior.`;
 }
 
@@ -152,7 +158,7 @@ function getTrashErrorMessage(error: unknown) {
     const message = (error as { message?: string }).message;
     if (typeof message === "string") {
       if (message.includes("Prazo de restauração expirado")) return "O prazo de 7 dias para restaurar este item expirou.";
-      if (message.includes("Produto não encontrado na lixeira") || message.includes("Fornecedor não encontrado na lixeira")) return "Este item não está mais disponível para restauração.";
+      if (message.includes("Produto não encontrado na lixeira") || message.includes("Fornecedor não encontrado na lixeira") || message.includes("Entrada não encontrada na lixeira")) return "Este item não está mais disponível para restauração.";
       if (message.includes("Já existe um fornecedor ativo com este contato")) return "Já existe um fornecedor ativo com este mesmo contato. Revise o cadastro antes de restaurar.";
     }
   }
