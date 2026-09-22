@@ -11,7 +11,10 @@ export function buildProductOrderDraft(products: ProductListItem[]): ProductOrde
   }
 
   for (const categoryId of Object.keys(draft)) {
-    draft[categoryId].sort(
+    const items = draft[categoryId];
+    if (!items) continue;
+
+    items.sort(
       (a, b) =>
         (a.sortOrder ?? Number.MAX_SAFE_INTEGER) -
           (b.sortOrder ?? Number.MAX_SAFE_INTEGER) ||
