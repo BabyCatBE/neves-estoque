@@ -1,6 +1,10 @@
 const DEVICE_KEY_STORAGE = "neves-estoque.device-key.v1";
+const REGISTERED_DEVICE_ID_STORAGE = "neves-estoque.registered-device-id.v1";
 
-type StorageLike = Pick<Storage, "getItem" | "setItem">;
+type StorageReadWrite = Pick<Storage, "getItem" | "setItem">;
+type StorageRead = Pick<Storage, "getItem">;
+type StorageWrite = Pick<Storage, "setItem">;
+type StorageRemove = Pick<Storage, "removeItem">;
 
 export function isUuid(value: string | null): value is string {
   return Boolean(
@@ -10,7 +14,7 @@ export function isUuid(value: string | null): value is string {
 }
 
 export function getOrCreateDeviceKey(
-  storage: StorageLike,
+  storage: StorageReadWrite,
   createUuid: () => string = () => crypto.randomUUID()
 ) {
   const existing = storage.getItem(DEVICE_KEY_STORAGE);
@@ -21,6 +25,23 @@ export function getOrCreateDeviceKey(
 
   storage.setItem(DEVICE_KEY_STORAGE, created);
   return created;
+}
+
+export function getRegisteredDeviceId(storage: StorageRead) {
+  const stored = storage.getItem(REGISTERED_DEVICE_ID_STORAGE);
+  return isUuid(stored) ? stored : null;
+}
+
+export function setRegisteredDeviceId(storage: StorageWrite, deviceId: string) {
+  if (!isUuid(deviceId)) {
+    throw new Error("Identificador registrado do dispositivo inválido.");
+  }
+
+  storage.setItem(REGISTERED_DEVICE_ID_STORAGE, deviceId);
+}
+
+export function clearRegisteredDeviceId(storage: StorageRemove) {
+  storage.removeItem(REGISTERED_DEVICE_ID_STORAGE);
 }
 
 export function inferFriendlyDeviceName(userAgent: string) {

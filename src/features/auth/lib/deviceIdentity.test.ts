@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getOrCreateDeviceKey, inferFriendlyDeviceName, isUuid } from "./deviceIdentity";
+import {
+  clearRegisteredDeviceId,
+  getOrCreateDeviceKey,
+  getRegisteredDeviceId,
+  inferFriendlyDeviceName,
+  isUuid,
+  setRegisteredDeviceId
+} from "./deviceIdentity";
 
 function memoryStorage() {
   const data = new Map<string, string>();
@@ -9,6 +16,9 @@ function memoryStorage() {
     },
     setItem(key: string, value: string) {
       data.set(key, value);
+    },
+    removeItem(key: string) {
+      data.delete(key);
     }
   };
 }
@@ -29,6 +39,24 @@ describe("deviceIdentity", () => {
 
     expect(getOrCreateDeviceKey(storage, () => created)).toBe(created);
     expect(isUuid(storage.getItem("neves-estoque.device-key.v1"))).toBe(true);
+  });
+
+  it("salva, recupera e remove o id registrado do dispositivo", () => {
+    const storage = memoryStorage();
+    const deviceId = "22222222-2222-4222-8222-222222222222";
+
+    setRegisteredDeviceId(storage, deviceId);
+    expect(getRegisteredDeviceId(storage)).toBe(deviceId);
+
+    clearRegisteredDeviceId(storage);
+    expect(getRegisteredDeviceId(storage)).toBeNull();
+  });
+
+  it("ignora um id registrado inválido", () => {
+    const storage = memoryStorage();
+    storage.setItem("neves-estoque.registered-device-id.v1", "inválido");
+
+    expect(getRegisteredDeviceId(storage)).toBeNull();
   });
 
   it("gera um nome curto e legível para Android Chrome", () => {

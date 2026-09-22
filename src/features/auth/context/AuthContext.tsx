@@ -10,7 +10,12 @@ import {
   type PropsWithChildren
 } from "react";
 import { supabase } from "../../../shared/lib/supabase";
-import { getOrCreateDeviceKey, inferFriendlyDeviceName } from "../lib/deviceIdentity";
+import {
+  clearRegisteredDeviceId,
+  getOrCreateDeviceKey,
+  inferFriendlyDeviceName,
+  setRegisteredDeviceId
+} from "../lib/deviceIdentity";
 
 export type AuthStatus =
   | "loading"
@@ -34,6 +39,14 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function forgetRegisteredDeviceId() {
+  try {
+    clearRegisteredDeviceId(window.localStorage);
+  } catch {
+    // O encerramento da sessão deve continuar mesmo se o storage local estiver indisponível.
+  }
+}
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
@@ -111,6 +124,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (accessError || !access) {
         failureStatus.current = "unauthorized";
         setErrorMessage("Esta conta Google não está autorizada a acessar o Neves Estoque.");
+        forgetRegisteredDeviceId();
         await activeClient.auth.signOut({ scope: "local" });
         if (!cancelled) setStatus("unauthorized");
         return;
@@ -122,6 +136,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       } catch {
         failureStatus.current = "device-blocked";
         setErrorMessage("Não foi possível identificar este dispositivo com segurança.");
+        forgetRegisteredDeviceId();
         await activeClient.auth.signOut({ scope: "local" });
         if (!cancelled) setStatus("device-blocked");
         return;
@@ -142,6 +157,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
             ? "Não foi possível registrar este dispositivo."
             : "Este dispositivo está bloqueado para o Neves Estoque."
         );
+        forgetRegisteredDeviceId();
+        await activeClient.auth.signOut({ scope: "local" });
+        if (!cancelled) setStatus("device-blocked");
+        return;
+      }
+
+      try {
+        setRegisteredDeviceId(window.localStorage, device.device_id);
+      } catch {
+        failureStatus.current = "device-blocked";
+        setErrorMessage("Não foi possível concluir o vínculo deste dispositivo com segurança.");
+        forgetRegisteredDeviceId();
         await activeClient.auth.signOut({ scope: "local" });
         if (!cancelled) setStatus("device-blocked");
         return;
@@ -191,6 +218,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const client = supabase;
     failureStatus.current = null;
     setErrorMessage(null);
+    forgetRegisteredDeviceId();
 
     if (!client) {
       setStatus("config-missing");

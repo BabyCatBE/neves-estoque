@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../types/database.types";
+import { createDeviceAwareFetch } from "./deviceAwareFetch";
 import { hasSupabaseConfig, publicEnv } from "./env";
+
+const deviceAwareFetch = createDeviceAwareFetch(globalThis.fetch, () => window.localStorage);
 
 export const supabase = hasSupabaseConfig
   ? createClient<Database>(
@@ -12,6 +15,9 @@ export const supabase = hasSupabaseConfig
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true
+        },
+        global: {
+          fetch: deviceAwareFetch
         }
       }
     )
