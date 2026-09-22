@@ -3,6 +3,7 @@ import { ProtectedRoute } from "../../features/auth/components/ProtectedRoute";
 import { AuthCallbackPage } from "../../features/auth/pages/AuthCallbackPage";
 import { LoginPage } from "../../features/auth/pages/LoginPage";
 import { CategoriesPage } from "../../features/categories/pages/CategoriesPage";
+import { CategoryTrashPage } from "../../features/categories/pages/CategoryTrashPage";
 import { HomePage } from "../../features/home/pages/HomePage";
 import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
@@ -63,6 +64,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <CategoriesPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/produtos/categorias/lixeira",
+    element: (
+      <ProtectedRoute>
+        <CategoryTrashPage />
       </ProtectedRoute>
     )
   },
