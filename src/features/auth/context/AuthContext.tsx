@@ -99,20 +99,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    const activeClient = client;
     let cancelled = false;
 
     async function bootstrapAccess() {
       setStatus("loading");
       setErrorMessage(null);
 
-      const { data: accessRows, error: accessError } = await client.rpc("claim_app_access");
+      const { data: accessRows, error: accessError } = await activeClient.rpc("claim_app_access");
       if (cancelled) return;
 
       const access = accessRows?.[0];
       if (accessError || !access) {
         failureStatus.current = "unauthorized";
         setErrorMessage("Esta conta Google não está autorizada a acessar o Neves Estoque.");
-        await client.auth.signOut({ scope: "local" });
+        await activeClient.auth.signOut({ scope: "local" });
         if (!cancelled) setStatus("unauthorized");
         return;
       }
@@ -123,13 +124,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       } catch {
         failureStatus.current = "device-blocked";
         setErrorMessage("Não foi possível identificar este dispositivo com segurança.");
-        await client.auth.signOut({ scope: "local" });
+        await activeClient.auth.signOut({ scope: "local" });
         if (!cancelled) setStatus("device-blocked");
         return;
       }
 
       const friendlyName = inferFriendlyDeviceName(window.navigator.userAgent);
-      const { data: deviceRows, error: deviceError } = await client.rpc("register_device", {
+      const { data: deviceRows, error: deviceError } = await activeClient.rpc("register_device", {
         p_device_key: deviceKey,
         p_friendly_name: friendlyName
       });
@@ -143,7 +144,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             ? "Não foi possível registrar este dispositivo."
             : "Este dispositivo está bloqueado para o Neves Estoque."
         );
-        await client.auth.signOut({ scope: "local" });
+        await activeClient.auth.signOut({ scope: "local" });
         if (!cancelled) setStatus("device-blocked");
         return;
       }
@@ -198,7 +199,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    await client.auth.signOut({ scope: "local" });
+    await activeClient.auth.signOut({ scope: "local" });
     setStatus("signed-out");
   }, []);
 
