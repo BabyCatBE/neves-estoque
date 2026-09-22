@@ -6,6 +6,7 @@ import { CategoriesPage } from "../../features/categories/pages/CategoriesPage";
 import { CategoryTrashPage } from "../../features/categories/pages/CategoryTrashPage";
 import { HomePage } from "../../features/home/pages/HomePage";
 import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
+import { ProductDetailPage } from "../../features/products/pages/ProductDetailPage";
 import { ProductsPage } from "../../features/products/pages/ProductsPage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
 
@@ -57,6 +58,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ProductsPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/produtos/:productId",
+    element: (
+      <ProtectedRoute>
+        <ProductDetailPage />
       </ProtectedRoute>
     )
   },
