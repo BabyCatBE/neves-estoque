@@ -307,6 +307,12 @@ export function ProductsPage() {
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
+              <Link
+                to="/alertas/lixeira"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+              >
+                Lixeira
+              </Link>
               <Button
                 variant="secondary"
                 disabled={!canReorder || createMutation.isPending}
