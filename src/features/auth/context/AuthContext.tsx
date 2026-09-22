@@ -199,7 +199,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    await activeClient.auth.signOut({ scope: "local" });
+    await client.auth.signOut({ scope: "local" });
     setStatus("signed-out");
   }, []);
 
