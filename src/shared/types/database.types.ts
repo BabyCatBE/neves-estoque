@@ -439,7 +439,8 @@ export type Database = {
           initial_stock_quantity: number | null
           name: string
           restore_until: string | null
-          unit: string | null
+          sort_order: number | null
+          unit: string
           updated_at: string
           updated_by: string | null
         }
@@ -456,7 +457,8 @@ export type Database = {
           initial_stock_quantity?: number | null
           name: string
           restore_until?: string | null
-          unit?: string | null
+          sort_order?: number | null
+          unit: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -473,7 +475,8 @@ export type Database = {
           initial_stock_quantity?: number | null
           name?: string
           restore_until?: string | null
-          unit?: string | null
+          sort_order?: number | null
+          unit?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -537,6 +540,7 @@ export type Database = {
           last_entry_at: string | null
           product_id: string | null
           product_name: string | null
+          sort_order: number | null
           unit: string | null
         }
         Relationships: [
@@ -584,6 +588,16 @@ export type Database = {
           p_items: Json
           p_observation?: string
           p_supplier_id: string
+        }
+        Returns: string
+      }
+      create_product: {
+        Args: {
+          p_category_id: string
+          p_initial_price?: number
+          p_initial_stock_quantity?: number
+          p_name: string
+          p_unit: string
         }
         Returns: string
       }
