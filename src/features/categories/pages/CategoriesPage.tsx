@@ -9,11 +9,20 @@ import { TextField } from "../../../shared/components/ui/TextField";
 import {
   createCategory,
   listActiveCategories,
-  renameCategory,
+  removeCategoryIllustration,
   reorderCategories,
   softDeleteCategory,
+  updateCategoryDetails,
+  uploadCategoryIllustration,
+  type CategoryDetailsInput,
   type CategoryListItem
 } from "../api/categories";
+import {
+  CategoryIllustrationPicker,
+  emptyCategoryIllustrationDraft,
+  type CategoryIllustrationDraft
+} from "../components/CategoryIllustrationPicker";
+import { CategoryIllustrationVisual } from "../components/CategoryIllustrationVisual";
 import { categoryNameSchema, getCategoryErrorMessage } from "../lib/categoryValidation";
 import { moveItemById } from "../lib/reorderCategories";
 
@@ -21,13 +30,27 @@ type CategoryForm = {
   name: string;
 };
 
+type PreparedIllustration = {
+  source: "library" | "upload" | null;
+  key: string | null;
+  positionX: number;
+  positionY: number;
+  uploadedPath: string | null;
+};
+
 const categoriesKey = ["categories", "active"] as const;
 
 export function CategoriesPage() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
+  const [createIllustration, setCreateIllustration] = useState<CategoryIllustrationDraft>(
+    emptyCategoryIllustrationDraft()
+  );
   const [editing, setEditing] = useState<CategoryListItem | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingIllustration, setEditingIllustration] = useState<CategoryIllustrationDraft>(
+    emptyCategoryIllustrationDraft()
+  );
   const [reordering, setReordering] = useState(false);
   const [draftOrder, setDraftOrder] = useState<CategoryListItem[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -44,23 +67,25 @@ export function CategoriesPage() {
     handleSubmit,
     reset,
     setError,
+    watch,
     formState: { errors }
   } = useForm<CategoryForm>({
     defaultValues: { name: "" }
   });
+
+  const createName = watch("name");
 
   const refreshCategories = async () => {
     await queryClient.invalidateQueries({ queryKey: categoriesKey });
   };
 
   const createMutation = useMutation({
-    mutationFn: ({ name, sortOrder }: { name: string; sortOrder: number }) =>
-      createCategory(name, sortOrder),
+    mutationFn: createCategory,
     onSuccess: refreshCategories
   });
 
-  const renameMutation = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => renameCategory(id, name),
+  const updateMutation = useMutation({
+    mutationFn: updateCategoryDetails,
     onSuccess: refreshCategories
   });
 
@@ -73,6 +98,64 @@ export function CategoriesPage() {
     mutationFn: reorderCategories,
     onSuccess: refreshCategories
   });
+
+  const prepareIllustration = async (
+    categoryId: string,
+    draft: CategoryIllustrationDraft
+  ): Promise<PreparedIllustration> => {
+    if (!draft.source) {
+      return {
+        source: null,
+        key: null,
+        positionX: 50,
+        positionY: 50,
+        uploadedPath: null
+      };
+    }
+
+    if (draft.source === "library") {
+      if (!draft.key) throw new Error("Escolha uma ilustração da biblioteca.");
+      return {
+        source: "library",
+        key: draft.key,
+        positionX: 50,
+        positionY: 50,
+        uploadedPath: null
+      };
+    }
+
+    if (draft.file) {
+      const uploadedPath = await uploadCategoryIllustration(categoryId, draft.file);
+      return {
+        source: "upload",
+        key: uploadedPath,
+        positionX: draft.positionX,
+        positionY: draft.positionY,
+        uploadedPath
+      };
+    }
+
+    if (draft.key) {
+      return {
+        source: "upload",
+        key: draft.key,
+        positionX: draft.positionX,
+        positionY: draft.positionY,
+        uploadedPath: null
+      };
+    }
+
+    throw new Error("Selecione novamente a imagem da categoria.");
+  };
+
+  const cleanupUploadedPath = async (path: string | null) => {
+    if (!path) return;
+    try {
+      await removeCategoryIllustration(path);
+    } catch {
+      // O cadastro/edição principal não deve ser revertido por uma limpeza tardia.
+    }
+  };
 
   const onCreate = handleSubmit(async (values) => {
     setNotice(null);
@@ -88,16 +171,29 @@ export function CategoriesPage() {
       0,
       ...(categoriesQuery.data ?? []).map((category) => category.sort_order ?? 0)
     );
+    const categoryId = crypto.randomUUID();
+    let prepared: PreparedIllustration | null = null;
 
     try {
-      await createMutation.mutateAsync({
+      prepared = await prepareIllustration(categoryId, createIllustration);
+
+      const payload: CategoryDetailsInput = {
+        id: categoryId,
         name: parsed.data,
-        sortOrder: maxSortOrder + 1
-      });
+        sortOrder: maxSortOrder + 1,
+        illustrationSource: prepared.source,
+        illustrationKey: prepared.key,
+        illustrationPositionX: prepared.positionX,
+        illustrationPositionY: prepared.positionY
+      };
+
+      await createMutation.mutateAsync(payload);
       reset();
+      setCreateIllustration(emptyCategoryIllustrationDraft());
       setCreating(false);
       setNotice("Categoria criada com sucesso.");
     } catch (error) {
+      await cleanupUploadedPath(prepared?.uploadedPath ?? null);
       setError("name", { message: getCategoryErrorMessage(error) });
     }
   });
@@ -105,8 +201,25 @@ export function CategoriesPage() {
   const startEditing = (category: CategoryListItem) => {
     setNotice(null);
     setActionError(null);
+    setCreating(false);
+    reset();
     setEditing(category);
     setEditingName(category.name);
+    setEditingIllustration({
+      source: category.illustration_source,
+      key: category.illustration_key,
+      file: null,
+      previewUrl: category.illustrationUrl,
+      positionX: category.illustration_position_x ?? 50,
+      positionY: category.illustration_position_y ?? 50
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditing(null);
+    setEditingName("");
+    setEditingIllustration(emptyCategoryIllustrationDraft());
+    setActionError(null);
   };
 
   const saveEditing = async () => {
@@ -121,12 +234,33 @@ export function CategoriesPage() {
       return;
     }
 
+    const oldUploadPath =
+      editing.illustration_source === "upload" ? editing.illustration_key : null;
+    let prepared: PreparedIllustration | null = null;
+
     try {
-      await renameMutation.mutateAsync({ id: editing.id, name: parsed.data });
+      prepared = await prepareIllustration(editing.id, editingIllustration);
+      await updateMutation.mutateAsync({
+        id: editing.id,
+        name: parsed.data,
+        illustrationSource: prepared.source,
+        illustrationKey: prepared.key,
+        illustrationPositionX: prepared.positionX,
+        illustrationPositionY: prepared.positionY
+      });
+
+      if (oldUploadPath && oldUploadPath !== prepared.key) {
+        await cleanupUploadedPath(oldUploadPath);
+      }
+
       setEditing(null);
       setEditingName("");
+      setEditingIllustration(emptyCategoryIllustrationDraft());
       setNotice("Categoria atualizada com sucesso.");
     } catch (error) {
+      if (prepared?.uploadedPath) {
+        await cleanupUploadedPath(prepared.uploadedPath);
+      }
       setActionError(getCategoryErrorMessage(error));
     }
   };
@@ -161,8 +295,8 @@ export function CategoriesPage() {
     setNotice(null);
     setActionError(null);
     setCreating(false);
-    setEditing(null);
-    setEditingName("");
+    reset();
+    cancelEditing();
     setDraftOrder(categories);
     setReordering(true);
   };
@@ -237,7 +371,7 @@ export function CategoriesPage() {
 
   const isSaving =
     createMutation.isPending ||
-    renameMutation.isPending ||
+    updateMutation.isPending ||
     deleteMutation.isPending ||
     reorderMutation.isPending;
 
@@ -278,7 +412,15 @@ export function CategoriesPage() {
               >
                 Reordenar categorias
               </Button>
-              <Button disabled={isSaving} onClick={() => setCreating((value) => !value)}>
+              <Button
+                disabled={isSaving}
+                onClick={() => {
+                  cancelEditing();
+                  setCreating((value) => !value);
+                  setCreateIllustration(emptyCategoryIllustrationDraft());
+                  reset();
+                }}
+              >
                 {creating ? "Cancelar" : "+ Criar categoria"}
               </Button>
             </div>
@@ -295,11 +437,17 @@ export function CategoriesPage() {
                 error={errors.name?.message}
                 {...register("name")}
               />
-              <div className="mt-4 flex justify-end gap-2">
+              <CategoryIllustrationPicker
+                value={createIllustration}
+                onChange={setCreateIllustration}
+                categoryName={createName}
+              />
+              <div className="mt-5 flex justify-end gap-2">
                 <Button
                   variant="ghost"
                   onClick={() => {
                     reset();
+                    setCreateIllustration(emptyCategoryIllustrationDraft());
                     setCreating(false);
                   }}
                 >
@@ -328,7 +476,7 @@ export function CategoriesPage() {
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
           {reordering
             ? "Modo de reordenação ativo: arraste pelo marcador de cada cartão. No teclado, use os botões subir/descer. A nova ordem só vira oficial ao tocar em Salvar ordem."
-            : "Cadastro, renomeação, exclusão segura, restauração e ordem manual já usam o banco real. Ilustrações continuam nos próximos incrementos deste módulo."}
+            : "Categorias já possuem cadastro, edição, lixeira, restauração, ordem manual e ilustração opcional por biblioteca ou imagem própria. Imagens próprias aceitam JPG, PNG ou WEBP até 5 MB."}
         </div>
 
         {categoriesQuery.isPending ? (
@@ -352,8 +500,12 @@ export function CategoriesPage() {
         !categoriesQuery.isError &&
         visibleCategories.length === 0 ? (
           <Card className="mt-5 p-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-700">
-              <GenericCategoryIcon />
+            <div className="mx-auto">
+              <CategoryIllustrationVisual
+                source={null}
+                illustrationKey={null}
+                className="h-12 w-12"
+              />
             </div>
             <h3 className="mt-4 font-semibold">Nenhuma categoria cadastrada</h3>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
@@ -367,7 +519,11 @@ export function CategoriesPage() {
             <Card
               key={category.id}
               data-category-sort-id={reordering ? category.id : undefined}
-              className={`p-4 ${draggingId === category.id ? "ring-2 ring-red-300" : ""}`}
+              className={`${
+                editing?.id === category.id && !reordering
+                  ? "p-5 sm:col-span-2 lg:col-span-3"
+                  : "p-4"
+              } ${draggingId === category.id ? "ring-2 ring-red-300" : ""}`}
             >
               {reordering ? (
                 <>
@@ -427,29 +583,35 @@ export function CategoriesPage() {
                     error={actionError}
                     autoFocus
                   />
-                  <div className="mt-4 flex flex-wrap justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditing(null);
-                        setEditingName("");
-                        setActionError(null);
-                      }}
-                    >
+                  <CategoryIllustrationPicker
+                    value={editingIllustration}
+                    onChange={setEditingIllustration}
+                    categoryName={editingName}
+                  />
+                  <div className="mt-5 flex flex-wrap justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={cancelEditing}>
                       Cancelar
                     </Button>
-                    <Button size="sm" disabled={renameMutation.isPending} onClick={() => void saveEditing()}>
-                      {renameMutation.isPending ? "Salvando…" : "Salvar"}
+                    <Button
+                      size="sm"
+                      disabled={updateMutation.isPending}
+                      onClick={() => void saveEditing()}
+                    >
+                      {updateMutation.isPending ? "Salvando…" : "Salvar alterações"}
                     </Button>
                   </div>
                 </>
               ) : (
                 <>
                   <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700">
-                      <GenericCategoryIcon />
-                    </div>
+                    <CategoryIllustrationVisual
+                      source={category.illustration_source}
+                      illustrationKey={category.illustration_key}
+                      illustrationUrl={category.illustrationUrl}
+                      positionX={category.illustration_position_x}
+                      positionY={category.illustration_position_y}
+                      className="h-14 w-14 shrink-0"
+                    />
                     <div className="min-w-0 flex-1">
                       <h3 className="break-words font-semibold text-zinc-900">{category.name}</h3>
                       <p className="mt-1 text-xs text-zinc-500">
@@ -490,19 +652,6 @@ export function CategoriesPage() {
         </div>
       </section>
     </AppShell>
-  );
-}
-
-function GenericCategoryIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-      <path
-        d="M4.5 6.5A2.5 2.5 0 0 1 7 4h3l1.4 2H17a2.5 2.5 0 0 1 2.5 2.5v8A2.5 2.5 0 0 1 17 19H7a2.5 2.5 0 0 1-2.5-2.5v-10Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 
