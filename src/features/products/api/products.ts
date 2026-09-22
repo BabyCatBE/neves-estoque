@@ -43,6 +43,11 @@ export type UpdateProductDetailsInput = {
   categoryId: string;
 };
 
+export type ReorderProductCategory = {
+  categoryId: string;
+  productIds: string[];
+};
+
 function requireClient() {
   if (!supabase) throw new Error("Supabase não está configurado neste ambiente.");
   return supabase;
@@ -158,6 +163,19 @@ export async function updateProductDetails(input: UpdateProductDetailsInput) {
     p_product_id: input.id,
     p_name: input.name,
     p_category_id: input.categoryId
+  });
+
+  if (error) throw error;
+}
+
+
+export async function reorderProducts(orders: ReorderProductCategory[]) {
+  const client = requireClient();
+  const { error } = await client.rpc("reorder_products", {
+    p_orders: orders.map((order) => ({
+      category_id: order.categoryId,
+      product_ids: order.productIds
+    }))
   });
 
   if (error) throw error;
