@@ -9,6 +9,8 @@ import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { createSupplier, listActiveSuppliers } from "../api/suppliers";
 import {
+  formatSupplierPhoneDisplay,
+  formatSupplierPhoneInput,
   getSupplierErrorMessage,
   parseOptionalInteger,
   SUPPLIER_WEEKDAYS,
@@ -59,6 +61,8 @@ export function SuppliersPage() {
     setError,
     formState: { errors }
   } = useForm<SupplierForm>({ defaultValues: emptyForm });
+
+  const phoneField = register("phone");
 
   const createMutation = useMutation({
     mutationFn: createSupplier,
@@ -165,7 +169,18 @@ export function SuppliersPage() {
               <div className="grid gap-4 lg:grid-cols-3">
                 <TextField label="Contato / vendedor" placeholder="Ex.: João" autoFocus error={errors.name?.message} {...register("name")} />
                 <TextField label="Empresa" placeholder="Ex.: Distribuidora Silva" error={errors.company?.message} {...register("company")} />
-                <TextField label="Telefone" placeholder="Ex.: (75) 99999-0000" inputMode="tel" error={errors.phone?.message} {...register("phone")} />
+                <TextField
+                  label="Telefone"
+                  placeholder="Ex.: (75) 9 9999-9999"
+                  inputMode="tel"
+                  maxLength={16}
+                  error={errors.phone?.message}
+                  {...phoneField}
+                  onChange={(event) => {
+                    event.target.value = formatSupplierPhoneInput(event.target.value);
+                    void phoneField.onChange(event);
+                  }}
+                />
               </div>
 
               <details className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
@@ -257,7 +272,7 @@ export function SuppliersPage() {
 
                 <div className="mt-4 space-y-2 text-sm">
                   <InfoLine label="Empresa" value={supplier.company ?? "Não informada"} />
-                  <InfoLine label="Telefone" value={supplier.phone ?? "Não informado"} />
+                  <InfoLine label="Telefone" value={formatSupplierPhoneDisplay(supplier.phone)} />
                   <InfoLine label="Próxima compra" value="Aguardando Entradas" />
                 </div>
               </InteractiveCard>

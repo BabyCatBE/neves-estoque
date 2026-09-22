@@ -1,5 +1,6 @@
 import { supabase } from "../../../shared/lib/supabase";
 import type { Tables } from "../../../shared/types/database.types";
+import { isSupplierPhoneComplete } from "../lib/supplierValidation";
 
 export type SupplierRow = Tables<"suppliers">;
 
@@ -48,7 +49,7 @@ function mapSupplier(row: SupplierRow): SupplierDetails {
     preferredOrderWeekday: row.preferred_order_weekday,
     averageDeliveryDays: row.average_delivery_days,
     safetyMarginDays: row.safety_margin_days,
-    isPending: !row.company || !row.phone
+    isPending: !row.company || !isSupplierPhoneComplete(row.phone)
   };
 }
 

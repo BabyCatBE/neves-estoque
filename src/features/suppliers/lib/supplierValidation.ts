@@ -2,8 +2,46 @@ import { z } from "zod";
 
 export const supplierNameSchema = z.string().trim().min(1, "Informe o contato ou vendedor.").max(200, "O contato deve ter no máximo 200 caracteres.");
 export const supplierCompanySchema = z.string().trim().min(1, "Informe a empresa.").max(200, "A empresa deve ter no máximo 200 caracteres.");
-export const supplierPhoneSchema = z.string().trim().min(5, "Informe um telefone válido.").max(40, "O telefone deve ter no máximo 40 caracteres.");
+export const supplierPhoneSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => supplierPhoneDigits(value).length === 11,
+    "Informe exatamente 11 dígitos no telefone."
+  )
+  .transform((value) => supplierPhoneDigits(value));
 export const supplierObservationSchema = z.string().max(2000, "A observação deve ter no máximo 2.000 caracteres.");
+
+export function supplierPhoneDigits(value: string | null | undefined) {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+export function isSupplierPhoneComplete(value: string | null | undefined) {
+  return supplierPhoneDigits(value).length === 11;
+}
+
+export function formatSupplierPhoneInput(value: string) {
+  const digits = supplierPhoneDigits(value).slice(0, 11);
+  if (!digits) return "";
+  if (digits.length <= 2) return `(${digits}`;
+
+  let formatted = `(${digits.slice(0, 2)})`;
+  if (digits.length >= 3) formatted += ` ${digits.slice(2, 3)}`;
+  if (digits.length >= 4) formatted += ` ${digits.slice(3, 7)}`;
+  if (digits.length >= 8) formatted += `-${digits.slice(7, 11)}`;
+  return formatted;
+}
+
+export function formatSupplierPhoneForEdit(value: string | null | undefined) {
+  if (!value) return "";
+  const digits = supplierPhoneDigits(value);
+  return digits.length <= 11 ? formatSupplierPhoneInput(digits) : value;
+}
+
+export function formatSupplierPhoneDisplay(value: string | null | undefined) {
+  if (!value) return "Não informado";
+  return isSupplierPhoneComplete(value) ? formatSupplierPhoneInput(value) : value;
+}
 
 export const SUPPLIER_WEEKDAYS = [
   { value: 1, label: "Segunda-feira" },

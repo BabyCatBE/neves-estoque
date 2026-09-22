@@ -8,6 +8,9 @@ import { Card } from "../../../shared/components/ui/Card";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { getSupplierDetails, softDeleteSupplier, updateSupplier, type SupplierDetails } from "../api/suppliers";
 import {
+  formatSupplierPhoneDisplay,
+  formatSupplierPhoneForEdit,
+  formatSupplierPhoneInput,
   getSupplierErrorMessage,
   parseOptionalInteger,
   SUPPLIER_WEEKDAYS,
@@ -214,7 +217,14 @@ export function SupplierDetailPage() {
                 <div className="grid gap-4 lg:grid-cols-3">
                   <TextField label="Contato / vendedor" value={draft.name} autoFocus onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
                   <TextField label="Empresa" value={draft.company} onChange={(event) => setDraft({ ...draft, company: event.target.value })} />
-                  <TextField label="Telefone" value={draft.phone} inputMode="tel" onChange={(event) => setDraft({ ...draft, phone: event.target.value })} />
+                  <TextField
+                    label="Telefone"
+                    value={draft.phone}
+                    inputMode="tel"
+                    maxLength={16}
+                    placeholder="(75) 9 9999-9999"
+                    onChange={(event) => setDraft({ ...draft, phone: formatSupplierPhoneInput(event.target.value) })}
+                  />
                 </div>
 
                 <details open className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
@@ -244,7 +254,11 @@ export function SupplierDetailPage() {
               <>
                 <div className="mt-5 grid gap-4 md:grid-cols-3">
                   <MetricCard label="Empresa" value={supplierQuery.data.company ?? "Não informada"} helper={supplierQuery.data.company ? "Empresa vinculada a este contato." : "Campo obrigatório pendente."} />
-                  <MetricCard label="Telefone" value={supplierQuery.data.phone ?? "Não informado"} helper={supplierQuery.data.phone ? "Contato principal do fornecedor." : "Campo obrigatório pendente."} />
+                  <MetricCard
+                    label="Telefone"
+                    value={formatSupplierPhoneDisplay(supplierQuery.data.phone)}
+                    helper={supplierQuery.data.isPending ? "Telefone ausente ou fora do padrão de 11 dígitos." : "Contato principal do fornecedor."}
+                  />
                   <MetricCard label="Próxima compra" value="Aguardando Entradas" helper="A recomendação será calculada quando existir histórico real de recebimentos." />
                 </div>
 
@@ -310,7 +324,7 @@ function toDraft(supplier: SupplierDetails): EditDraft {
   return {
     name: supplier.name,
     company: supplier.company ?? "",
-    phone: supplier.phone ?? "",
+    phone: formatSupplierPhoneForEdit(supplier.phone),
     observation: supplier.observation ?? "",
     purchaseFrequencyDays: numberToInput(supplier.purchaseFrequencyDays),
     preferredOrderWeekday: numberToInput(supplier.preferredOrderWeekday),
