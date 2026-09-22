@@ -6,6 +6,7 @@ import { CategoriesPage } from "../../features/categories/pages/CategoriesPage";
 import { CategoryTrashPage } from "../../features/categories/pages/CategoryTrashPage";
 import { HomePage } from "../../features/home/pages/HomePage";
 import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
+import { ProductsPage } from "../../features/products/pages/ProductsPage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
 
 export const router = createBrowserRouter([
@@ -55,7 +56,7 @@ export const router = createBrowserRouter([
     path: "/produtos/lista",
     element: (
       <ProtectedRoute>
-        <ModulePlaceholder title="Produtos" />
+        <ProductsPage />
       </ProtectedRoute>
     )
   },
