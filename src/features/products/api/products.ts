@@ -180,3 +180,22 @@ export async function reorderProducts(orders: ReorderProductCategory[]) {
 
   if (error) throw error;
 }
+
+
+export async function softDeleteProduct(productId: string) {
+  const client = requireClient();
+  const { error } = await client.rpc("soft_delete_product", {
+    p_product_id: productId
+  });
+
+  if (error) throw error;
+}
+
+export async function restoreProduct(productId: string) {
+  const client = requireClient();
+  const { error } = await client.rpc("restore_product", {
+    p_product_id: productId
+  });
+
+  if (error) throw error;
+}
