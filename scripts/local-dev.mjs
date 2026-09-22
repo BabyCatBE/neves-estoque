@@ -1,3 +1,4 @@
+import console from "node:console";
 import process from "node:process";
 import { spawn, spawnSync } from "node:child_process";
 
