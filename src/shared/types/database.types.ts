@@ -107,6 +107,10 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           id: string
+          illustration_key: string | null
+          illustration_position_x: number
+          illustration_position_y: number
+          illustration_source: string | null
           name: string
           restore_until: string | null
           sort_order: number | null
@@ -119,6 +123,10 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          illustration_key?: string | null
+          illustration_position_x?: number
+          illustration_position_y?: number
+          illustration_source?: string | null
           name: string
           restore_until?: string | null
           sort_order?: number | null
@@ -131,6 +139,10 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          illustration_key?: string | null
+          illustration_position_x?: number
+          illustration_position_y?: number
+          illustration_source?: string | null
           name?: string
           restore_until?: string | null
           sort_order?: number | null
