@@ -613,6 +613,11 @@ export type Database = {
         Returns: undefined
       }
       reorder_products: { Args: { p_orders: Json }; Returns: undefined }
+      restore_product: { Args: { p_product_id: string }; Returns: undefined }
+      soft_delete_product: {
+        Args: { p_product_id: string }
+        Returns: undefined
+      }
       update_product_details: {
         Args: { p_category_id: string; p_name: string; p_product_id: string }
         Returns: undefined
