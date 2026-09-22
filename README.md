@@ -6,7 +6,7 @@ Aplicativo interno de controle de estoque da **Panificadora Neves — Nordestina
 
 **EM IMPLEMENTAÇÃO**
 
-O planejamento funcional e a arquitetura principal estão aprovados. Este repositório inicia a implementação técnica em DEV. Nada neste repositório deve ser tratado como produção sem validação no ambiente correspondente.
+O planejamento funcional e a arquitetura principal estão aprovados. Este repositório inicia a implementação técnica. O único projeto Supabase do Neves Estoque será usado primeiro com dados de teste e só passará a operar dados reais após validação completa, auditoria de segurança e preparação para produção.
 
 ## Stack aprovada
 
@@ -23,7 +23,7 @@ O planejamento funcional e a arquitetura principal estão aprovados. Este reposi
 
 ## Branches
 
-- `develop`: integração e validação em DEV
+- `develop`: integração e validação durante o desenvolvimento
 - `main`: linha aprovada para produção
 
 ## Segurança
@@ -38,7 +38,7 @@ O planejamento funcional e a arquitetura principal estão aprovados. Este reposi
 ## Ambiente local
 
 1. Copie `.env.example` para `.env.local`.
-2. Preencha apenas os valores públicos do Supabase DEV.
+2. Preencha apenas os valores públicos do projeto Supabase `Neves Estoque`.
 3. Instale as dependências com `npm install`.
 4. Execute `npm run dev`.
 
