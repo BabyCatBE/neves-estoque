@@ -54,6 +54,7 @@ export function CategoriesPage() {
   const [reordering, setReordering] = useState(false);
   const [draftOrder, setDraftOrder] = useState<CategoryListItem[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [illustrationSaving, setIllustrationSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -174,6 +175,7 @@ export function CategoriesPage() {
     const categoryId = crypto.randomUUID();
     let prepared: PreparedIllustration | null = null;
 
+    setIllustrationSaving(true);
     try {
       prepared = await prepareIllustration(categoryId, createIllustration);
 
@@ -195,6 +197,8 @@ export function CategoriesPage() {
     } catch (error) {
       await cleanupUploadedPath(prepared?.uploadedPath ?? null);
       setError("name", { message: getCategoryErrorMessage(error) });
+    } finally {
+      setIllustrationSaving(false);
     }
   });
 
@@ -238,6 +242,7 @@ export function CategoriesPage() {
       editing.illustration_source === "upload" ? editing.illustration_key : null;
     let prepared: PreparedIllustration | null = null;
 
+    setIllustrationSaving(true);
     try {
       prepared = await prepareIllustration(editing.id, editingIllustration);
       await updateMutation.mutateAsync({
@@ -262,6 +267,8 @@ export function CategoriesPage() {
         await cleanupUploadedPath(prepared.uploadedPath);
       }
       setActionError(getCategoryErrorMessage(error));
+    } finally {
+      setIllustrationSaving(false);
     }
   };
 
@@ -373,7 +380,8 @@ export function CategoriesPage() {
     createMutation.isPending ||
     updateMutation.isPending ||
     deleteMutation.isPending ||
-    reorderMutation.isPending;
+    reorderMutation.isPending ||
+    illustrationSaving;
 
   const visibleCategories = reordering ? draftOrder : (categoriesQuery.data ?? []);
 
@@ -453,8 +461,8 @@ export function CategoriesPage() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Salvando…" : "Salvar categoria"}
+                <Button type="submit" disabled={createMutation.isPending || illustrationSaving}>
+                  {createMutation.isPending || illustrationSaving ? "Salvando…" : "Salvar categoria"}
                 </Button>
               </div>
             </form>
@@ -594,10 +602,12 @@ export function CategoriesPage() {
                     </Button>
                     <Button
                       size="sm"
-                      disabled={updateMutation.isPending}
+                      disabled={updateMutation.isPending || illustrationSaving}
                       onClick={() => void saveEditing()}
                     >
-                      {updateMutation.isPending ? "Salvando…" : "Salvar alterações"}
+                      {updateMutation.isPending || illustrationSaving
+                        ? "Salvando…"
+                        : "Salvar alterações"}
                     </Button>
                   </div>
                 </>
