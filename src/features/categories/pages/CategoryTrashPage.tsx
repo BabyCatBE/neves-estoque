@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppShell } from "../../../shared/components/AppShell";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import {
@@ -17,6 +18,7 @@ export function CategoryTrashPage() {
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingRestore, setPendingRestore] = useState<CategoryTrashItem | null>(null);
 
   const trashQuery = useQuery({
     queryKey: trashCategoriesKey,
@@ -33,19 +35,19 @@ export function CategoryTrashPage() {
     }
   });
 
-  const restore = async (category: CategoryTrashItem) => {
+  const restore = (category: CategoryTrashItem) => {
     setNotice(null);
     setActionError(null);
+    setPendingRestore(category);
+  };
 
-    const confirmed = window.confirm(
-      `Restaurar a categoria “${category.name}”? Ela voltará para a posição manual anterior.`
-    );
-
-    if (!confirmed) return;
+  const confirmRestore = async () => {
+    if (!pendingRestore) return;
 
     try {
-      await restoreMutation.mutateAsync(category.id);
-      setNotice(`Categoria “${category.name}” restaurada com sucesso.`);
+      await restoreMutation.mutateAsync(pendingRestore.id);
+      setNotice(`Categoria “${pendingRestore.name}” restaurada com sucesso.`);
+      setPendingRestore(null);
     } catch (error) {
       setActionError(getCategoryErrorMessage(error));
     }
@@ -136,6 +138,20 @@ export function CategoryTrashPage() {
             </Card>
           ))}
         </div>
+        <ConfirmDialog
+          open={Boolean(pendingRestore)}
+          title="Restaurar categoria?"
+          description={
+            pendingRestore
+              ? `Restaurar a categoria “${pendingRestore.name}”? Ela voltará para a posição manual anterior.`
+              : ""
+          }
+          confirmLabel="Restaurar categoria"
+          pendingLabel="Restaurando…"
+          isPending={restoreMutation.isPending}
+          onCancel={() => setPendingRestore(null)}
+          onConfirm={() => void confirmRestore()}
+        />
       </section>
     </AppShell>
   );
