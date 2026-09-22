@@ -8,6 +8,7 @@ import { TextField } from "../../../shared/components/ui/TextField";
 import {
   getProductDetails,
   listProductCategories,
+  softDeleteProduct,
   updateProductDetails
 } from "../api/products";
 import { getProductErrorMessage, productNameSchema } from "../lib/productValidation";
@@ -46,6 +47,18 @@ export function ProductDetailPage() {
         queryClient.invalidateQueries({ queryKey: productsKey }),
         queryClient.invalidateQueries({ queryKey: ["products", "detail", productId] }),
         queryClient.invalidateQueries({ queryKey: ["categories", "active"] })
+      ]);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: softDeleteProduct,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: productsKey }),
+        queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
+        queryClient.invalidateQueries({ queryKey: ["products", "categories"] }),
+        queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] })
       ]);
     }
   });
@@ -91,6 +104,32 @@ export function ProductDetailPage() {
       if (!leave) return;
     }
     navigate("/produtos/lista");
+  };
+
+  const deleteProduct = async () => {
+    if (!productQuery.data) return;
+
+    setActionError(null);
+    setNotice(null);
+
+    const quantity = productQuery.data.currentQuantity;
+    const stockWarning =
+      quantity !== null && quantity > 0
+        ? ` Este produto ainda possui ${formatQuantity(quantity, productQuery.data.unit)} em estoque. Ao excluir, ele sairá imediatamente do catálogo e dos cálculos ativos.`
+        : "";
+
+    const confirmed = window.confirm(
+      `Excluir o produto “${productQuery.data.name}”?${stockWarning} Ele ficará na lixeira por 7 dias e poderá ser restaurado nesse período.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteMutation.mutateAsync(productQuery.data.id);
+      navigate("/produtos/lista");
+    } catch (error) {
+      setActionError(getProductErrorMessage(error));
+    }
   };
 
   const save = async () => {
@@ -168,7 +207,17 @@ export function ProductDetailPage() {
             </div>
 
             {!editing ? (
-              <Button onClick={startEditing}>Editar produto</Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={deleteMutation.isPending}
+                  className="text-red-700"
+                  onClick={() => void deleteProduct()}
+                >
+                  {deleteMutation.isPending ? "Excluindo…" : "Excluir produto"}
+                </Button>
+                <Button onClick={startEditing}>Editar produto</Button>
+              </div>
             ) : null}
           </div>
 
