@@ -81,8 +81,10 @@ export async function createProduct(input: CreateProductInput) {
     p_name: input.name,
     p_category_id: input.categoryId,
     p_unit: input.unit,
-    p_initial_stock_quantity: input.initialStockQuantity,
-    p_initial_price: input.initialPrice
+    ...(input.initialStockQuantity === null
+      ? {}
+      : { p_initial_stock_quantity: input.initialStockQuantity }),
+    ...(input.initialPrice === null ? {} : { p_initial_price: input.initialPrice })
   });
 
   if (error) throw error;
