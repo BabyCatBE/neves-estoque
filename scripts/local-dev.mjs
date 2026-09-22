@@ -1,3 +1,4 @@
+import process from "node:process";
 import { spawn, spawnSync } from "node:child_process";
 
 const isWindows = process.platform === "win32";
