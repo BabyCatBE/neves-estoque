@@ -7,6 +7,11 @@ export type CategoryListItem = CategoryRow & {
   productCount: number;
 };
 
+export type CategoryTrashItem = Pick<
+  Tables<"categories">,
+  "id" | "name" | "sort_order" | "deleted_at" | "restore_until"
+>;
+
 function requireClient() {
   if (!supabase) throw new Error("Supabase não está configurado neste ambiente.");
   return supabase;
@@ -40,6 +45,21 @@ export async function listActiveCategories(): Promise<CategoryListItem[]> {
   }));
 }
 
+export async function listRestorableCategories(): Promise<CategoryTrashItem[]> {
+  const client = requireClient();
+  const now = new Date().toISOString();
+
+  const { data, error } = await client
+    .from("categories")
+    .select("id,name,sort_order,deleted_at,restore_until")
+    .not("deleted_at", "is", null)
+    .gt("restore_until", now)
+    .order("deleted_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function createCategory(name: string, sortOrder: number) {
   const client = requireClient();
   const { error } = await client.from("categories").insert({
@@ -63,6 +83,17 @@ export async function softDeleteCategory(id: string) {
     .from("categories")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
+
+  if (error) throw error;
+}
+
+export async function restoreCategory(id: string) {
+  const client = requireClient();
+  const { error } = await client
+    .from("categories")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .not("deleted_at", "is", null);
 
   if (error) throw error;
 }
