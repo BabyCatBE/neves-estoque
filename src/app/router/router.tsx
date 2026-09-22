@@ -15,6 +15,7 @@ import { EntriesHubPage } from "../../features/entries/pages/EntriesHubPage";
 import { NewEntryPage } from "../../features/entries/pages/NewEntryPage";
 import { EntriesHistoryPage } from "../../features/entries/pages/EntriesHistoryPage";
 import { EntryDetailPage } from "../../features/entries/pages/EntryDetailPage";
+import { EditEntryPage } from "../../features/entries/pages/EditEntryPage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
 
 export const router = createBrowserRouter([
@@ -65,6 +66,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <EntriesHistoryPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/entradas/:entryId/editar",
+    element: (
+      <ProtectedRoute>
+        <EditEntryPage />
       </ProtectedRoute>
     )
   },

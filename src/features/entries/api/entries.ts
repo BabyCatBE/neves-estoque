@@ -15,6 +15,10 @@ export type CreateEntryInput = {
   items: EntryCreateItem[];
 };
 
+export type UpdateEntryInput = Omit<CreateEntryInput, "idempotencyKey"> & {
+  entryId: string;
+};
+
 export type EntryHistoryItem = {
   id: string;
   effectiveAt: string;
@@ -69,6 +73,24 @@ export async function createEntry(input: CreateEntryInput) {
 
   if (error) throw error;
   return data;
+}
+
+export async function updateEntry(input: UpdateEntryInput) {
+  const client = requireClient();
+  const { error } = await client.rpc("update_entry", {
+    p_entry_id: input.entryId,
+    p_supplier_id: input.supplierId,
+    p_effective_at: input.effectiveAt,
+    p_device_id: input.deviceId,
+    p_items: input.items.map((item) => ({
+      product_id: item.productId,
+      quantity: item.quantity,
+      ...(item.unitPrice === null ? {} : { unit_price: item.unitPrice })
+    })),
+    ...(input.observation === null ? {} : { p_observation: input.observation })
+  });
+
+  if (error) throw error;
 }
 
 export async function listEntryHistory(): Promise<EntryHistoryItem[]> {

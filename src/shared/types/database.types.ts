@@ -657,6 +657,17 @@ export type Database = {
         Args: { p_supplier_id: string }
         Returns: undefined
       }
+      update_entry: {
+        Args: {
+          p_device_id: string
+          p_effective_at: string
+          p_entry_id: string
+          p_items: Json
+          p_observation?: string
+          p_supplier_id: string
+        }
+        Returns: undefined
+      }
       update_product_details: {
         Args: { p_category_id: string; p_name: string; p_product_id: string }
         Returns: undefined

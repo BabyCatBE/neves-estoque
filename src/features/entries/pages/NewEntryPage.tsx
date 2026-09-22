@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
@@ -38,6 +38,7 @@ export function NewEntryPage() {
   const [observationOpen, setObservationOpen] = useState(false);
   const [observation, setObservation] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const [productActiveIndex, setProductActiveIndex] = useState(0);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [duplicateProduct, setDuplicateProduct] = useState<ProductListItem | null>(null);
   const [missingPriceReview, setMissingPriceReview] = useState(false);
@@ -81,6 +82,34 @@ export function NewEntryPage() {
       .slice(0, 10);
   }, [productSearch, productsQuery.data]);
 
+  const handleProductSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!productSearch || productSuggestions.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setProductActiveIndex((index) => (index + 1) % productSuggestions.length);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setProductActiveIndex((index) => (index - 1 + productSuggestions.length) % productSuggestions.length);
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const selected = productSuggestions[Math.min(productActiveIndex, productSuggestions.length - 1)];
+      if (selected) addProduct(selected);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setProductSearch("");
+      setProductActiveIndex(0);
+    }
+  };
+
   const totals = useMemo(() => {
     let totalKnown = 0;
     let missingPrices = 0;
@@ -112,6 +141,7 @@ export function NewEntryPage() {
       { localId, product, quantity: "", unitPrice: "" }
     ]);
     setProductSearch("");
+    setProductActiveIndex(0);
     setDuplicateProduct(null);
     window.setTimeout(() => document.getElementById(`entry-qty-${localId}`)?.focus(), 0);
   };
@@ -277,11 +307,31 @@ export function NewEntryPage() {
         <div className="mt-6">
           <h3 className="font-semibold">Produtos recebidos</h3>
           <div className="mt-3 max-w-2xl">
-            <TextField label="Adicionar produto" placeholder="Buscar por nome" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />
+            <TextField
+              id="entry-product-search"
+              label="Adicionar produto"
+              placeholder="Buscar por nome"
+              value={productSearch}
+              onChange={(event) => {
+                setProductSearch(event.target.value);
+                setProductActiveIndex(0);
+              }}
+              onKeyDown={handleProductSearchKeyDown}
+              aria-autocomplete="list"
+              aria-controls="entry-product-suggestions"
+            />
             {productSearch ? (
-              <div className="mt-2 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-                {productSuggestions.map((product) => (
-                  <button key={product.id} type="button" className="flex w-full items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3 text-left text-sm last:border-0 hover:bg-zinc-50" onClick={() => addProduct(product)}>
+              <div id="entry-product-suggestions" role="listbox" className="mt-2 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+                {productSuggestions.map((product, index) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    role="option"
+                    aria-selected={index === productActiveIndex}
+                    className={`flex w-full items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3 text-left text-sm last:border-0 ${index === productActiveIndex ? "bg-red-50 text-red-950" : "hover:bg-zinc-50"}`}
+                    onMouseEnter={() => setProductActiveIndex(index)}
+                    onClick={() => addProduct(product)}
+                  >
                     <span className="font-semibold">{product.name}</span>
                     <span className="text-xs text-zinc-500">{product.unit}</span>
                   </button>
@@ -322,13 +372,26 @@ export function NewEntryPage() {
                     inputMode="decimal"
                     value={item.quantity}
                     onChange={(event) => setItems((current) => current.map((candidate) => candidate.localId === item.localId ? { ...candidate, quantity: event.target.value } : candidate))}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        document.getElementById(`entry-price-${item.localId}`)?.focus();
+                      }
+                    }}
                   />
                   <TextField
+                    id={`entry-price-${item.localId}`}
                     label="Preço unitário"
                     inputMode="decimal"
                     placeholder="Vazio = não informado"
                     value={item.unitPrice}
                     onChange={(event) => setItems((current) => current.map((candidate) => candidate.localId === item.localId ? { ...candidate, unitPrice: event.target.value } : candidate))}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        document.getElementById("entry-product-search")?.focus();
+                      }
+                    }}
                   />
                   <div className="rounded-xl bg-zinc-50 px-4 py-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Total</p>

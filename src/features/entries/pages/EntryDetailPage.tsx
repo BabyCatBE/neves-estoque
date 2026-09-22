@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -36,7 +36,17 @@ export function EntryDetailPage() {
                 <h2 className="mt-1 text-2xl font-semibold">{entryQuery.data.supplierName}</h2>
                 <p className="mt-1 text-sm text-zinc-500">{entryQuery.data.supplierCompany ?? "Empresa não informada"} · {formatDate(entryQuery.data.effectiveAt)}</p>
               </div>
-              <span className="w-fit rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600">Somente leitura</span>
+              <div className="flex w-fit items-center gap-2">
+                <span className="inline-flex min-h-8 items-center rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600">
+                  Somente leitura
+                </span>
+                <Link
+                  to={`/entradas/${entryQuery.data.id}/editar`}
+                  className="inline-flex min-h-8 items-center rounded-full bg-red-700 px-3 py-1 text-xs font-semibold text-white transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+                >
+                  Editar Entrada
+                </Link>
+              </div>
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
