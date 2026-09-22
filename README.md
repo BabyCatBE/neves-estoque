@@ -6,7 +6,15 @@ Aplicativo interno de controle de estoque da **Panificadora Neves — Nordestina
 
 **EM IMPLEMENTAÇÃO**
 
-O planejamento funcional e a arquitetura principal estão aprovados. Este repositório inicia a implementação técnica. O único projeto Supabase do Neves Estoque será usado primeiro com dados de teste e só passará a operar dados reais após validação completa, auditoria de segurança e preparação para produção.
+O planejamento funcional e a arquitetura principal estão aprovados. A base técnica, o núcleo inicial do banco e o fluxo frontend de autenticação Google já foram implementados. O único projeto Supabase do Neves Estoque será usado primeiro com dados de teste e só passará a operar dados reais após validação completa, auditoria de segurança e preparação para produção.
+
+### Marco atual
+- schema inicial, RLS, auditoria e RPCs operacionais aplicados no Supabase;
+- Google OAuth configurado no Google Cloud e Supabase;
+- duas contas V1 autorizadas em `app_users`;
+- frontend de login Google, autorização interna, registro de dispositivo, proteção de rotas e logout implementado em `develop`;
+- CI validando typecheck, lint, testes unitários e build;
+- login OAuth real ainda precisa ser testado de ponta a ponta em um ambiente com URL de redirecionamento configurada.
 
 ## Stack aprovada
 
@@ -29,20 +37,21 @@ O planejamento funcional e a arquitetura principal estão aprovados. Este reposi
 ## Segurança
 
 - O frontend nunca é autoridade de autorização.
-- RLS deve existir desde a primeira migration exposta ao cliente.
+- RLS existe desde a primeira migration exposta ao cliente.
 - Segredos, tokens, service role e senhas nunca entram no Git.
 - Apenas variáveis públicas apropriadas ao navegador podem usar prefixo `VITE_`.
-- Entradas e Conferências oficiais devem ser gravadas por operações transacionais seguras.
-- Antes de PROD haverá auditoria completa de segurança, correções e retestes.
+- Entradas e Conferências oficiais são gravadas por operações transacionais seguras.
+- O login Google autentica a identidade; `app_users` decide se a conta pode acessar o app.
+- Antes de produção haverá auditoria completa de segurança, correções e retestes.
 
 ## Ambiente local
 
 1. Copie `.env.example` para `.env.local`.
 2. Preencha apenas os valores públicos do projeto Supabase `Neves Estoque`.
-3. Instale as dependências com `npm install`.
+3. Instale as dependências com `npm ci`.
 4. Execute `npm run dev`.
 
-> O `package-lock.json` será gerado pelo npm e deve ser versionado antes de esta base ser considerada validada/testada.
+O `package-lock.json` está versionado e o CI usa `npm ci`.
 
 ## Regra central do estoque
 
