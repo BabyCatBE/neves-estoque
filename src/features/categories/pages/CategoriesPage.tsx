@@ -198,7 +198,10 @@ export function CategoriesPage() {
       const nextIndex = currentIndex + direction;
       if (currentIndex < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
 
-      return moveItemById(current, categoryId, current[nextIndex].id);
+      const targetCategory = current[nextIndex];
+      if (!targetCategory) return current;
+
+      return moveItemById(current, categoryId, targetCategory.id);
     });
   };
 
