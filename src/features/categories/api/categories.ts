@@ -97,3 +97,13 @@ export async function restoreCategory(id: string) {
 
   if (error) throw error;
 }
+
+
+export async function reorderCategories(categoryIds: string[]) {
+  const client = requireClient();
+  const { error } = await client.rpc("reorder_categories", {
+    p_category_ids: categoryIds
+  });
+
+  if (error) throw error;
+}
