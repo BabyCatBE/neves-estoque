@@ -23,4 +23,10 @@ describe("getCategoryErrorMessage", () => {
       "Já existe uma categoria ativa com esse nome."
     );
   });
+
+  it("traduz tentativa de restauração fora do prazo", () => {
+    expect(getCategoryErrorMessage({ message: "Prazo de restauração expirado." })).toBe(
+      "O prazo de 7 dias para restaurar esta categoria expirou."
+    );
+  });
 });
