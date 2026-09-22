@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -157,9 +158,17 @@ export function CategoriesPage() {
             </p>
           </div>
 
-          <Button onClick={() => setCreating((value) => !value)}>
-            {creating ? "Cancelar" : "+ Criar categoria"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/produtos/categorias/lixeira"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+            >
+              Lixeira
+            </Link>
+            <Button onClick={() => setCreating((value) => !value)}>
+              {creating ? "Cancelar" : "+ Criar categoria"}
+            </Button>
+          </div>
         </div>
 
         {creating ? (
@@ -203,8 +212,8 @@ export function CategoriesPage() {
         ) : null}
 
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-          Primeiro incremento operacional: cadastro, renomeação e exclusão segura já usam o banco real.
-          Ilustrações e reordenação por arrastar entram no próximo incremento deste módulo.
+          Cadastro, renomeação, exclusão segura e restauração pela lixeira já usam o banco real.
+          Ilustrações e reordenação por arrastar continuam nos próximos incrementos deste módulo.
         </div>
 
         {categoriesQuery.isPending ? (
