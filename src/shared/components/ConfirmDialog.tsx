@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 
@@ -55,7 +55,6 @@ export function ConfirmDialog({
 }: Props) {
   const titleId = useId();
   const descriptionId = useId();
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const tone = toneClasses[variant];
 
   useEffect(() => {
@@ -66,7 +65,6 @@ export function ConfirmDialog({
     const previousOverflow = document.body.style.overflow;
 
     document.body.style.overflow = "hidden";
-    cancelButtonRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !isPending) {
@@ -124,7 +122,7 @@ export function ConfirmDialog({
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
-            ref={cancelButtonRef}
+            autoFocus
             variant="ghost"
             disabled={isPending}
             onClick={onCancel}
