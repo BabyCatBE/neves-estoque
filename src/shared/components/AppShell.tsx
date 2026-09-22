@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { Link } from "react-router-dom";
 import nevesLogo from "../../assets/neves-logo.webp";
+import { APP_VERSION, SHOW_DEVELOPMENT_VERSION } from "../config/appVersion";
 
 type Props = PropsWithChildren<{
   title?: string;
@@ -49,9 +50,16 @@ export function AppShell({
           />
 
           <div className="min-w-0">
-            <p className="truncate text-xs font-extrabold uppercase tracking-[0.16em] text-red-500 sm:text-sm">
-              Neves <span className="text-amber-500">•</span> Estoque
-            </p>
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-xs font-extrabold uppercase tracking-[0.16em] text-red-500 sm:text-sm">
+                Neves <span className="text-amber-500">•</span> Estoque
+              </p>
+              {SHOW_DEVELOPMENT_VERSION ? (
+                <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-zinc-400">
+                  v{APP_VERSION}
+                </span>
+              ) : null}
+            </div>
             <h1 className="truncate text-lg font-semibold text-white sm:text-xl">{title}</h1>
           </div>
         </div>
