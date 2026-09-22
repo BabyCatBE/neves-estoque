@@ -37,8 +37,10 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
-  const [initialized, setInitialized] = useState(false);
-  const [status, setStatus] = useState<AuthStatus>("loading");
+  const [initialized, setInitialized] = useState(() => !supabase);
+  const [status, setStatus] = useState<AuthStatus>(() =>
+    supabase ? "loading" : "config-missing"
+  );
   const [appUserId, setAppUserId] = useState<string | null>(null);
   const [roleName, setRoleName] = useState<string | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -47,11 +49,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const client = supabase;
-    if (!client) {
-      setStatus("config-missing");
-      setInitialized(true);
-      return;
-    }
+    if (!client) return;
 
     let active = true;
 
@@ -86,23 +84,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (!initialized) return;
 
     const client = supabase;
-    if (!client) {
-      setStatus("config-missing");
-      return;
-    }
-
-    if (!session) {
-      setAppUserId(null);
-      setRoleName(null);
-      setDeviceId(null);
-      setStatus(failureStatus.current ?? "signed-out");
-      return;
-    }
+    if (!client) return;
 
     const activeClient = client;
     let cancelled = false;
 
     async function bootstrapAccess() {
+      await Promise.resolve();
+      if (cancelled) return;
+
+      if (!session) {
+        setAppUserId(null);
+        setRoleName(null);
+        setDeviceId(null);
+        setStatus(failureStatus.current ?? "signed-out");
+        return;
+      }
+
       setStatus("loading");
       setErrorMessage(null);
 
