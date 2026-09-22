@@ -26,6 +26,11 @@ type DraftItem = {
   unitPrice: string;
 };
 
+type ItemFieldErrors = Record<string, {
+  quantity?: string;
+  unitPrice?: string;
+}>;
+
 export function NewEntryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -41,6 +46,7 @@ export function NewEntryPage() {
   const [productSearch, setProductSearch] = useState("");
   const [productActiveIndex, setProductActiveIndex] = useState(0);
   const [items, setItems] = useState<DraftItem[]>([]);
+  const [itemErrors, setItemErrors] = useState<ItemFieldErrors>({});
   const [duplicateProduct, setDuplicateProduct] = useState<ProductListItem | null>(null);
   const [missingPriceReview, setMissingPriceReview] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -87,6 +93,7 @@ export function NewEntryPage() {
   };
 
   const handleSupplierSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.ctrlKey || event.metaKey) return;
     if (!supplierSearch) return;
 
     const optionCount = supplierSuggestions.length + 1;
@@ -127,6 +134,7 @@ export function NewEntryPage() {
   }, [productSearch, productsQuery.data]);
 
   const handleProductSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.ctrlKey || event.metaKey) return;
     if (!productSearch || productSuggestions.length === 0) return;
 
     if (event.key === "ArrowDown") {
@@ -151,6 +159,40 @@ export function NewEntryPage() {
     if (event.key === "Escape") {
       setProductSearch("");
       setProductActiveIndex(0);
+    }
+  };
+
+  const setItemError = (localId: string, field: "quantity" | "unitPrice", message?: string) => {
+    setItemErrors((current) => {
+      const nextForItem = { ...current[localId], [field]: message };
+      if (!nextForItem.quantity && !nextForItem.unitPrice) {
+        const next = { ...current };
+        delete next[localId];
+        return next;
+      }
+      return { ...current, [localId]: nextForItem };
+    });
+  };
+
+  const validateQuantityNow = (item: DraftItem) => {
+    try {
+      parsePositiveDecimal(item.quantity, "Quantidade");
+      setItemError(item.localId, "quantity");
+      return true;
+    } catch (error) {
+      setItemError(item.localId, "quantity", validationMessage(error, "Quantidade inválida."));
+      return false;
+    }
+  };
+
+  const validatePriceNow = (item: DraftItem) => {
+    try {
+      parseOptionalPrice(item.unitPrice);
+      setItemError(item.localId, "unitPrice");
+      return true;
+    } catch (error) {
+      setItemError(item.localId, "unitPrice", validationMessage(error, "Preço unitário inválido."));
+      return false;
     }
   };
 
@@ -430,7 +472,18 @@ export function NewEntryPage() {
                     <h4 className="mt-1 font-semibold">{item.product.name}</h4>
                     <p className="mt-1 text-xs text-zinc-500">Unidade: {item.product.unit}</p>
                   </div>
-                  <button type="button" className="text-xs font-semibold text-red-700" onClick={() => setItems((current) => current.filter((candidate) => candidate.localId !== item.localId))}>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-red-700"
+                    onClick={() => {
+                      setItems((current) => current.filter((candidate) => candidate.localId !== item.localId));
+                      setItemErrors((current) => {
+                        const next = { ...current };
+                        delete next[item.localId];
+                        return next;
+                      });
+                    }}
+                  >
                     Remover
                   </button>
                 </div>
@@ -441,11 +494,27 @@ export function NewEntryPage() {
                     label="Quantidade *"
                     inputMode="decimal"
                     value={item.quantity}
-                    onChange={(event) => setItems((current) => current.map((candidate) => candidate.localId === item.localId ? { ...candidate, quantity: event.target.value } : candidate))}
+                    error={itemErrors[item.localId]?.quantity}
+                    aria-invalid={Boolean(itemErrors[item.localId]?.quantity)}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setItems((current) => current.map((candidate) => candidate.localId === item.localId ? { ...candidate, quantity: value } : candidate));
+                      if (itemErrors[item.localId]?.quantity) {
+                        try {
+                          parsePositiveDecimal(value, "Quantidade");
+                          setItemError(item.localId, "quantity");
+                        } catch {
+                          // Mantém o erro visível até o valor se tornar válido.
+                        }
+                      }
+                    }}
                     onKeyDown={(event) => {
+                      if (event.ctrlKey || event.metaKey) return;
                       if (event.key === "Enter") {
                         event.preventDefault();
-                        document.getElementById(`entry-price-${item.localId}`)?.focus();
+                        if (validateQuantityNow(item)) {
+                          document.getElementById(`entry-price-${item.localId}`)?.focus();
+                        }
                       }
                     }}
                   />
@@ -455,11 +524,27 @@ export function NewEntryPage() {
                     inputMode="decimal"
                     placeholder="Vazio = não informado"
                     value={item.unitPrice}
-                    onChange={(event) => setItems((current) => current.map((candidate) => candidate.localId === item.localId ? { ...candidate, unitPrice: event.target.value } : candidate))}
+                    error={itemErrors[item.localId]?.unitPrice}
+                    aria-invalid={Boolean(itemErrors[item.localId]?.unitPrice)}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setItems((current) => current.map((candidate) => candidate.localId === item.localId ? { ...candidate, unitPrice: value } : candidate));
+                      if (itemErrors[item.localId]?.unitPrice) {
+                        try {
+                          parseOptionalPrice(value);
+                          setItemError(item.localId, "unitPrice");
+                        } catch {
+                          // Mantém o erro visível até o valor se tornar válido.
+                        }
+                      }
+                    }}
                     onKeyDown={(event) => {
+                      if (event.ctrlKey || event.metaKey) return;
                       if (event.key === "Enter") {
                         event.preventDefault();
-                        document.getElementById("entry-product-search")?.focus();
+                        if (validatePriceNow(item)) {
+                          document.getElementById("entry-product-search")?.focus();
+                        }
                       }
                     }}
                   />
@@ -565,6 +650,10 @@ function safePrice(value: string) {
   } catch {
     return null;
   }
+}
+
+function validationMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 function normalize(value: string) {
