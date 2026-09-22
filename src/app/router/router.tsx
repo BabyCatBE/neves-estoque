@@ -5,6 +5,7 @@ import { LoginPage } from "../../features/auth/pages/LoginPage";
 import { CategoriesPage } from "../../features/categories/pages/CategoriesPage";
 import { CategoryTrashPage } from "../../features/categories/pages/CategoryTrashPage";
 import { HomePage } from "../../features/home/pages/HomePage";
+import { AlertsHubPage } from "../../features/alerts/pages/AlertsHubPage";
 import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
 import { ProductDetailPage } from "../../features/products/pages/ProductDetailPage";
 import { ProductsPage } from "../../features/products/pages/ProductsPage";
@@ -122,6 +123,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <CategoryTrashPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/alertas",
+    element: (
+      <ProtectedRoute>
+        <AlertsHubPage />
       </ProtectedRoute>
     )
   },

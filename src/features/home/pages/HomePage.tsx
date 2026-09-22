@@ -20,21 +20,30 @@ export function HomePage() {
       <section>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-              <span>DEV</span>
-              {SHOW_DEVELOPMENT_VERSION ? (
-                <>
-                  <span aria-hidden="true" className="text-amber-600">
-                    •
-                  </span>
-                  <span>v{APP_VERSION}</span>
-                </>
-              ) : null}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                <span>DEV</span>
+                {SHOW_DEVELOPMENT_VERSION ? (
+                  <>
+                    <span aria-hidden="true" className="text-amber-600">
+                      •
+                    </span>
+                    <span>v{APP_VERSION}</span>
+                  </>
+                ) : null}
+              </span>
+              <Link
+                to="/alertas"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 transition hover:border-amber-300 hover:bg-amber-100"
+              >
+                <AlertIcon />
+                Alertas
+              </Link>
+            </div>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight">Controle de estoque</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-              Implementação incremental em ambiente de desenvolvimento. Categorias, Produtos e Fornecedores já
-              possuem fluxos operacionais; Entradas está no bloco atual.
+              Implementação incremental em ambiente de desenvolvimento. Categorias, Produtos, Fornecedores e
+              Entradas já possuem fluxos operacionais; navegação e alertas estão no bloco atual.
             </p>
           </div>
 
@@ -68,5 +77,15 @@ export function HomePage() {
         </div>
       </section>
     </AppShell>
+  );
+}
+
+
+function AlertIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none">
+      <path d="M12 4 3 20h18L12 4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M12 9v5M12 17.2v.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   );
 }

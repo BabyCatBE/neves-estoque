@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
@@ -13,7 +14,8 @@ const trashKey = ["trash", "restorable"] as const;
 export function TrashPage() {
   const queryClient = useQueryClient();
   const { deviceId } = useAuth();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [searchParams] = useSearchParams();
+  const [filter, setFilter] = useState<Filter>(() => parseFilter(searchParams.get("filter")));
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingRestore, setPendingRestore] = useState<TrashItem | null>(null);
@@ -163,4 +165,10 @@ function getTrashErrorMessage(error: unknown) {
     }
   }
   return "Não foi possível restaurar o item. Tente novamente.";
+}
+
+
+function parseFilter(value: string | null): Filter {
+  if (value === "product" || value === "category" || value === "supplier" || value === "entry") return value;
+  return "all";
 }

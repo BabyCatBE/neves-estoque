@@ -31,12 +31,21 @@ export function EntriesHistoryPage() {
             <h2 className="text-xl font-semibold tracking-tight">Histórico</h2>
             <p className="mt-1 text-sm text-zinc-600">Pesquise por fornecedor ou produto. O V1 não usa filtro por período.</p>
           </div>
-          <Link
-            to="/entradas/nova"
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-800"
-          >
-            + Nova Entrada
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/alertas/lixeira?filter=entry"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+            >
+              <TrashIcon />
+              Lixeira
+            </Link>
+            <Link
+              to="/entradas/nova"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-800"
+            >
+              + Nova Entrada
+            </Link>
+          </div>
         </div>
 
         <div className="mt-5 max-w-md">
@@ -92,4 +101,14 @@ function formatDate(value: string) {
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+}
+
+
+function TrashIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none">
+      <path d="M5 7h14M9 7V4h6v3M8 10v7M12 10v7M16 10v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M7 7l1 13h8l1-13" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  );
 }
