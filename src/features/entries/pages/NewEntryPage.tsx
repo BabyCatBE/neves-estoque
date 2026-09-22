@@ -32,6 +32,7 @@ export function NewEntryPage() {
   const { deviceId } = useAuth();
   const [supplierId, setSupplierId] = useState("");
   const [supplierSearch, setSupplierSearch] = useState("");
+  const [supplierActiveIndex, setSupplierActiveIndex] = useState(0);
   const [quickSupplierName, setQuickSupplierName] = useState("");
   const [showQuickSupplier, setShowQuickSupplier] = useState(false);
   const [date, setDate] = useState(() => localDateInputValue());
@@ -72,6 +73,49 @@ export function NewEntryPage() {
       .filter((supplier) => normalize([supplier.name, supplier.company ?? "", supplier.phone ?? ""].join(" ")).includes(term))
       .slice(0, 8);
   }, [selectedSupplier, supplierSearch, suppliersQuery.data]);
+
+  const selectSupplier = (id: string) => {
+    setSupplierId(id);
+    setSupplierSearch("");
+    setSupplierActiveIndex(0);
+    window.setTimeout(() => document.getElementById("entry-product-search")?.focus(), 0);
+  };
+
+  const openQuickSupplier = () => {
+    setQuickSupplierName(supplierSearch.trim());
+    setShowQuickSupplier(true);
+  };
+
+  const handleSupplierSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!supplierSearch) return;
+
+    const optionCount = supplierSuggestions.length + 1;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSupplierActiveIndex((index) => (index + 1) % optionCount);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSupplierActiveIndex((index) => (index - 1 + optionCount) % optionCount);
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const selected = supplierSuggestions[supplierActiveIndex];
+      if (selected) selectSupplier(selected.id);
+      else openQuickSupplier();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setSupplierSearch("");
+      setSupplierActiveIndex(0);
+    }
+  };
 
   const productSuggestions = useMemo(() => {
     const term = normalize(productSearch);
@@ -167,8 +211,10 @@ export function NewEntryPage() {
       const id = await quickSupplierMutation.mutateAsync(name);
       setSupplierId(id);
       setSupplierSearch("");
+      setSupplierActiveIndex(0);
       setQuickSupplierName("");
       setShowQuickSupplier(false);
+      window.setTimeout(() => document.getElementById("entry-product-search")?.focus(), 0);
     } catch (error) {
       setActionError(getEntryErrorMessage(error));
     }
@@ -225,7 +271,22 @@ export function NewEntryPage() {
 
   return (
     <AppShell title="Nova Entrada" showBack backTo="/entradas">
-      <section className="pb-28">
+      <section
+        className="pb-28"
+        onKeyDown={(event) => {
+          if (
+            (event.ctrlKey || event.metaKey) &&
+            event.key === "Enter" &&
+            !showQuickSupplier &&
+            !duplicateProduct &&
+            !missingPriceReview &&
+            !saveMutation.isPending
+          ) {
+            event.preventDefault();
+            requestSave();
+          }
+        }}
+      >
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Mercadoria recebida</h2>
           <p className="mt-1 text-sm text-zinc-600">Registre somente mercadoria que realmente chegou à Panificadora.</p>
@@ -249,18 +310,27 @@ export function NewEntryPage() {
                 <>
                   <input
                     value={supplierSearch}
-                    onChange={(event) => setSupplierSearch(event.target.value)}
+                    onChange={(event) => {
+                      setSupplierSearch(event.target.value);
+                      setSupplierActiveIndex(0);
+                    }}
+                    onKeyDown={handleSupplierSearchKeyDown}
                     placeholder="Buscar contato, empresa ou telefone"
+                    aria-autocomplete="list"
+                    aria-controls="entry-supplier-suggestions"
                     className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
                   />
                   {supplierSearch ? (
-                    <div className="mt-2 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-                      {supplierSuggestions.map((supplier) => (
+                    <div id="entry-supplier-suggestions" role="listbox" className="mt-2 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+                      {supplierSuggestions.map((supplier, index) => (
                         <button
                           key={supplier.id}
                           type="button"
-                          className="block w-full border-b border-zinc-100 px-4 py-3 text-left text-sm last:border-0 hover:bg-zinc-50"
-                          onClick={() => { setSupplierId(supplier.id); setSupplierSearch(""); }}
+                          role="option"
+                          aria-selected={index === supplierActiveIndex}
+                          className={`block w-full border-b border-zinc-100 px-4 py-3 text-left text-sm last:border-0 ${index === supplierActiveIndex ? "bg-red-50 text-red-950" : "hover:bg-zinc-50"}`}
+                          onMouseEnter={() => setSupplierActiveIndex(index)}
+                          onClick={() => selectSupplier(supplier.id)}
                         >
                           <span className="font-semibold">{supplier.name}</span>
                           <span className="ml-2 text-zinc-500">{supplier.company ?? "Pendente"}</span>
@@ -268,11 +338,11 @@ export function NewEntryPage() {
                       ))}
                       <button
                         type="button"
-                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
-                        onClick={() => {
-                          setQuickSupplierName(supplierSearch.trim());
-                          setShowQuickSupplier(true);
-                        }}
+                        role="option"
+                        aria-selected={supplierActiveIndex === supplierSuggestions.length}
+                        className={`block w-full px-4 py-3 text-left text-sm font-semibold text-red-700 ${supplierActiveIndex === supplierSuggestions.length ? "bg-red-50" : "hover:bg-red-50"}`}
+                        onMouseEnter={() => setSupplierActiveIndex(supplierSuggestions.length)}
+                        onClick={openQuickSupplier}
                       >
                         + Cadastrar novo fornecedor
                       </button>
@@ -418,9 +488,12 @@ export function NewEntryPage() {
               <p className="font-semibold">{formatMoney(totals.totalKnown)}{totals.missingPrices ? " *" : ""}</p>
               {totals.missingPrices ? <p className="text-xs text-amber-700">{totals.missingPrices} item(ns) sem preço</p> : null}
             </div>
-            <Button disabled={saveMutation.isPending} onClick={requestSave}>
-              {saveMutation.isPending ? "Salvando…" : "Salvar Entrada"}
-            </Button>
+            <div className="flex items-center gap-3">
+              <span className="hidden text-xs text-zinc-400 sm:inline">Atalho: Ctrl + Enter</span>
+              <Button disabled={saveMutation.isPending} onClick={requestSave}>
+                {saveMutation.isPending ? "Salvando…" : "Salvar Entrada"}
+              </Button>
+            </div>
           </div>
         </div>
 

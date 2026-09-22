@@ -204,7 +204,24 @@ export function EditEntryPage() {
 
   return (
     <AppShell title="Editar Entrada" showBack onBack={requestBack}>
-      <section className="pb-28">
+      <section
+        className="pb-28"
+        onKeyDown={(event) => {
+          if (
+            (event.ctrlKey || event.metaKey) &&
+            event.key === "Enter" &&
+            dirty &&
+            !missingPriceReview &&
+            !saveReviewOpen &&
+            !leaveReviewOpen &&
+            !duplicateProduct &&
+            !updateMutation.isPending
+          ) {
+            event.preventDefault();
+            requestSave();
+          }
+        }}
+      >
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Edição histórica</p>
           <h2 className="mt-1 text-2xl font-semibold">Editar Entrada</h2>
@@ -315,7 +332,10 @@ export function EditEntryPage() {
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
             <div><p className="text-xs text-zinc-500">Total conhecido</p><p className="font-semibold">{formatMoney(totals.totalKnown)}{totals.missingPrices ? " *" : ""}</p></div>
-            <Button disabled={!dirty || updateMutation.isPending} onClick={requestSave}>{updateMutation.isPending ? "Salvando…" : "Salvar alterações"}</Button>
+            <div className="flex items-center gap-3">
+              <span className="hidden text-xs text-zinc-400 sm:inline">Atalho: Ctrl + Enter</span>
+              <Button disabled={!dirty || updateMutation.isPending} onClick={requestSave}>{updateMutation.isPending ? "Salvando…" : "Salvar alterações"}</Button>
+            </div>
           </div>
         </div>
 
