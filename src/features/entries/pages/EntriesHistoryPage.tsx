@@ -1,0 +1,95 @@
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { AppShell } from "../../../shared/components/AppShell";
+import { Button } from "../../../shared/components/ui/Button";
+import { Card } from "../../../shared/components/ui/Card";
+import { TextField } from "../../../shared/components/ui/TextField";
+import { listEntryHistory } from "../api/entries";
+import { formatMoney } from "../lib/entryValidation";
+
+export function EntriesHistoryPage() {
+  const [search, setSearch] = useState("");
+  const historyQuery = useQuery({
+    queryKey: ["entries", "history"],
+    queryFn: listEntryHistory
+  });
+
+  const filtered = useMemo(() => {
+    const term = normalize(search);
+    return (historyQuery.data ?? []).filter((entry) => {
+      if (!term) return true;
+      return [entry.supplierName, ...entry.productNames].some((value) => normalize(value).includes(term));
+    });
+  }, [historyQuery.data, search]);
+
+  return (
+    <AppShell title="Histórico de Entradas" showBack backTo="/entradas">
+      <section>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Histórico</h2>
+            <p className="mt-1 text-sm text-zinc-600">Pesquise por fornecedor ou produto. O V1 não usa filtro por período.</p>
+          </div>
+          <Link
+            to="/entradas/nova"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-800"
+          >
+            + Nova Entrada
+          </Link>
+        </div>
+
+        <div className="mt-5 max-w-md">
+          <TextField label="Pesquisar" placeholder="Fornecedor ou produto" value={search} onChange={(event) => setSearch(event.target.value)} />
+        </div>
+
+        {historyQuery.isPending ? <Card className="mt-5 p-5 text-sm text-zinc-600">Carregando histórico…</Card> : null}
+        {historyQuery.isError ? (
+          <Card className="mt-5 border-red-200 p-5">
+            <p className="text-sm font-medium text-red-800">Não foi possível carregar o histórico.</p>
+            <Button className="mt-4" variant="secondary" onClick={() => void historyQuery.refetch()}>Tentar novamente</Button>
+          </Card>
+        ) : null}
+
+        {!historyQuery.isPending && !historyQuery.isError && filtered.length === 0 ? (
+          <Card className="mt-5 p-7 text-center">
+            <h3 className="font-semibold">{search ? "Nenhuma Entrada encontrada" : "Nenhuma Entrada registrada"}</h3>
+          </Card>
+        ) : null}
+
+        <div className="mt-5 space-y-3">
+          {filtered.map((entry) => (
+            <Link key={entry.id} to={`/entradas/${entry.id}`} className="block">
+              <Card className="p-5 transition hover:border-red-200 hover:shadow-md">
+                <div className="grid gap-3 sm:grid-cols-[170px_1fr_auto] sm:items-center">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-zinc-400">Data</p>
+                    <p className="mt-1 font-semibold">{formatDate(entry.effectiveAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-zinc-400">Fornecedor</p>
+                    <p className="mt-1 font-semibold">{entry.supplierName}</p>
+                    <p className="mt-1 truncate text-xs text-zinc-500">{entry.productNames.join(" · ")}</p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-xs uppercase tracking-wide text-zinc-400">Total conhecido</p>
+                    <p className="mt-1 font-semibold">{formatMoney(entry.totalKnown)}{entry.hasMissingPrice ? " *" : ""}</p>
+                    {entry.hasMissingPrice ? <p className="mt-1 text-xs text-amber-700">Há item sem preço</p> : null}
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+    </AppShell>
+  );
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(new Date(value));
+}
+
+function normalize(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+}

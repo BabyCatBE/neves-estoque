@@ -11,6 +11,10 @@ import { ProductsPage } from "../../features/products/pages/ProductsPage";
 import { TrashPage } from "../../features/trash/pages/TrashPage";
 import { SupplierDetailPage } from "../../features/suppliers/pages/SupplierDetailPage";
 import { SuppliersPage } from "../../features/suppliers/pages/SuppliersPage";
+import { EntriesHubPage } from "../../features/entries/pages/EntriesHubPage";
+import { NewEntryPage } from "../../features/entries/pages/NewEntryPage";
+import { EntriesHistoryPage } from "../../features/entries/pages/EntriesHistoryPage";
+import { EntryDetailPage } from "../../features/entries/pages/EntryDetailPage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
 
 export const router = createBrowserRouter([
@@ -44,7 +48,31 @@ export const router = createBrowserRouter([
     path: "/entradas",
     element: (
       <ProtectedRoute>
-        <ModulePlaceholder title="Entradas" />
+        <EntriesHubPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/entradas/nova",
+    element: (
+      <ProtectedRoute>
+        <NewEntryPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/entradas/historico",
+    element: (
+      <ProtectedRoute>
+        <EntriesHistoryPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/entradas/:entryId",
+    element: (
+      <ProtectedRoute>
+        <EntryDetailPage />
       </ProtectedRoute>
     )
   },

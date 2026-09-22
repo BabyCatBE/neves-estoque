@@ -121,3 +121,14 @@ export async function restoreSupplier(supplierId: string) {
   const { error } = await client.rpc("restore_supplier", { p_supplier_id: supplierId });
   if (error) throw error;
 }
+
+
+export async function createQuickSupplier(name: string) {
+  const client = requireClient();
+  const { data, error } = await client.rpc("create_supplier", {
+    p_name: name
+  });
+
+  if (error) throw error;
+  return data;
+}

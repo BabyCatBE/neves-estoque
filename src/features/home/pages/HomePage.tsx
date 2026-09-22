@@ -33,8 +33,8 @@ export function HomePage() {
             </span>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight">Controle de estoque</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-              Implementação incremental em ambiente de desenvolvimento. Categorias já possuem o
-              primeiro fluxo operacional conectado ao banco.
+              Implementação incremental em ambiente de desenvolvimento. Categorias, Produtos e Fornecedores já
+              possuem fluxos operacionais; Entradas está no bloco atual.
             </p>
           </div>
 
