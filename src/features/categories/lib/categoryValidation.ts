@@ -27,6 +27,18 @@ export function getCategoryErrorMessage(error: unknown) {
     ) {
       return "O prazo de 7 dias para restaurar esta categoria expirou.";
     }
+
+    if (
+      typeof candidate.message === "string" &&
+      [
+        "Formato de imagem não permitido.",
+        "A imagem pode ter no máximo 5 MB.",
+        "Escolha uma ilustração da biblioteca.",
+        "Selecione novamente a imagem da categoria."
+      ].includes(candidate.message)
+    ) {
+      return candidate.message;
+    }
   }
 
   return "Não foi possível salvar a categoria. Tente novamente.";
