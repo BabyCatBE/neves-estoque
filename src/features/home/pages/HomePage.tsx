@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AppShell } from "../../../shared/components/AppShell";
+import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { APP_VERSION, SHOW_DEVELOPMENT_VERSION } from "../../../shared/config/appVersion";
 import { listRestorableTrashItems } from "../../trash/api/trash";
 import { listActiveSuppliers } from "../../suppliers/api/suppliers";
@@ -96,13 +97,11 @@ export function HomePage() {
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {modules.map(([title, href, description]) => (
-            <Link
-              key={href}
-              to={href}
-              className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md"
-            >
-              <h3 className="font-semibold">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-600">{description}</p>
+            <Link key={href} to={href} className="block">
+              <InteractiveCard className="h-full p-5">
+                <h3 className="font-semibold">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">{description}</p>
+              </InteractiveCard>
             </Link>
           ))}
         </div>

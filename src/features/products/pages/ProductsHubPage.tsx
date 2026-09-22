@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
-import { Card } from "../../../shared/components/ui/Card";
+import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 
 const options = [
   {
@@ -26,13 +26,13 @@ export function ProductsHubPage() {
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {options.map((option) => (
             <Link key={option.href} to={option.href} className="block">
-              <Card className="h-full p-5 transition hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md">
+              <InteractiveCard className="h-full p-5">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-700">
                   <CategoryGridIcon />
                 </div>
                 <h2 className="mt-4 text-lg font-semibold">{option.title}</h2>
                 <p className="mt-2 text-sm leading-6 text-zinc-600">{option.description}</p>
-              </Card>
+              </InteractiveCard>
             </Link>
           ))}
         </div>

@@ -10,6 +10,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
+import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
 import {
   createProduct,
@@ -682,8 +683,8 @@ function ProductCard({
       to={`/produtos/${product.id}`}
       className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
     >
-      <Card
-        className={`${compact ? "p-4 shadow-none" : "p-4"} h-full transition hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md`}
+      <InteractiveCard
+        className={`${compact ? "p-4 shadow-none" : "p-4"} h-full`}
       >
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700">
@@ -711,7 +712,7 @@ function ProductCard({
             </p>
           </div>
         </div>
-      </Card>
+      </InteractiveCard>
     </Link>
   );
 }

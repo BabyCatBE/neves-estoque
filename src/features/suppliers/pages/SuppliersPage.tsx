@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
+import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { createSupplier, listActiveSuppliers } from "../api/suppliers";
 import {
@@ -245,7 +246,7 @@ export function SuppliersPage() {
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filteredSuppliers.map((supplier) => (
             <Link key={supplier.id} to={`/fornecedores/${supplier.id}`} className="block">
-              <Card className="h-full p-5 transition hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md">
+              <InteractiveCard className="h-full p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Contato</p>
@@ -259,7 +260,7 @@ export function SuppliersPage() {
                   <InfoLine label="Telefone" value={supplier.phone ?? "Não informado"} />
                   <InfoLine label="Próxima compra" value="Aguardando Entradas" />
                 </div>
-              </Card>
+              </InteractiveCard>
             </Link>
           ))}
         </div>

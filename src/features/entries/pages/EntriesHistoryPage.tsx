@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
+import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { listEntryHistory } from "../api/entries";
 import { formatMoney } from "../lib/entryValidation";
@@ -69,7 +70,7 @@ export function EntriesHistoryPage() {
         <div className="mt-5 space-y-3">
           {filtered.map((entry) => (
             <Link key={entry.id} to={`/entradas/${entry.id}`} className="block">
-              <Card className="p-5 transition hover:border-red-200 hover:shadow-md">
+              <InteractiveCard className="p-5">
                 <div className="grid gap-3 sm:grid-cols-[170px_1fr_auto] sm:items-center">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-zinc-400">Data</p>
@@ -86,7 +87,7 @@ export function EntriesHistoryPage() {
                     {entry.hasMissingPrice ? <p className="mt-1 text-xs text-amber-700">Há item sem preço</p> : null}
                   </div>
                 </div>
-              </Card>
+              </InteractiveCard>
             </Link>
           ))}
         </div>
