@@ -18,14 +18,14 @@ export function AppShell({
 }: Props) {
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      <header className="sticky top-0 z-30 bg-white shadow-sm">
+      <header className="sticky top-0 z-30 bg-zinc-950 text-white shadow-md">
         <div className="mx-auto flex min-h-20 max-w-6xl items-center gap-3 px-4 py-2 sm:px-6">
           {showBack ? (
             onBack ? (
               <button
                 type="button"
                 onClick={onBack}
-                className="inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+                className="inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
               >
                 <span aria-hidden="true">‹</span>
                 Voltar
@@ -33,7 +33,7 @@ export function AppShell({
             ) : (
               <Link
                 to={backTo}
-                className="inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+                className="inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
               >
                 <span aria-hidden="true">‹</span>
                 Voltar
@@ -45,14 +45,14 @@ export function AppShell({
             src={nevesLogo}
             alt=""
             aria-hidden="true"
-            className="h-12 w-24 rounded-xl object-contain shadow-sm ring-1 ring-red-100"
+            className="h-12 w-24 rounded-xl bg-white/5 object-contain shadow-sm ring-1 ring-white/10"
           />
 
           <div className="min-w-0">
-            <p className="truncate text-xs font-extrabold uppercase tracking-[0.16em] text-red-700 sm:text-sm">
+            <p className="truncate text-xs font-extrabold uppercase tracking-[0.16em] text-red-500 sm:text-sm">
               Neves <span className="text-amber-500">•</span> Estoque
             </p>
-            <h1 className="truncate text-lg font-semibold text-zinc-950 sm:text-xl">{title}</h1>
+            <h1 className="truncate text-lg font-semibold text-white sm:text-xl">{title}</h1>
           </div>
         </div>
 
