@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type SelectHTMLAttributes } from "react";
+import { useMemo, useState, type SelectHTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
@@ -38,12 +38,6 @@ export function ProductDetailPage() {
     queryKey: ["products", "categories"],
     queryFn: listProductCategories
   });
-
-  useEffect(() => {
-    if (!productQuery.data || editing) return;
-    setName(productQuery.data.name);
-    setCategoryId(productQuery.data.categoryId ?? "");
-  }, [editing, productQuery.data]);
 
   const updateMutation = useMutation({
     mutationFn: updateProductDetails,
