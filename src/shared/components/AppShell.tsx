@@ -2,16 +2,25 @@ import type { PropsWithChildren } from "react";
 import { Link } from "react-router-dom";
 import nevesLogo from "../../assets/neves-logo.webp";
 
-type Props = PropsWithChildren<{ title?: string; showBack?: boolean }>;
+type Props = PropsWithChildren<{
+  title?: string;
+  showBack?: boolean;
+  backTo?: string;
+}>;
 
-export function AppShell({ children, title = "Neves Estoque", showBack = false }: Props) {
+export function AppShell({
+  children,
+  title = "Neves Estoque",
+  showBack = false,
+  backTo = "/"
+}: Props) {
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex min-h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
           {showBack ? (
             <Link
-              to="/"
+              to={backTo}
               className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100"
             >
               Voltar

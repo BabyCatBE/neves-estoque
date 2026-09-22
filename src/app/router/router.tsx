@@ -2,7 +2,9 @@ import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "../../features/auth/components/ProtectedRoute";
 import { AuthCallbackPage } from "../../features/auth/pages/AuthCallbackPage";
 import { LoginPage } from "../../features/auth/pages/LoginPage";
+import { CategoriesPage } from "../../features/categories/pages/CategoriesPage";
 import { HomePage } from "../../features/home/pages/HomePage";
+import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
 
 export const router = createBrowserRouter([
@@ -44,7 +46,23 @@ export const router = createBrowserRouter([
     path: "/produtos",
     element: (
       <ProtectedRoute>
+        <ProductsHubPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/produtos/lista",
+    element: (
+      <ProtectedRoute>
         <ModulePlaceholder title="Produtos" />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/produtos/categorias",
+    element: (
+      <ProtectedRoute>
+        <CategoriesPage />
       </ProtectedRoute>
     )
   },
