@@ -492,35 +492,56 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          average_delivery_days: number | null
+          company: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
           id: string
           name: string
+          observation: string | null
+          phone: string | null
+          preferred_order_weekday: number | null
+          purchase_frequency_days: number | null
           restore_until: string | null
+          safety_margin_days: number | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          average_delivery_days?: number | null
+          company?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
           name: string
+          observation?: string | null
+          phone?: string | null
+          preferred_order_weekday?: number | null
+          purchase_frequency_days?: number | null
           restore_until?: string | null
+          safety_margin_days?: number | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          average_delivery_days?: number | null
+          company?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
           name?: string
+          observation?: string | null
+          phone?: string | null
+          preferred_order_weekday?: number | null
+          purchase_frequency_days?: number | null
           restore_until?: string | null
+          safety_margin_days?: number | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -601,6 +622,19 @@ export type Database = {
         }
         Returns: string
       }
+      create_supplier: {
+        Args: {
+          p_average_delivery_days?: number
+          p_company?: string
+          p_name: string
+          p_observation?: string
+          p_phone?: string
+          p_preferred_order_weekday?: number
+          p_purchase_frequency_days?: number
+          p_safety_margin_days?: number
+        }
+        Returns: string
+      }
       register_device: {
         Args: { p_device_key: string; p_friendly_name: string }
         Returns: {
@@ -614,12 +648,31 @@ export type Database = {
       }
       reorder_products: { Args: { p_orders: Json }; Returns: undefined }
       restore_product: { Args: { p_product_id: string }; Returns: undefined }
+      restore_supplier: { Args: { p_supplier_id: string }; Returns: undefined }
       soft_delete_product: {
         Args: { p_product_id: string }
         Returns: undefined
       }
+      soft_delete_supplier: {
+        Args: { p_supplier_id: string }
+        Returns: undefined
+      }
       update_product_details: {
         Args: { p_category_id: string; p_name: string; p_product_id: string }
+        Returns: undefined
+      }
+      update_supplier: {
+        Args: {
+          p_average_delivery_days?: number
+          p_company: string
+          p_name: string
+          p_observation?: string
+          p_phone: string
+          p_preferred_order_weekday?: number
+          p_purchase_frequency_days?: number
+          p_safety_margin_days?: number
+          p_supplier_id: string
+        }
         Returns: undefined
       }
     }

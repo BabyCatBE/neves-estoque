@@ -9,6 +9,8 @@ import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
 import { ProductDetailPage } from "../../features/products/pages/ProductDetailPage";
 import { ProductsPage } from "../../features/products/pages/ProductsPage";
 import { TrashPage } from "../../features/trash/pages/TrashPage";
+import { SupplierDetailPage } from "../../features/suppliers/pages/SupplierDetailPage";
+import { SuppliersPage } from "../../features/suppliers/pages/SuppliersPage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
 
 export const router = createBrowserRouter([
@@ -98,7 +100,15 @@ export const router = createBrowserRouter([
     path: "/fornecedores",
     element: (
       <ProtectedRoute>
-        <ModulePlaceholder title="Fornecedores" />
+        <SuppliersPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/fornecedores/:supplierId",
+    element: (
+      <ProtectedRoute>
+        <SupplierDetailPage />
       </ProtectedRoute>
     )
   },
