@@ -8,6 +8,7 @@ import { HomePage } from "../../features/home/pages/HomePage";
 import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
 import { ProductDetailPage } from "../../features/products/pages/ProductDetailPage";
 import { ProductsPage } from "../../features/products/pages/ProductsPage";
+import { TrashPage } from "../../features/trash/pages/TrashPage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
 
 export const router = createBrowserRouter([
@@ -82,6 +83,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <CategoryTrashPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/alertas/lixeira",
+    element: (
+      <ProtectedRoute>
+        <TrashPage />
       </ProtectedRoute>
     )
   },
