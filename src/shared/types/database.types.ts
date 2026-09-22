@@ -612,6 +612,10 @@ export type Database = {
         Args: { p_category_ids: string[] }
         Returns: undefined
       }
+      update_product_details: {
+        Args: { p_category_id: string; p_name: string; p_product_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
