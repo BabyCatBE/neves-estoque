@@ -4,12 +4,24 @@ import { spawn, spawnSync } from "node:child_process";
 
 const isWindows = process.platform === "win32";
 const npmCommand = isWindows ? "npm.cmd" : "npm";
+const windowsShell = process.env.ComSpec || "cmd.exe";
 
-function runCaptured(command, args, useShell = false) {
+function npmInvocation(args) {
+  if (!isWindows) {
+    return { command: npmCommand, args };
+  }
+
+  return {
+    command: windowsShell,
+    args: ["/d", "/s", "/c", [npmCommand, ...args].join(" ")]
+  };
+}
+
+function runCaptured(command, args) {
   return spawnSync(command, args, {
     cwd: process.cwd(),
     encoding: "utf8",
-    shell: useShell
+    shell: false
   });
 }
 
@@ -60,17 +72,19 @@ if (pull.error || pull.status !== 0) fail("GIT_PULL", pull);
 console.log("✓ Projeto atualizado.");
 
 console.log("\n[2/3] Executando verificação completa...");
-const check = runCaptured(npmCommand, ["run", "check"], isWindows);
+const checkCommand = npmInvocation(["run", "check"]);
+const check = runCaptured(checkCommand.command, checkCommand.args);
 if (check.error || check.status !== 0) fail("CHECK", check);
 console.log("✓ Typecheck, lint, testes e build aprovados.");
 
 console.log("\n[3/3] Iniciando o aplicativo local...");
 console.log("✓ Tudo aprovado. Abrindo o Vite. Use Ctrl+C para encerrar.\n");
 
-const dev = spawn(npmCommand, ["run", "dev"], {
+const devCommand = npmInvocation(["run", "dev"]);
+const dev = spawn(devCommand.command, devCommand.args, {
   cwd: process.cwd(),
   stdio: "inherit",
-  shell: isWindows
+  shell: false
 });
 
 dev.on("error", (error) => {
