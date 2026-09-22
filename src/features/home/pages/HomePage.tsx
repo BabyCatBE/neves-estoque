@@ -4,6 +4,8 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { AppShell } from "../../../shared/components/AppShell";
 import { APP_VERSION, SHOW_DEVELOPMENT_VERSION } from "../../../shared/config/appVersion";
 import { listRestorableTrashItems } from "../../trash/api/trash";
+import { listActiveSuppliers } from "../../suppliers/api/suppliers";
+import { listActiveProducts } from "../../products/api/products";
 
 const modules = [
   ["Estoque Atual", "/estoque", "Posição derivada da última conferência válida e entradas posteriores."],
@@ -16,12 +18,27 @@ const modules = [
 
 export function HomePage() {
   const { session, roleName, deviceId, signOut } = useAuth();
-  const alertsQuery = useQuery({
+  const trashAlertsQuery = useQuery({
     queryKey: ["trash", "restorable"],
     queryFn: listRestorableTrashItems,
     staleTime: 30_000
   });
-  const hasAlerts = (alertsQuery.data?.length ?? 0) > 0;
+  const supplierAlertsQuery = useQuery({
+    queryKey: ["suppliers", "active"],
+    queryFn: listActiveSuppliers,
+    staleTime: 30_000
+  });
+  const productAlertsQuery = useQuery({
+    queryKey: ["products", "active"],
+    queryFn: listActiveProducts,
+    staleTime: 30_000
+  });
+
+  const trashAlerts = trashAlertsQuery.data?.length ?? 0;
+  const pendingSupplierAlerts = (supplierAlertsQuery.data ?? []).filter((supplier) => supplier.isPending).length;
+  const pendingProductAlerts = (productAlertsQuery.data ?? []).filter((product) => product.categoryId === null).length;
+  const alertCount = trashAlerts + pendingSupplierAlerts + pendingProductAlerts;
+  const hasAlerts = alertCount > 0;
 
   return (
     <AppShell>
@@ -42,8 +59,8 @@ export function HomePage() {
               </span>
               <Link
                 to="/alertas"
-                aria-label={hasAlerts ? "Abrir Alertas" : "Abrir Alertas — nenhum alerta ativo"}
-                title={hasAlerts ? "Alertas" : "Nenhum alerta ativo"}
+                aria-label={hasAlerts ? `Abrir Alertas — ${alertCount} pendência(s)` : "Abrir Alertas — nenhum alerta ativo"}
+                title={hasAlerts ? `${alertCount} alerta(s) ativo(s)` : "Nenhum alerta ativo"}
                 className={
                   hasAlerts
                     ? "inline-flex min-h-8 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 transition hover:border-amber-300 hover:bg-amber-100"

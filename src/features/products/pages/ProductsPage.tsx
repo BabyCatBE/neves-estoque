@@ -6,7 +6,7 @@ import {
   type SelectHTMLAttributes
 } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -47,7 +47,9 @@ const productCategoriesKey = ["products", "categories"] as const;
 
 export function ProductsPage() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
+  const pendingOnly = searchParams.get("filter") === "pending";
   const [viewMode, setViewMode] = useState<ViewMode>("alphabetical");
   const [search, setSearch] = useState("");
   const [reordering, setReordering] = useState(false);
@@ -162,9 +164,10 @@ export function ProductsPage() {
     const term = normalizeSearch(search);
 
     return (productsQuery.data ?? [])
+      .filter((product) => !pendingOnly || product.categoryId === null)
       .filter((product) => !term || normalizeSearch(product.name).includes(term))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
-  }, [productsQuery.data, search]);
+  }, [pendingOnly, productsQuery.data, search]);
 
   const canReorder = useMemo(() => {
     const grouped = buildProductOrderDraft(productsQuery.data ?? []);
@@ -448,7 +451,20 @@ export function ProductsPage() {
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {pendingOnly ? (
+                <button
+                  type="button"
+                  className="min-h-9 rounded-xl border border-amber-200 bg-amber-50 px-3 text-xs font-semibold text-amber-900"
+                  onClick={() => {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete("filter");
+                    setSearchParams(next);
+                  }}
+                >
+                  Pendentes · Ver todos
+                </button>
+              ) : null}
               <Button
                 size="sm"
                 variant={viewMode === "category" ? "primary" : "secondary"}

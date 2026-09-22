@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type SelectHTMLAttributes } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -42,8 +42,10 @@ const emptyForm: SupplierForm = {
 
 export function SuppliersPage() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
+  const pendingOnly = searchParams.get("filter") === "pending";
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -70,12 +72,13 @@ export function SuppliersPage() {
   const filteredSuppliers = useMemo(() => {
     const term = normalizeSearch(search);
     return (suppliersQuery.data ?? []).filter((supplier) => {
+      if (pendingOnly && !supplier.isPending) return false;
       if (!term) return true;
       return [supplier.name, supplier.company ?? "", supplier.phone ?? ""].some((value) =>
         normalizeSearch(value).includes(term)
       );
     });
-  }, [search, suppliersQuery.data]);
+  }, [pendingOnly, search, suppliersQuery.data]);
 
   const onCreate = handleSubmit(async (values) => {
     setNotice(null);
@@ -200,8 +203,23 @@ export function SuppliersPage() {
         {notice ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div> : null}
         {!creating && actionError ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</div> : null}
 
-        <div className="mt-5 max-w-md">
-          <TextField label="Pesquisar" placeholder="Contato, empresa ou telefone" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="w-full max-w-md">
+            <TextField label="Pesquisar" placeholder="Contato, empresa ou telefone" value={search} onChange={(event) => setSearch(event.target.value)} />
+          </div>
+          {pendingOnly ? (
+            <button
+              type="button"
+              className="min-h-11 rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-900"
+              onClick={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("filter");
+                setSearchParams(next);
+              }}
+            >
+              Mostrando pendentes · Ver todos
+            </button>
+          ) : null}
         </div>
 
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
