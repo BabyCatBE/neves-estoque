@@ -615,6 +615,17 @@ export type Database = {
         }
         Returns: string
       }
+      create_entry_with_draft_supplier: {
+        Args: {
+          p_device_id: string
+          p_effective_at: string
+          p_idempotency_key: string
+          p_items: Json
+          p_observation?: string
+          p_supplier_name: string
+        }
+        Returns: string
+      }
       create_quick_entry_product: {
         Args: {
           p_category_id?: string

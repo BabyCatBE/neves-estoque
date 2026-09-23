@@ -1,4 +1,5 @@
 import { useEffect, useId, type ReactNode } from "react";
+import { handleDialogButtonArrowNavigation } from "../lib/dialogKeyboard";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 
@@ -90,6 +91,7 @@ export function ConfirmDialog({
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6"
+      onKeyDown={handleDialogButtonArrowNavigation}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !isPending) {
           onCancel();

@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState, type KeyboardEvent, type SelectHTMLAttributes } from "react";
 import { useBlocker, useNavigate } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
+import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -19,7 +21,7 @@ import {
   productNameSchema,
   type ProductUnit
 } from "../../products/lib/productValidation";
-import { createQuickSupplier, listActiveSuppliers } from "../../suppliers/api/suppliers";
+import { listActiveSuppliers } from "../../suppliers/api/suppliers";
 import { createEntry } from "../api/entries";
 import { useControlKeyPressed } from "../lib/useControlKeyPressed";
 import {
@@ -30,6 +32,10 @@ import {
   parseOptionalPrice,
   parsePositiveDecimal
 } from "../lib/entryValidation";
+
+type DraftSupplier = {
+  name: string;
+};
 
 type DraftProduct = {
   clientId: string;
@@ -61,6 +67,7 @@ export function NewEntryPage() {
   const [supplierActiveIndex, setSupplierActiveIndex] = useState(0);
   const [quickSupplierName, setQuickSupplierName] = useState("");
   const [showQuickSupplier, setShowQuickSupplier] = useState(false);
+  const [draftSupplier, setDraftSupplier] = useState<DraftSupplier | null>(null);
   const [initialDate] = useState(() => localDateInputValue());
   const [date, setDate] = useState(initialDate);
   const [observationOpen, setObservationOpen] = useState(false);
@@ -87,13 +94,14 @@ export function NewEntryPage() {
     () =>
       Boolean(
         supplierId ||
+        draftSupplier ||
         supplierSearch.trim() ||
         date !== initialDate ||
         observation.trim() ||
         productSearch.trim() ||
         items.length
       ),
-    [date, initialDate, items.length, observation, productSearch, supplierId, supplierSearch]
+    [date, draftSupplier, initialDate, items.length, observation, productSearch, supplierId, supplierSearch]
   );
 
   const blocker = useBlocker(
@@ -116,13 +124,6 @@ export function NewEntryPage() {
     queryFn: listProductCategories
   });
 
-  const quickSupplierMutation = useMutation({
-    mutationFn: createQuickSupplier,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-    }
-  });
-
   const completePendingProductMutation = useMutation({
     mutationFn: updateProductDetails,
     onSuccess: async () => {
@@ -132,7 +133,9 @@ export function NewEntryPage() {
 
   const saveMutation = useMutation({ mutationFn: createEntry });
 
-  const selectedSupplier = (suppliersQuery.data ?? []).find((supplier) => supplier.id === supplierId) ?? null;
+  const selectedSupplier = draftSupplier
+    ? { id: "draft-supplier", name: draftSupplier.name, company: null }
+    : (suppliersQuery.data ?? []).find((supplier) => supplier.id === supplierId) ?? null;
 
   const supplierSuggestions = useMemo(() => {
     const term = normalize(supplierSearch);
@@ -147,6 +150,7 @@ export function NewEntryPage() {
   };
 
   const selectSupplier = (id: string) => {
+    setDraftSupplier(null);
     setSupplierId(id);
     setSupplierSearch("");
     setSupplierActiveIndex(0);
@@ -350,25 +354,21 @@ export function NewEntryPage() {
     window.setTimeout(() => document.getElementById(`entry-qty-${existing.localId}`)?.focus(), 250);
   };
 
-  const addQuickSupplier = async () => {
+  const addQuickSupplier = () => {
     const name = quickSupplierName.trim().replace(/\s+/g, " ");
     if (!name) {
       setActionError("Informe o nome do fornecedor.");
       return;
     }
-    setActionError(null);
 
-    try {
-      const id = await quickSupplierMutation.mutateAsync(name);
-      setSupplierId(id);
-      setSupplierSearch("");
-      setSupplierActiveIndex(0);
-      setQuickSupplierName("");
-      setShowQuickSupplier(false);
-      focusDate();
-    } catch (error) {
-      setActionError(getEntryErrorMessage(error));
-    }
+    setActionError(null);
+    setDraftSupplier({ name });
+    setSupplierId("");
+    setSupplierSearch("");
+    setSupplierActiveIndex(0);
+    setQuickSupplierName("");
+    setShowQuickSupplier(false);
+    focusDate();
   };
 
   const addQuickProduct = () => {
@@ -436,12 +436,13 @@ export function NewEntryPage() {
   };
 
   const validateAndBuild = () => {
-    if (!supplierId) throw new Error("Selecione um fornecedor.");
+    if (!supplierId && !draftSupplier) throw new Error("Selecione um fornecedor.");
     if (!deviceId) throw new Error("Este dispositivo ainda não está pronto para registrar Entradas.");
     if (!items.length) throw new Error("Adicione pelo menos um produto.");
 
     return {
-      supplierId,
+      supplierId: draftSupplier ? null : supplierId,
+      newSupplier: draftSupplier,
       effectiveAt: buildEffectiveAt(date),
       deviceId,
       idempotencyKey,
@@ -487,26 +488,20 @@ export function NewEntryPage() {
     }
   };
 
+  useCtrlEnter(
+    requestSave,
+    !showQuickSupplier &&
+      !showQuickProduct &&
+      !pendingProduct &&
+      !duplicateProduct &&
+      !missingPriceReview &&
+      blocker.state !== "blocked" &&
+      !saveMutation.isPending
+  );
+
   return (
     <AppShell title="Nova Entrada" showBack backTo="/entradas">
-      <section
-        className="pb-28"
-        onKeyDown={(event) => {
-          if (
-            (event.ctrlKey || event.metaKey || controlKeyPressed.current) &&
-            event.key === "Enter" &&
-            !showQuickSupplier &&
-            !showQuickProduct &&
-            !pendingProduct &&
-            !duplicateProduct &&
-            !missingPriceReview &&
-            !saveMutation.isPending
-          ) {
-            event.preventDefault();
-            requestSave();
-          }
-        }}
-      >
+      <section className="pb-28">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Mercadoria recebida</h2>
           <p className="mt-1 text-sm text-zinc-600">Registre somente mercadoria que realmente chegou à Panificadora.</p>
@@ -520,12 +515,15 @@ export function NewEntryPage() {
                 <div className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white px-3 py-2">
                   <div>
                     <p className="text-sm font-semibold">{selectedSupplier.name}</p>
-                    <p className="text-xs text-zinc-500">{selectedSupplier.company ?? "Cadastro pendente"}</p>
+                    <p className="text-xs text-zinc-500">
+                      {draftSupplier ? "Novo nesta Entrada" : selectedSupplier.company ?? "Cadastro pendente"}
+                    </p>
                   </div>
                   <button
                     type="button"
                     className="text-xs font-semibold text-red-700"
                     onClick={() => {
+                      setDraftSupplier(null);
                       setSupplierId("");
                       setSupplierSearch("");
                       window.setTimeout(() => document.getElementById("entry-supplier-search")?.focus(), 0);
@@ -823,15 +821,27 @@ export function NewEntryPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Cadastro rápido</p>
               <h3 className="mt-1 text-xl font-semibold">Novo fornecedor</h3>
               <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Informe somente o nome. Empresa e telefone ficarão pendentes para completar depois em Fornecedores.
+                Informe somente o nome. O fornecedor ficará como rascunho desta Entrada e só será cadastrado no banco quando a Entrada for salva.
               </p>
               <div className="mt-4">
-                <TextField label="Nome *" autoFocus value={quickSupplierName} onChange={(event) => setQuickSupplierName(event.target.value)} />
+                <TextField
+                  id="quick-supplier-name"
+                  label="Nome *"
+                  autoFocus
+                  value={quickSupplierName}
+                  onChange={(event) => setQuickSupplierName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      document.getElementById("quick-supplier-submit")?.focus();
+                    }
+                  }}
+                />
               </div>
               <div className="mt-5 flex justify-end gap-2">
-                <Button variant="ghost" disabled={quickSupplierMutation.isPending} onClick={() => setShowQuickSupplier(false)}>Cancelar</Button>
-                <Button disabled={quickSupplierMutation.isPending} onClick={() => void addQuickSupplier()}>
-                  {quickSupplierMutation.isPending ? "Salvando…" : "Cadastrar e selecionar"}
+                <Button variant="ghost" onClick={() => setShowQuickSupplier(false)}>Cancelar</Button>
+                <Button id="quick-supplier-submit" onClick={addQuickSupplier}>
+                  Cadastrar e selecionar
                 </Button>
               </div>
             </Card>
@@ -988,7 +998,12 @@ export function NewEntryPage() {
         />
 
         {duplicateProduct ? (
-          <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6"
+            onKeyDown={handleDialogButtonArrowNavigation}
+          >
             <Card className="w-full max-w-lg p-5 shadow-xl">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Produto já adicionado</p>
               <h3 className="mt-1 text-xl font-semibold">Adicionar novamente?</h3>
@@ -996,7 +1011,7 @@ export function NewEntryPage() {
                 “{duplicateProduct.name}” já está nesta Entrada. Você pode ir para o item existente ou adicionar uma nova linha.
               </p>
               <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button variant="ghost" onClick={() => setDuplicateProduct(null)}>Cancelar</Button>
+                <Button autoFocus variant="ghost" onClick={() => setDuplicateProduct(null)}>Cancelar</Button>
                 <Button variant="secondary" onClick={goToExisting}>Ir para item existente</Button>
                 <Button onClick={() => addProduct(duplicateProduct, true)}>Adicionar novamente</Button>
               </div>

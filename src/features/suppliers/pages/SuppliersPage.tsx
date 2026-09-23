@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type SelectHTMLAttributes } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
@@ -44,6 +45,7 @@ const emptyForm: SupplierForm = {
 };
 
 export function SuppliersPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
@@ -130,6 +132,13 @@ export function SuppliersPage() {
       setActionError(getSupplierErrorMessage(error));
     }
   });
+
+  useCtrlEnter(
+    () => {
+      if (creating && !createMutation.isPending) void onCreate();
+    },
+    creating && !createMutation.isPending
+  );
 
   return (
     <AppShell title="Fornecedores" showBack backTo="/">
@@ -221,7 +230,18 @@ export function SuppliersPage() {
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="w-full max-w-md">
-            <TextField label="Pesquisar" placeholder="Contato, empresa ou telefone" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <TextField
+              label="Pesquisar"
+              placeholder="Contato, empresa ou telefone"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && search.trim() && filteredSuppliers[0]) {
+                  event.preventDefault();
+                  navigate(`/fornecedores/${filteredSuppliers[0].id}`);
+                }
+              }}
+            />
           </div>
           {pendingOnly ? (
             <button

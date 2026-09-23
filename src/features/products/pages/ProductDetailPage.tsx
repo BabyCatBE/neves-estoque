@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type SelectHTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
+import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -217,6 +219,17 @@ export function ProductDetailPage() {
       setActionError(getProductErrorMessage(error));
     }
   };
+
+  useCtrlEnter(
+    () => {
+      if (editing && dirty && !updateMutation.isPending) void save(false);
+    },
+    editing &&
+      dirty &&
+      !updateMutation.isPending &&
+      !exitReview &&
+      !deleteReviewOpen
+  );
 
   return (
     <AppShell title="Produto" showBack onBack={leaveProduct}>
@@ -484,6 +497,7 @@ export function ProductDetailPage() {
               aria-modal="true"
               aria-labelledby="product-change-summary-title"
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6"
+              onKeyDown={handleDialogButtonArrowNavigation}
             >
               <Card className="w-full max-w-lg p-5 shadow-xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
@@ -513,6 +527,7 @@ export function ProductDetailPage() {
 
                 <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button
+                    autoFocus
                     variant="ghost"
                     disabled={updateMutation.isPending}
                     onClick={continueEditing}

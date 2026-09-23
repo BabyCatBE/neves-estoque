@@ -8,6 +8,7 @@ import {
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
@@ -226,6 +227,20 @@ export function ProductsPage() {
       await productsQuery.refetch();
     }
   };
+
+  useCtrlEnter(
+    () => {
+      if (creating && !createMutation.isPending) {
+        void onCreate();
+        return;
+      }
+      if (reordering && !reorderMutation.isPending) {
+        void saveReordering();
+      }
+    },
+    (creating && !createMutation.isPending) ||
+      (reordering && !reorderMutation.isPending)
+  );
 
   const moveProduct = (categoryId: string, productId: string, direction: -1 | 1) => {
     setDraftOrder((current) => {

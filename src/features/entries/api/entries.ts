@@ -1,5 +1,9 @@
 import { supabase } from "../../../shared/lib/supabase";
 
+export type EntryDraftSupplier = {
+  name: string;
+};
+
 export type EntryDraftProduct = {
   clientId: string;
   name: string;
@@ -23,7 +27,8 @@ export type EntryUpdateItem = EntryItemValues & {
 };
 
 export type CreateEntryInput = {
-  supplierId: string;
+  supplierId: string | null;
+  newSupplier: EntryDraftSupplier | null;
   effectiveAt: string;
   deviceId: string;
   idempotencyKey: string;
@@ -31,8 +36,12 @@ export type CreateEntryInput = {
   items: EntryCreateItem[];
 };
 
-export type UpdateEntryInput = Omit<CreateEntryInput, "idempotencyKey" | "items"> & {
+export type UpdateEntryInput = {
   entryId: string;
+  supplierId: string;
+  effectiveAt: string;
+  deviceId: string;
+  observation: string | null;
   items: EntryUpdateItem[];
 };
 
@@ -75,8 +84,7 @@ function requireClient() {
 
 export async function createEntry(input: CreateEntryInput) {
   const client = requireClient();
-  const { data, error } = await client.rpc("create_entry", {
-    p_supplier_id: input.supplierId,
+  const commonArgs = {
     p_effective_at: input.effectiveAt,
     p_device_id: input.deviceId,
     p_idempotency_key: input.idempotencyKey,
@@ -97,10 +105,22 @@ export async function createEntry(input: CreateEntryInput) {
       ...(item.unitPrice === null ? {} : { unit_price: item.unitPrice })
     })),
     ...(input.observation === null ? {} : { p_observation: input.observation })
-  });
+  };
 
-  if (error) throw error;
-  return data;
+  const result = input.newSupplier
+    ? await client.rpc("create_entry_with_draft_supplier", {
+        ...commonArgs,
+        p_supplier_name: input.newSupplier.name
+      })
+    : input.supplierId
+      ? await client.rpc("create_entry", {
+          ...commonArgs,
+          p_supplier_id: input.supplierId
+        })
+      : { data: null, error: new Error("Selecione um fornecedor.") };
+
+  if (result.error) throw result.error;
+  return result.data;
 }
 
 export async function updateEntry(input: UpdateEntryInput) {

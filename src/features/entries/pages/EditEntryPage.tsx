@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
+import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -237,6 +239,16 @@ export function EditEntryPage() {
     else navigate(`/entradas/${entryId}`);
   };
 
+  useCtrlEnter(
+    requestSave,
+    dirty &&
+      !missingPriceReview &&
+      !saveReviewOpen &&
+      !leaveReviewOpen &&
+      !duplicateProduct &&
+      !updateMutation.isPending
+  );
+
   if (entryQuery.isPending || !draft) {
     return <AppShell title="Editar Entrada" showBack onBack={requestBack}><Card className="p-5 text-sm text-zinc-600">Carregando Entrada…</Card></AppShell>;
   }
@@ -247,24 +259,7 @@ export function EditEntryPage() {
 
   return (
     <AppShell title="Editar Entrada" showBack onBack={requestBack}>
-      <section
-        className="pb-28"
-        onKeyDown={(event) => {
-          if (
-            (event.ctrlKey || event.metaKey || controlKeyPressed.current) &&
-            event.key === "Enter" &&
-            dirty &&
-            !missingPriceReview &&
-            !saveReviewOpen &&
-            !leaveReviewOpen &&
-            !duplicateProduct &&
-            !updateMutation.isPending
-          ) {
-            event.preventDefault();
-            requestSave();
-          }
-        }}
-      >
+      <section className="pb-28">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Edição histórica</p>
           <h2 className="mt-1 text-2xl font-semibold">Editar Entrada</h2>
@@ -467,12 +462,17 @@ export function EditEntryPage() {
         />
 
         {duplicateProduct ? (
-          <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6"
+            onKeyDown={handleDialogButtonArrowNavigation}
+          >
             <Card className="w-full max-w-lg p-5 shadow-xl">
               <h3 className="text-xl font-semibold">Produto já adicionado</h3>
               <p className="mt-2 text-sm text-zinc-600">“{duplicateProduct.name}” já está nesta Entrada.</p>
               <div className="mt-5 flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setDuplicateProduct(null)}>Cancelar</Button>
+                <Button autoFocus variant="ghost" onClick={() => setDuplicateProduct(null)}>Cancelar</Button>
                 <Button variant="secondary" onClick={() => {
                   const existing = draft.items.find((item) => item.productId === duplicateProduct.id);
                   setDuplicateProduct(null);

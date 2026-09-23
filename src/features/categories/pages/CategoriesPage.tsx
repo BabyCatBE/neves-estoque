@@ -3,6 +3,7 @@ import { useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -387,6 +388,25 @@ export function CategoriesPage() {
     illustrationSaving;
 
   const visibleCategories = reordering ? draftOrder : (categoriesQuery.data ?? []);
+
+  useCtrlEnter(
+    () => {
+      if (creating) {
+        void onCreate();
+        return;
+      }
+      if (editing) {
+        void saveEditing();
+        return;
+      }
+      if (reordering) {
+        void saveReordering();
+      }
+    },
+    (creating || Boolean(editing) || reordering) &&
+      !isSaving &&
+      !pendingDelete
+  );
 
   return (
     <AppShell title="Categorias" showBack backTo="/produtos">
