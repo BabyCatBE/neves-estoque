@@ -438,6 +438,7 @@ export type Database = {
           initial_stock_at: string | null
           initial_stock_quantity: number | null
           name: string
+          quick_entry_idempotency_key: string | null
           restore_until: string | null
           sort_order: number | null
           unit: string
@@ -456,6 +457,7 @@ export type Database = {
           initial_stock_at?: string | null
           initial_stock_quantity?: number | null
           name: string
+          quick_entry_idempotency_key: string | null
           restore_until?: string | null
           sort_order?: number | null
           unit: string
@@ -500,6 +502,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           name: string
+          quick_entry_idempotency_key: string | null
           observation: string | null
           phone: string | null
           preferred_order_weekday: number | null
@@ -609,6 +612,15 @@ export type Database = {
           p_items: Json
           p_observation?: string
           p_supplier_id: string
+        }
+        Returns: string
+      }
+      create_quick_entry_product: {
+        Args: {
+          p_category_id?: string
+          p_entry_idempotency_key: string
+          p_name: string
+          p_unit: string
         }
         Returns: string
       }

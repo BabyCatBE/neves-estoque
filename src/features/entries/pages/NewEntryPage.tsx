@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent, type SelectHTMLAttributes } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
@@ -7,7 +7,18 @@ import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { useAuth } from "../../auth/context/AuthContext";
-import { listActiveProducts, type ProductListItem } from "../../products/api/products";
+import {
+  createQuickEntryProduct,
+  listActiveProducts,
+  listProductCategories,
+  type ProductListItem
+} from "../../products/api/products";
+import {
+  getProductErrorMessage,
+  PRODUCT_UNITS,
+  productNameSchema,
+  type ProductUnit
+} from "../../products/lib/productValidation";
 import { createQuickSupplier, listActiveSuppliers } from "../../suppliers/api/suppliers";
 import { createEntry } from "../api/entries";
 import { useControlKeyPressed } from "../lib/useControlKeyPressed";
@@ -47,6 +58,11 @@ export function NewEntryPage() {
   const [observation, setObservation] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [productActiveIndex, setProductActiveIndex] = useState(0);
+  const [quickProductName, setQuickProductName] = useState("");
+  const [quickProductUnit, setQuickProductUnit] = useState<ProductUnit>("UN");
+  const [quickProductCategoryId, setQuickProductCategoryId] = useState("");
+  const [quickProductError, setQuickProductError] = useState<string | null>(null);
+  const [showQuickProduct, setShowQuickProduct] = useState(false);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [itemErrors, setItemErrors] = useState<ItemFieldErrors>({});
   const [duplicateProduct, setDuplicateProduct] = useState<ProductListItem | null>(null);
@@ -62,11 +78,22 @@ export function NewEntryPage() {
     queryKey: ["products", "active"],
     queryFn: listActiveProducts
   });
+  const productCategoriesQuery = useQuery({
+    queryKey: ["products", "categories"],
+    queryFn: listProductCategories
+  });
 
   const quickSupplierMutation = useMutation({
     mutationFn: createQuickSupplier,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+    }
+  });
+
+  const quickProductMutation = useMutation({
+    mutationFn: createQuickEntryProduct,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
     }
   });
 
@@ -130,31 +157,42 @@ export function NewEntryPage() {
     const term = normalize(productSearch);
     if (!term) return [];
     return (productsQuery.data ?? [])
-      .filter((product) => normalize(product.name).includes(term))
+      .filter((product) => product.categoryId !== null && normalize(product.name).includes(term))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
       .slice(0, 10);
   }, [productSearch, productsQuery.data]);
 
+  const openQuickProduct = () => {
+    setQuickProductName(productSearch.trim());
+    setQuickProductUnit("UN");
+    setQuickProductCategoryId("");
+    setQuickProductError(null);
+    setShowQuickProduct(true);
+  };
+
   const handleProductSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
-    if (!productSearch || productSuggestions.length === 0) return;
+    if (!productSearch) return;
+
+    const optionCount = productSuggestions.length + 1;
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setProductActiveIndex((index) => (index + 1) % productSuggestions.length);
+      setProductActiveIndex((index) => (index + 1) % optionCount);
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setProductActiveIndex((index) => (index - 1 + productSuggestions.length) % productSuggestions.length);
+      setProductActiveIndex((index) => (index - 1 + optionCount) % optionCount);
       return;
     }
 
     if (event.key === "Enter") {
       event.preventDefault();
-      const selected = productSuggestions[Math.min(productActiveIndex, productSuggestions.length - 1)];
+      const selected = productSuggestions[productActiveIndex];
       if (selected) addProduct(selected);
+      else openQuickProduct();
       return;
     }
 
@@ -261,6 +299,44 @@ export function NewEntryPage() {
       window.setTimeout(() => document.getElementById("entry-product-search")?.focus(), 0);
     } catch (error) {
       setActionError(getEntryErrorMessage(error));
+    }
+  };
+
+  const addQuickProduct = async () => {
+    setQuickProductError(null);
+
+    const parsedName = productNameSchema.safeParse(quickProductName);
+    if (!parsedName.success) {
+      setQuickProductError(parsedName.error.issues[0]?.message ?? "Informe o nome do produto.");
+      return;
+    }
+
+    try {
+      const categoryId = quickProductCategoryId || null;
+      const id = await quickProductMutation.mutateAsync({
+        name: parsedName.data,
+        unit: quickProductUnit,
+        categoryId,
+        entryIdempotencyKey: idempotencyKey
+      });
+
+      const createdProduct: ProductListItem = {
+        id,
+        name: parsedName.data,
+        categoryId,
+        unit: quickProductUnit,
+        sortOrder: null,
+        currentQuantity: null,
+        currentPrice: null
+      };
+
+      setShowQuickProduct(false);
+      setQuickProductName("");
+      setQuickProductUnit("UN");
+      setQuickProductCategoryId("");
+      addProduct(createdProduct);
+    } catch (error) {
+      setQuickProductError(getProductErrorMessage(error));
     }
   };
 
@@ -452,9 +528,19 @@ export function NewEntryPage() {
                 ))}
                 {productSuggestions.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-zinc-500">
-                    Nenhum produto encontrado. O cadastro rápido de produto será implementado em uma próxima leva.
+                    Nenhum produto encontrado.
                   </div>
                 ) : null}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={productActiveIndex === productSuggestions.length}
+                  className={`flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-700 ${productActiveIndex === productSuggestions.length ? "bg-red-50" : "hover:bg-red-50"}`}
+                  onMouseEnter={() => setProductActiveIndex(productSuggestions.length)}
+                  onClick={openQuickProduct}
+                >
+                  + Cadastrar novo produto
+                </button>
               </div>
             ) : null}
           </div>
@@ -617,6 +703,65 @@ export function NewEntryPage() {
           </div>
         ) : null}
 
+        {showQuickProduct ? (
+          <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6">
+            <Card className="w-full max-w-md p-5 shadow-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Cadastro rápido</p>
+              <h3 className="mt-1 text-xl font-semibold">Novo produto</h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
+                Nome e Unidade são obrigatórios. Categoria é opcional; sem categoria, o produto ficará pendente e só poderá ser usado nesta Entrada até o cadastro ser concluído.
+              </p>
+              <div className="mt-4 space-y-4">
+                <TextField
+                  label="Nome *"
+                  autoFocus
+                  value={quickProductName}
+                  onChange={(event) => {
+                    setQuickProductName(event.target.value);
+                    if (quickProductError) setQuickProductError(null);
+                  }}
+                />
+                <SelectField
+                  label="Unidade *"
+                  value={quickProductUnit}
+                  onChange={(event) => setQuickProductUnit(event.target.value as ProductUnit)}
+                >
+                  {PRODUCT_UNITS.map((unit) => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </SelectField>
+                <SelectField
+                  label="Categoria"
+                  value={quickProductCategoryId}
+                  onChange={(event) => setQuickProductCategoryId(event.target.value)}
+                >
+                  <option value="">Sem categoria — cadastro pendente</option>
+                  {(productCategoriesQuery.data ?? []).map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
+                </SelectField>
+              </div>
+              {quickProductError ? (
+                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  {quickProductError}
+                </div>
+              ) : null}
+              <div className="mt-5 flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  disabled={quickProductMutation.isPending}
+                  onClick={() => setShowQuickProduct(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button disabled={quickProductMutation.isPending} onClick={() => void addQuickProduct()}>
+                  {quickProductMutation.isPending ? "Salvando…" : "Cadastrar e adicionar"}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        ) : null}
+
         {duplicateProduct ? (
           <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6">
             <Card className="w-full max-w-lg p-5 shadow-xl">
@@ -635,6 +780,26 @@ export function NewEntryPage() {
         ) : null}
       </section>
     </AppShell>
+  );
+}
+
+function SelectField({
+  label,
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  label: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-zinc-800">{label}</span>
+      <select
+        className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
+        {...props}
+      >
+        {children}
+      </select>
+    </label>
   );
 }
 

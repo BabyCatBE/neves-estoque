@@ -14,6 +14,13 @@ export type ProductListItem = {
   currentPrice: number | null;
 };
 
+export type CreateQuickEntryProductInput = {
+  name: string;
+  unit: ProductUnit;
+  categoryId: string | null;
+  entryIdempotencyKey: string;
+};
+
 export type CreateProductInput = {
   name: string;
   categoryId: string;
@@ -99,6 +106,19 @@ export async function listActiveProducts(): Promise<ProductListItem[]> {
       currentPrice: stock?.current_price ?? null
     };
   });
+}
+
+export async function createQuickEntryProduct(input: CreateQuickEntryProductInput) {
+  const client = requireClient();
+  const { data, error } = await client.rpc("create_quick_entry_product", {
+    p_name: input.name,
+    p_unit: input.unit,
+    p_entry_idempotency_key: input.entryIdempotencyKey,
+    ...(input.categoryId ? { p_category_id: input.categoryId } : {})
+  });
+
+  if (error) throw error;
+  return data;
 }
 
 export async function createProduct(input: CreateProductInput) {
