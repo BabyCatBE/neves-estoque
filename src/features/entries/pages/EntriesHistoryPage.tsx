@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
@@ -11,10 +11,24 @@ import { formatMoney } from "../lib/entryValidation";
 
 export function EntriesHistoryPage() {
   const [search, setSearch] = useState("");
+  const [searchFeedback, setSearchFeedback] = useState(false);
+  const searchFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyQuery = useQuery({
     queryKey: ["entries", "history"],
     queryFn: listEntryHistory
   });
+
+  useEffect(() => {
+    return () => {
+      if (searchFeedbackTimer.current) clearTimeout(searchFeedbackTimer.current);
+    };
+  }, []);
+
+  const pulseSearchFeedback = () => {
+    setSearchFeedback(true);
+    if (searchFeedbackTimer.current) clearTimeout(searchFeedbackTimer.current);
+    searchFeedbackTimer.current = setTimeout(() => setSearchFeedback(false), 400);
+  };
 
   const filtered = useMemo(() => {
     const term = normalize(search);
@@ -50,7 +64,27 @@ export function EntriesHistoryPage() {
         </div>
 
         <div className="mt-5 max-w-md">
-          <TextField label="Pesquisar" placeholder="Fornecedor ou produto" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <div className="relative">
+            <TextField
+              label="Pesquisar"
+              placeholder="Fornecedor ou produto"
+              value={search}
+              className="pr-10"
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  pulseSearchFeedback();
+                }
+              }}
+            />
+            {searchFeedback ? (
+              <span
+                aria-label="Pesquisa atualizada"
+                className="absolute bottom-3 right-3 inline-block h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-red-700"
+              />
+            ) : null}
+          </div>
         </div>
 
         {historyQuery.isPending ? <Card className="mt-5 p-5 text-sm text-zinc-600">Carregando histórico…</Card> : null}

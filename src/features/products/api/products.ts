@@ -29,6 +29,16 @@ export type CreateProductInput = {
   initialPrice: number | null;
 };
 
+export type ProductPriceHistoryItem = {
+  id: string;
+  entryId: string;
+  effectiveAt: string;
+  supplierName: string;
+  quantity: number;
+  unitPrice: number | null;
+  position: number;
+};
+
 export type ProductDetails = {
   id: string;
   name: string;
@@ -42,6 +52,7 @@ export type ProductDetails = {
   currentQuantity: number | null;
   currentPrice: number | null;
   currentValue: number | null;
+  priceHistory: ProductPriceHistoryItem[];
 };
 
 export type UpdateProductDetailsInput = {
@@ -161,6 +172,63 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
   if (stockResult.error) throw stockResult.error;
   if (!productResult.data) throw new Error("Produto não encontrado.");
 
+  const { data: priceItems, error: priceItemsError } = await client
+    .from("entry_items")
+    .select("id,entry_id,quantity,unit_price,position")
+    .eq("product_id", productId);
+
+  if (priceItemsError) throw priceItemsError;
+
+  const entryIds = [...new Set((priceItems ?? []).map((item) => item.entry_id))];
+  const entriesResult = entryIds.length
+    ? await client
+        .from("entries")
+        .select("id,effective_at,created_at,supplier_id")
+        .in("id", entryIds)
+        .is("deleted_at", null)
+        .order("effective_at", { ascending: false })
+        .order("created_at", { ascending: false })
+    : { data: [], error: null };
+
+  if (entriesResult.error) throw entriesResult.error;
+
+  const supplierIds = [...new Set((entriesResult.data ?? []).map((entry) => entry.supplier_id))];
+  const suppliersResult = supplierIds.length
+    ? await client.from("suppliers").select("id,name").in("id", supplierIds)
+    : { data: [], error: null };
+
+  if (suppliersResult.error) throw suppliersResult.error;
+
+  const entryById = new Map(
+    (entriesResult.data ?? []).map((entry, index) => [entry.id, { ...entry, order: index }] as const)
+  );
+  const supplierById = new Map(
+    (suppliersResult.data ?? []).map((supplier) => [supplier.id, supplier.name] as const)
+  );
+
+  const priceHistory: ProductPriceHistoryItem[] = (priceItems ?? [])
+    .filter((item) => entryById.has(item.entry_id))
+    .sort((a, b) => {
+      const entryA = entryById.get(a.entry_id);
+      const entryB = entryById.get(b.entry_id);
+      const entryOrder =
+        (entryA?.order ?? Number.MAX_SAFE_INTEGER) -
+        (entryB?.order ?? Number.MAX_SAFE_INTEGER);
+      return entryOrder || b.position - a.position;
+    })
+    .map((item) => {
+      const entry = entryById.get(item.entry_id)!;
+      return {
+        id: item.id,
+        entryId: item.entry_id,
+        effectiveAt: entry.effective_at,
+        supplierName: supplierById.get(entry.supplier_id) ?? "Fornecedor não disponível",
+        quantity: Number(item.quantity),
+        unitPrice: item.unit_price === null ? null : Number(item.unit_price),
+        position: item.position
+      };
+    });
+
   return {
     id: productResult.data.id,
     name: productResult.data.name,
@@ -173,7 +241,8 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
     initialPriceAt: productResult.data.initial_price_at,
     currentQuantity: stockResult.data?.current_quantity ?? null,
     currentPrice: stockResult.data?.current_price ?? null,
-    currentValue: stockResult.data?.current_value ?? null
+    currentValue: stockResult.data?.current_value ?? null,
+    priceHistory
   };
 }
 

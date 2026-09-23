@@ -1,9 +1,25 @@
 import { supabase } from "../../../shared/lib/supabase";
 
-export type EntryCreateItem = {
-  productId: string;
+export type EntryDraftProduct = {
+  clientId: string;
+  name: string;
+  unit: string;
+  categoryId: string | null;
+};
+
+type EntryItemValues = {
   quantity: number;
   unitPrice: number | null;
+};
+
+export type EntryCreateItem = EntryItemValues &
+  (
+    | { productId: string; newProduct?: never }
+    | { productId?: never; newProduct: EntryDraftProduct }
+  );
+
+export type EntryUpdateItem = EntryItemValues & {
+  productId: string;
 };
 
 export type CreateEntryInput = {
@@ -15,8 +31,9 @@ export type CreateEntryInput = {
   items: EntryCreateItem[];
 };
 
-export type UpdateEntryInput = Omit<CreateEntryInput, "idempotencyKey"> & {
+export type UpdateEntryInput = Omit<CreateEntryInput, "idempotencyKey" | "items"> & {
   entryId: string;
+  items: EntryUpdateItem[];
 };
 
 export type EntryHistoryItem = {
@@ -64,7 +81,18 @@ export async function createEntry(input: CreateEntryInput) {
     p_device_id: input.deviceId,
     p_idempotency_key: input.idempotencyKey,
     p_items: input.items.map((item) => ({
-      product_id: item.productId,
+      ...(item.newProduct
+        ? {
+            new_product: {
+              client_id: item.newProduct.clientId,
+              name: item.newProduct.name,
+              unit: item.newProduct.unit,
+              ...(item.newProduct.categoryId === null
+                ? {}
+                : { category_id: item.newProduct.categoryId })
+            }
+          }
+        : { product_id: item.productId }),
       quantity: item.quantity,
       ...(item.unitPrice === null ? {} : { unit_price: item.unitPrice })
     })),

@@ -8,9 +8,9 @@ import { Card } from "../../../shared/components/ui/Card";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
-  createQuickEntryProduct,
   listActiveProducts,
   listProductCategories,
+  updateProductDetails,
   type ProductListItem
 } from "../../products/api/products";
 import {
@@ -31,9 +31,17 @@ import {
   parsePositiveDecimal
 } from "../lib/entryValidation";
 
+type DraftProduct = {
+  clientId: string;
+  name: string;
+  unit: ProductUnit;
+  categoryId: string | null;
+};
+
 type DraftItem = {
   localId: string;
   product: ProductListItem;
+  draftProduct?: DraftProduct;
   quantity: string;
   unitPrice: string;
 };
@@ -64,6 +72,9 @@ export function NewEntryPage() {
   const [quickProductCategoryId, setQuickProductCategoryId] = useState("");
   const [quickProductError, setQuickProductError] = useState<string | null>(null);
   const [showQuickProduct, setShowQuickProduct] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<ProductListItem | null>(null);
+  const [pendingProductCategoryId, setPendingProductCategoryId] = useState("");
+  const [pendingProductError, setPendingProductError] = useState<string | null>(null);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [itemErrors, setItemErrors] = useState<ItemFieldErrors>({});
   const [duplicateProduct, setDuplicateProduct] = useState<ProductListItem | null>(null);
@@ -112,8 +123,8 @@ export function NewEntryPage() {
     }
   });
 
-  const quickProductMutation = useMutation({
-    mutationFn: createQuickEntryProduct,
+  const completePendingProductMutation = useMutation({
+    mutationFn: updateProductDetails,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products"] });
     }
@@ -182,11 +193,20 @@ export function NewEntryPage() {
   const productSuggestions = useMemo(() => {
     const term = normalize(productSearch);
     if (!term) return [];
-    return (productsQuery.data ?? [])
-      .filter((product) => product.categoryId !== null && normalize(product.name).includes(term))
+
+    const localDraftProducts = Array.from(
+      new Map(
+        items
+          .filter((item) => item.draftProduct)
+          .map((item) => [item.product.id, item.product] as const)
+      ).values()
+    );
+
+    return [...(productsQuery.data ?? []), ...localDraftProducts]
+      .filter((product) => normalize(product.name).includes(term))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
       .slice(0, 10);
-  }, [productSearch, productsQuery.data]);
+  }, [items, productSearch, productsQuery.data]);
 
   const openQuickProduct = () => {
     setQuickProductName(productSearch.trim());
@@ -194,6 +214,23 @@ export function NewEntryPage() {
     setQuickProductCategoryId("");
     setQuickProductError(null);
     setShowQuickProduct(true);
+  };
+
+  const chooseProduct = (product: ProductListItem) => {
+    const localDraft = items.find((item) => item.product.id === product.id)?.draftProduct;
+    if (localDraft) {
+      addProduct(product, false, localDraft);
+      return;
+    }
+
+    if (product.categoryId === null) {
+      setPendingProduct(product);
+      setPendingProductCategoryId("");
+      setPendingProductError(null);
+      return;
+    }
+
+    addProduct(product);
   };
 
   const handleProductSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -217,7 +254,7 @@ export function NewEntryPage() {
     if (event.key === "Enter") {
       event.preventDefault();
       const selected = productSuggestions[productActiveIndex];
-      if (selected) addProduct(selected);
+      if (selected) chooseProduct(selected);
       else openQuickProduct();
       return;
     }
@@ -280,7 +317,11 @@ export function NewEntryPage() {
     return { totalKnown, missingPrices };
   }, [items]);
 
-  const addProduct = (product: ProductListItem, forceDuplicate = false) => {
+  const addProduct = (
+    product: ProductListItem,
+    forceDuplicate = false,
+    draftProduct?: DraftProduct
+  ) => {
     const existing = items.find((item) => item.product.id === product.id);
     if (existing && !forceDuplicate) {
       setDuplicateProduct(product);
@@ -288,9 +329,11 @@ export function NewEntryPage() {
     }
 
     const localId = crypto.randomUUID();
+    const resolvedDraftProduct =
+      draftProduct ?? items.find((item) => item.product.id === product.id)?.draftProduct;
     setItems((current) => [
       ...current,
-      { localId, product, quantity: "", unitPrice: "" }
+      { localId, product, draftProduct: resolvedDraftProduct, quantity: "", unitPrice: "" }
     ]);
     setProductSearch("");
     setProductActiveIndex(0);
@@ -328,7 +371,7 @@ export function NewEntryPage() {
     }
   };
 
-  const addQuickProduct = async () => {
+  const addQuickProduct = () => {
     setQuickProductError(null);
 
     const parsedName = productNameSchema.safeParse(quickProductName);
@@ -337,32 +380,58 @@ export function NewEntryPage() {
       return;
     }
 
+    const categoryId = quickProductCategoryId || null;
+    const clientId = crypto.randomUUID();
+    const draftProduct: DraftProduct = {
+      clientId,
+      name: parsedName.data,
+      unit: quickProductUnit,
+      categoryId
+    };
+    const createdProduct: ProductListItem = {
+      id: `draft:${clientId}`,
+      name: parsedName.data,
+      categoryId,
+      unit: quickProductUnit,
+      sortOrder: null,
+      currentQuantity: null,
+      currentPrice: null
+    };
+
+    setShowQuickProduct(false);
+    setQuickProductName("");
+    setQuickProductUnit("UN");
+    setQuickProductCategoryId("");
+    addProduct(createdProduct, false, draftProduct);
+  };
+
+  const completePendingProduct = async () => {
+    if (!pendingProduct) return;
+    if (!pendingProductCategoryId) {
+      setPendingProductError("Escolha uma categoria para continuar.");
+      return;
+    }
+
+    setPendingProductError(null);
     try {
-      const categoryId = quickProductCategoryId || null;
-      const id = await quickProductMutation.mutateAsync({
-        name: parsedName.data,
-        unit: quickProductUnit,
-        categoryId,
-        entryIdempotencyKey: idempotencyKey
+      await completePendingProductMutation.mutateAsync({
+        id: pendingProduct.id,
+        name: pendingProduct.name,
+        categoryId: pendingProductCategoryId
       });
 
-      const createdProduct: ProductListItem = {
-        id,
-        name: parsedName.data,
-        categoryId,
-        unit: quickProductUnit,
-        sortOrder: null,
-        currentQuantity: null,
-        currentPrice: null
+      const completedProduct: ProductListItem = {
+        ...pendingProduct,
+        categoryId: pendingProductCategoryId
       };
 
-      setShowQuickProduct(false);
-      setQuickProductName("");
-      setQuickProductUnit("UN");
-      setQuickProductCategoryId("");
-      addProduct(createdProduct);
+      setPendingProduct(null);
+      setPendingProductCategoryId("");
+      setProductSearch("");
+      setProductActiveIndex(0);
+      addProduct(completedProduct);
     } catch (error) {
-      setQuickProductError(getProductErrorMessage(error));
+      setPendingProductError(getProductErrorMessage(error));
     }
   };
 
@@ -378,7 +447,9 @@ export function NewEntryPage() {
       idempotencyKey,
       observation: observation.trim() || null,
       items: items.map((item) => ({
-        productId: item.product.id,
+        ...(item.draftProduct
+          ? { newProduct: item.draftProduct }
+          : { productId: item.product.id }),
         quantity: parsePositiveDecimal(item.quantity, `Quantidade de ${item.product.name}`),
         unitPrice: parseOptionalPrice(item.unitPrice)
       }))
@@ -425,6 +496,8 @@ export function NewEntryPage() {
             (event.ctrlKey || event.metaKey || controlKeyPressed.current) &&
             event.key === "Enter" &&
             !showQuickSupplier &&
+            !showQuickProduct &&
+            !pendingProduct &&
             !duplicateProduct &&
             !missingPriceReview &&
             !saveMutation.isPending
@@ -570,9 +643,21 @@ export function NewEntryPage() {
                     aria-selected={index === productActiveIndex}
                     className={`flex w-full items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3 text-left text-sm last:border-0 ${index === productActiveIndex ? "bg-red-50 text-red-950" : "hover:bg-zinc-50"}`}
                     onMouseEnter={() => setProductActiveIndex(index)}
-                    onClick={() => addProduct(product)}
+                    onClick={() => chooseProduct(product)}
                   >
-                    <span className="font-semibold">{product.name}</span>
+                    <span>
+                      <span className="font-semibold">{product.name}</span>
+                      {product.categoryId === null && !product.id.startsWith("draft:") ? (
+                        <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                          Cadastro pendente — falta categoria
+                        </span>
+                      ) : null}
+                      {product.id.startsWith("draft:") ? (
+                        <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600">
+                          Novo nesta Entrada
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="text-xs text-zinc-500">{product.unit}</span>
                   </button>
                 ))}
@@ -759,7 +844,7 @@ export function NewEntryPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Cadastro rápido</p>
               <h3 className="mt-1 text-xl font-semibold">Novo produto</h3>
               <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Nome e Unidade são obrigatórios. Categoria é opcional; sem categoria, o produto ficará pendente e só poderá ser usado nesta Entrada até o cadastro ser concluído.
+                Nome e Unidade são obrigatórios. Categoria é opcional. Este Produto ficará somente como rascunho desta Entrada e só será cadastrado no banco quando a Entrada for salva.
               </p>
               <div className="mt-4 space-y-4">
                 <TextField
@@ -820,13 +905,66 @@ export function NewEntryPage() {
               <div className="mt-5 flex justify-end gap-2">
                 <Button
                   variant="ghost"
-                  disabled={quickProductMutation.isPending}
                   onClick={() => setShowQuickProduct(false)}
                 >
                   Cancelar
                 </Button>
-                <Button id="quick-product-submit" disabled={quickProductMutation.isPending} onClick={() => void addQuickProduct()}>
-                  {quickProductMutation.isPending ? "Salvando…" : "Cadastrar e adicionar"}
+                <Button id="quick-product-submit" onClick={addQuickProduct}>
+                  Adicionar à Entrada
+                </Button>
+              </div>
+            </Card>
+          </div>
+        ) : null}
+
+        {pendingProduct ? (
+          <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6">
+            <Card className="w-full max-w-md p-5 shadow-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
+                Cadastro pendente
+              </p>
+              <h3 className="mt-1 text-xl font-semibold">{pendingProduct.name}</h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
+                Este Produto está sem categoria. Escolha uma categoria para concluir o cadastro e adicioná-lo à Entrada.
+              </p>
+              <div className="mt-4">
+                <SelectField
+                  label="Categoria *"
+                  autoFocus
+                  value={pendingProductCategoryId}
+                  onChange={(event) => {
+                    setPendingProductCategoryId(event.target.value);
+                    if (pendingProductError) setPendingProductError(null);
+                  }}
+                >
+                  <option value="">Selecione a categoria</option>
+                  {(productCategoriesQuery.data ?? []).map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
+                </SelectField>
+              </div>
+              {pendingProductError ? (
+                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  {pendingProductError}
+                </div>
+              ) : null}
+              <div className="mt-5 flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  disabled={completePendingProductMutation.isPending}
+                  onClick={() => {
+                    setPendingProduct(null);
+                    setPendingProductCategoryId("");
+                    setPendingProductError(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  disabled={completePendingProductMutation.isPending}
+                  onClick={() => void completePendingProduct()}
+                >
+                  {completePendingProductMutation.isPending ? "Salvando…" : "Concluir e adicionar"}
                 </Button>
               </div>
             </Card>

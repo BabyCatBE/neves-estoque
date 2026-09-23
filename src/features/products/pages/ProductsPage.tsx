@@ -6,7 +6,7 @@ import {
   type SelectHTMLAttributes
 } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -47,6 +47,7 @@ const productsKey = ["products", "active"] as const;
 const productCategoriesKey = ["products", "categories"] as const;
 
 export function ProductsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
@@ -449,6 +450,12 @@ export function ProductsPage() {
                 placeholder="Digite qualquer trecho do nome"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && search.trim() && filteredProducts[0]) {
+                    event.preventDefault();
+                    navigate(`/produtos/${filteredProducts[0].id}`);
+                  }
+                }}
               />
             </div>
 

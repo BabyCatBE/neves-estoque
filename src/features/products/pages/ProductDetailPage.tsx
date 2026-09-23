@@ -400,7 +400,7 @@ export function ProductDetailPage() {
                 <summary className="cursor-pointer font-semibold text-zinc-900">
                   Histórico de preços
                 </summary>
-                <div className="mt-4 text-sm leading-6 text-zinc-600">
+                <div className="mt-4 space-y-3 text-sm leading-6 text-zinc-600">
                   {productQuery.data.initialPrice !== null ? (
                     <div className="rounded-xl bg-zinc-50 px-4 py-3">
                       <p className="font-medium text-zinc-800">Referência inicial</p>
@@ -411,13 +411,44 @@ export function ProductDetailPage() {
                           : ""}
                       </p>
                     </div>
-                  ) : (
-                    <p>Nenhum preço inicial registrado.</p>
-                  )}
-                  <p className="mt-3 text-xs text-zinc-500">
-                    Os preços de Entradas reais serão ligados a este histórico conforme o módulo de
-                    Entradas for implementado.
-                  </p>
+                  ) : null}
+
+                  {productQuery.data.priceHistory.length > 0 ? (
+                    <div className="space-y-2">
+                      {productQuery.data.priceHistory.map((item) => (
+                        <div key={item.id} className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <p className="font-medium text-zinc-900">
+                                {item.unitPrice === null
+                                  ? "Preço não informado"
+                                  : item.unitPrice === 0
+                                    ? "Bonificação"
+                                    : formatPrice(item.unitPrice)}
+                              </p>
+                              <p className="mt-0.5 text-xs text-zinc-500">
+                                {formatDate(item.effectiveAt)} · {item.supplierName}
+                              </p>
+                            </div>
+                            <p className="text-xs font-medium text-zinc-600">
+                              {formatQuantity(item.quantity, productQuery.data.unit)}
+                            </p>
+                          </div>
+                          {item.unitPrice === null ? (
+                            <p className="mt-2 text-xs text-amber-700">
+                              Não altera a referência de preço atual.
+                            </p>
+                          ) : item.unitPrice === 0 ? (
+                            <p className="mt-2 text-xs text-amber-700">
+                              Bonificação não altera a referência de preço atual.
+                            </p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : productQuery.data.initialPrice === null ? (
+                    <p>Nenhum preço registrado até agora.</p>
+                  ) : null}
                 </div>
               </details>
             </Card>
