@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type KeyboardEvent, type SelectHTMLAttributes } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useRef, useState, type KeyboardEvent, type SelectHTMLAttributes } from "react";
+import { useBlocker, useNavigate } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
@@ -53,7 +53,8 @@ export function NewEntryPage() {
   const [supplierActiveIndex, setSupplierActiveIndex] = useState(0);
   const [quickSupplierName, setQuickSupplierName] = useState("");
   const [showQuickSupplier, setShowQuickSupplier] = useState(false);
-  const [date, setDate] = useState(() => localDateInputValue());
+  const [initialDate] = useState(() => localDateInputValue());
+  const [date, setDate] = useState(initialDate);
   const [observationOpen, setObservationOpen] = useState(false);
   const [observation, setObservation] = useState("");
   const [productSearch, setProductSearch] = useState("");
@@ -69,6 +70,27 @@ export function NewEntryPage() {
   const [missingPriceReview, setMissingPriceReview] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const allowNavigationRef = useRef(false);
+
+  const dirty = useMemo(
+    () =>
+      Boolean(
+        supplierId ||
+        supplierSearch.trim() ||
+        date !== initialDate ||
+        observation.trim() ||
+        productSearch.trim() ||
+        items.length
+      ),
+    [date, initialDate, items.length, observation, productSearch, supplierId, supplierSearch]
+  );
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty &&
+      !allowNavigationRef.current &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
 
   const suppliersQuery = useQuery({
     queryKey: ["suppliers", "active"],
@@ -109,11 +131,15 @@ export function NewEntryPage() {
       .slice(0, 8);
   }, [selectedSupplier, supplierSearch, suppliersQuery.data]);
 
+  const focusDate = () => {
+    window.setTimeout(() => document.getElementById("entry-date")?.focus(), 0);
+  };
+
   const selectSupplier = (id: string) => {
     setSupplierId(id);
     setSupplierSearch("");
     setSupplierActiveIndex(0);
-    window.setTimeout(() => document.getElementById("entry-product-search")?.focus(), 0);
+    focusDate();
   };
 
   const openQuickSupplier = () => {
@@ -296,7 +322,7 @@ export function NewEntryPage() {
       setSupplierActiveIndex(0);
       setQuickSupplierName("");
       setShowQuickSupplier(false);
-      window.setTimeout(() => document.getElementById("entry-product-search")?.focus(), 0);
+      focusDate();
     } catch (error) {
       setActionError(getEntryErrorMessage(error));
     }
@@ -382,6 +408,7 @@ export function NewEntryPage() {
         queryClient.invalidateQueries({ queryKey: ["products", "active"] }),
         queryClient.invalidateQueries({ queryKey: ["suppliers"] })
       ]);
+      allowNavigationRef.current = true;
       navigate(`/entradas/${entryId}`, { replace: true });
     } catch (error) {
       setMissingPriceReview(false);
@@ -422,13 +449,23 @@ export function NewEntryPage() {
                     <p className="text-sm font-semibold">{selectedSupplier.name}</p>
                     <p className="text-xs text-zinc-500">{selectedSupplier.company ?? "Cadastro pendente"}</p>
                   </div>
-                  <button type="button" className="text-xs font-semibold text-red-700" onClick={() => { setSupplierId(""); setSupplierSearch(""); }}>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-red-700"
+                    onClick={() => {
+                      setSupplierId("");
+                      setSupplierSearch("");
+                      window.setTimeout(() => document.getElementById("entry-supplier-search")?.focus(), 0);
+                    }}
+                  >
                     Trocar
                   </button>
                 </div>
               ) : (
                 <>
                   <input
+                    id="entry-supplier-search"
+                    autoFocus
                     value={supplierSearch}
                     onChange={(event) => {
                       setSupplierSearch(event.target.value);
@@ -472,7 +509,20 @@ export function NewEntryPage() {
               )}
             </div>
 
-            <TextField label="Data *" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            <TextField
+              id="entry-date"
+              label="Data *"
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  document.getElementById("entry-product-search")?.focus();
+                }
+              }}
+            />
           </div>
 
           <div className="mt-4">
@@ -713,6 +763,7 @@ export function NewEntryPage() {
               </p>
               <div className="mt-4 space-y-4">
                 <TextField
+                  id="quick-product-name"
                   label="Nome *"
                   autoFocus
                   value={quickProductName}
@@ -720,20 +771,40 @@ export function NewEntryPage() {
                     setQuickProductName(event.target.value);
                     if (quickProductError) setQuickProductError(null);
                   }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      document.getElementById("quick-product-unit")?.focus();
+                    }
+                  }}
                 />
                 <SelectField
+                  id="quick-product-unit"
                   label="Unidade *"
                   value={quickProductUnit}
                   onChange={(event) => setQuickProductUnit(event.target.value as ProductUnit)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      document.getElementById("quick-product-category")?.focus();
+                    }
+                  }}
                 >
                   {PRODUCT_UNITS.map((unit) => (
                     <option key={unit} value={unit}>{unit}</option>
                   ))}
                 </SelectField>
                 <SelectField
+                  id="quick-product-category"
                   label="Categoria"
                   value={quickProductCategoryId}
                   onChange={(event) => setQuickProductCategoryId(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      document.getElementById("quick-product-submit")?.focus();
+                    }
+                  }}
                 >
                   <option value="">Sem categoria — cadastro pendente</option>
                   {(productCategoriesQuery.data ?? []).map((category) => (
@@ -754,13 +825,29 @@ export function NewEntryPage() {
                 >
                   Cancelar
                 </Button>
-                <Button disabled={quickProductMutation.isPending} onClick={() => void addQuickProduct()}>
+                <Button id="quick-product-submit" disabled={quickProductMutation.isPending} onClick={() => void addQuickProduct()}>
                   {quickProductMutation.isPending ? "Salvando…" : "Cadastrar e adicionar"}
                 </Button>
               </div>
             </Card>
           </div>
         ) : null}
+
+        <ConfirmDialog
+          open={blocker.state === "blocked"}
+          variant="warning"
+          title="Sair da Nova Entrada?"
+          description="Há dados preenchidos nesta Entrada que ainda não foram salvos. Se sair agora, esse preenchimento será perdido."
+          confirmLabel="Descartar e sair"
+          onCancel={() => {
+            if (blocker.state === "blocked") blocker.reset();
+          }}
+          onConfirm={() => {
+            if (blocker.state !== "blocked") return;
+            allowNavigationRef.current = true;
+            blocker.proceed();
+          }}
+        />
 
         {duplicateProduct ? (
           <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6">
