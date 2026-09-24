@@ -309,6 +309,11 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
           value={observation}
           maxLength={2000}
           onChange={(event) => setObservation(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.metaKey) return;
+            event.preventDefault();
+            document.getElementById("conference-save")?.focus();
+          }}
           rows={3}
           className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
           placeholder="Opcional para a Conferência inteira"
