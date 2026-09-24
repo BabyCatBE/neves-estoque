@@ -1,0 +1,343 @@
+import { supabase } from "../../../shared/lib/supabase";
+import { listActiveCategories, type CategoryListItem } from "../../categories/api/categories";
+import {
+  localDateInputValue,
+  localDateKey,
+  localDayRange
+} from "../lib/conferenceValidation";
+
+export type ConferenceProduct = {
+  id: string;
+  name: string;
+  unit: string;
+  sortOrder: number | null;
+};
+
+export type ConferenceCategorySummary = {
+  id: string;
+  name: string;
+  sortOrder: number | null;
+  productCount: number;
+  lastConferenceAt: string | null;
+  conferredToday: boolean;
+};
+
+export type CategoryConferenceSetup = {
+  category: Pick<CategoryListItem, "id" | "name">;
+  products: ConferenceProduct[];
+};
+
+export type ConferenceHistoryItem = {
+  id: string;
+  categoryId: string;
+  effectiveAt: string;
+  createdAt: string;
+  physicalResponsible: string;
+  observation: string | null;
+};
+
+export type ConferenceDetailItem = {
+  id: string;
+  productId: string;
+  productName: string;
+  unit: string;
+  quantity: number;
+  position: number;
+};
+
+export type ConferenceDetails = {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  effectiveAt: string;
+  createdAt: string;
+  physicalResponsible: string;
+  observation: string | null;
+  items: ConferenceDetailItem[];
+};
+
+export type CategoryConferenceWriteInput = {
+  categoryId: string;
+  effectiveAt: string;
+  physicalResponsible: string;
+  deviceId: string;
+  idempotencyKey: string;
+  observation: string | null;
+  items: Array<{ productId: string; quantity: number }>;
+};
+
+export type CategoryConferenceUpdateInput = Omit<
+  CategoryConferenceWriteInput,
+  "categoryId" | "idempotencyKey"
+> & { conferenceId: string };
+
+export type ConferencePrintCategory = CategoryListItem & {
+  products: ConferenceProduct[];
+};
+
+export type ConferencePrintData = {
+  categories: ConferencePrintCategory[];
+  pendingProductCount: number;
+};
+
+function requireClient() {
+  if (!supabase) throw new Error("Supabase não está configurado neste ambiente.");
+  return supabase;
+}
+
+export async function listConferenceCategories(): Promise<ConferenceCategorySummary[]> {
+  const client = requireClient();
+  const [categories, conferencesResult] = await Promise.all([
+    listActiveCategories(),
+    client
+      .from("conferences")
+      .select("id,category_id,effective_at,created_at")
+      .eq("scope_type", "category")
+      .is("deleted_at", null)
+      .order("effective_at", { ascending: false })
+      .order("created_at", { ascending: false })
+  ]);
+
+  if (conferencesResult.error) throw conferencesResult.error;
+
+  const latestByCategory = new Map<string, string>();
+  for (const conference of conferencesResult.data ?? []) {
+    if (!conference.category_id || latestByCategory.has(conference.category_id)) continue;
+    latestByCategory.set(conference.category_id, conference.effective_at);
+  }
+
+  const today = localDateInputValue();
+  return categories.map((category) => {
+    const lastConferenceAt = latestByCategory.get(category.id) ?? null;
+    return {
+      id: category.id,
+      name: category.name,
+      sortOrder: category.sort_order,
+      productCount: category.productCount,
+      lastConferenceAt,
+      conferredToday: lastConferenceAt ? localDateKey(lastConferenceAt) === today : false
+    };
+  });
+}
+
+export async function getCategoryConferenceSetup(
+  categoryId: string
+): Promise<CategoryConferenceSetup> {
+  const client = requireClient();
+  const [categories, productsResult] = await Promise.all([
+    listActiveCategories(),
+    client
+      .from("products")
+      .select("id,name,unit,sort_order")
+      .eq("category_id", categoryId)
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true })
+  ]);
+
+  if (productsResult.error) throw productsResult.error;
+  const category = categories.find((item) => item.id === categoryId);
+  if (!category) throw new Error("Categoria não encontrada.");
+
+  return {
+    category: { id: category.id, name: category.name },
+    products: (productsResult.data ?? []).map((product) => ({
+      id: product.id,
+      name: product.name,
+      unit: product.unit,
+      sortOrder: product.sort_order
+    }))
+  };
+}
+
+export async function createCategoryConference(input: CategoryConferenceWriteInput) {
+  const client = requireClient();
+  const { data, error } = await client.rpc("create_category_conference", {
+    p_category_id: input.categoryId,
+    p_effective_at: input.effectiveAt,
+    p_physical_responsible: input.physicalResponsible,
+    p_device_id: input.deviceId,
+    p_idempotency_key: input.idempotencyKey,
+    p_items: input.items.map((item) => ({
+      product_id: item.productId,
+      quantity: item.quantity
+    })),
+    ...(input.observation === null ? {} : { p_observation: input.observation })
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateCategoryConference(input: CategoryConferenceUpdateInput) {
+  const client = requireClient();
+  const { error } = await client.rpc("update_category_conference", {
+    p_conference_id: input.conferenceId,
+    p_effective_at: input.effectiveAt,
+    p_physical_responsible: input.physicalResponsible,
+    p_device_id: input.deviceId,
+    p_items: input.items.map((item) => ({
+      product_id: item.productId,
+      quantity: item.quantity
+    })),
+    ...(input.observation === null ? {} : { p_observation: input.observation })
+  });
+
+  if (error) throw error;
+}
+
+export async function listSameDayCategoryConferences(
+  categoryId: string,
+  dateValue: string
+): Promise<ConferenceHistoryItem[]> {
+  const client = requireClient();
+  const { start, end } = localDayRange(dateValue);
+  const { data, error } = await client
+    .from("conferences")
+    .select("id,category_id,effective_at,created_at,physical_responsible,observation")
+    .eq("scope_type", "category")
+    .eq("category_id", categoryId)
+    .is("deleted_at", null)
+    .gte("effective_at", start)
+    .lt("effective_at", end)
+    .order("effective_at", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).flatMap((row) =>
+    row.category_id
+      ? [{
+          id: row.id,
+          categoryId: row.category_id,
+          effectiveAt: row.effective_at,
+          createdAt: row.created_at,
+          physicalResponsible: row.physical_responsible,
+          observation: row.observation
+        }]
+      : []
+  );
+}
+
+export async function listCategoryConferenceHistory(
+  categoryId: string
+): Promise<ConferenceHistoryItem[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from("conferences")
+    .select("id,category_id,effective_at,created_at,physical_responsible,observation")
+    .eq("scope_type", "category")
+    .eq("category_id", categoryId)
+    .is("deleted_at", null)
+    .order("effective_at", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).flatMap((row) =>
+    row.category_id
+      ? [{
+          id: row.id,
+          categoryId: row.category_id,
+          effectiveAt: row.effective_at,
+          createdAt: row.created_at,
+          physicalResponsible: row.physical_responsible,
+          observation: row.observation
+        }]
+      : []
+  );
+}
+
+export async function getConferenceDetails(conferenceId: string): Promise<ConferenceDetails> {
+  const client = requireClient();
+  const { data: conference, error: conferenceError } = await client
+    .from("conferences")
+    .select("id,category_id,effective_at,created_at,physical_responsible,observation,scope_type")
+    .eq("id", conferenceId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (conferenceError) throw conferenceError;
+  if (!conference || conference.scope_type !== "category" || !conference.category_id) {
+    throw new Error("Conferência de categoria não encontrada.");
+  }
+
+  const [categoryResult, itemsResult] = await Promise.all([
+    client
+      .from("categories")
+      .select("id,name")
+      .eq("id", conference.category_id)
+      .maybeSingle(),
+    client
+      .from("conference_items")
+      .select("id,product_id,quantity,position")
+      .eq("conference_id", conference.id)
+      .order("position", { ascending: true })
+  ]);
+
+  if (categoryResult.error) throw categoryResult.error;
+  if (itemsResult.error) throw itemsResult.error;
+
+  const productIds = [...new Set((itemsResult.data ?? []).map((item) => item.product_id))];
+  const productsResult = productIds.length
+    ? await client.from("products").select("id,name,unit").in("id", productIds)
+    : { data: [], error: null };
+
+  if (productsResult.error) throw productsResult.error;
+  const productById = new Map(
+    (productsResult.data ?? []).map((product) => [product.id, product] as const)
+  );
+
+  return {
+    id: conference.id,
+    categoryId: conference.category_id,
+    categoryName: categoryResult.data?.name ?? "Categoria não disponível",
+    effectiveAt: conference.effective_at,
+    createdAt: conference.created_at,
+    physicalResponsible: conference.physical_responsible,
+    observation: conference.observation,
+    items: (itemsResult.data ?? []).map((item) => ({
+      id: item.id,
+      productId: item.product_id,
+      productName: productById.get(item.product_id)?.name ?? "Produto não disponível",
+      unit: productById.get(item.product_id)?.unit ?? "—",
+      quantity: Number(item.quantity),
+      position: item.position
+    }))
+  };
+}
+
+export async function listConferencePrintData(): Promise<ConferencePrintData> {
+  const client = requireClient();
+  const [categories, productsResult, pendingResult] = await Promise.all([
+    listActiveCategories(),
+    client
+      .from("products")
+      .select("id,name,unit,sort_order,category_id")
+      .not("category_id", "is", null)
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true }),
+    client
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .is("category_id", null)
+      .is("deleted_at", null)
+  ]);
+
+  if (productsResult.error) throw productsResult.error;
+  if (pendingResult.error) throw pendingResult.error;
+
+  return {
+    categories: categories.map((category) => ({
+      ...category,
+      products: (productsResult.data ?? [])
+        .filter((product) => product.category_id === category.id)
+        .map((product) => ({
+          id: product.id,
+          name: product.name,
+          unit: product.unit,
+          sortOrder: product.sort_order
+        }))
+    })),
+    pendingProductCount: pendingResult.count ?? 0
+  };
+}
