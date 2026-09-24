@@ -390,21 +390,13 @@ export function ProductDetailPage() {
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
             <Card className="p-5">
-              <h3 className="font-semibold text-zinc-900">Dados do cadastro</h3>
+              <h3 className="font-semibold text-zinc-900">Dados do produto</h3>
               <dl className="mt-4 space-y-3 text-sm">
                 <DetailRow label="Categoria" value={currentCategoryName} />
                 <DetailRow label="Unidade" value={productQuery.data.unit} />
-                <DetailRow
-                  label="Estoque inicial"
-                  value={formatOptionalQuantity(
-                    productQuery.data.initialStockQuantity,
-                    productQuery.data.unit
-                  )}
-                />
-                <DetailRow
-                  label="Preço inicial"
-                  value={formatPrice(productQuery.data.initialPrice)}
-                />
+                {productQuery.data.categoryId === null ? (
+                  <DetailRow label="Status" value="Cadastro pendente" />
+                ) : null}
               </dl>
             </Card>
 
@@ -466,6 +458,73 @@ export function ProductDetailPage() {
               </details>
             </Card>
           </div>
+
+          <Card className="mt-4 p-5">
+            <details>
+              <summary className="cursor-pointer font-semibold text-zinc-900">
+                Duração do estoque
+              </summary>
+
+              {productQuery.data.usageInsights.status === "ready" ? (
+                <div className="mt-4">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <InsightCard
+                      label="Consumo médio por dia"
+                      value={formatAverageQuantity(
+                        productQuery.data.usageInsights.dailyAverage,
+                        productQuery.data.unit
+                      )}
+                    />
+                    <InsightCard
+                      label="Consumo médio por semana"
+                      value={formatAverageQuantity(
+                        productQuery.data.usageInsights.weeklyAverage,
+                        productQuery.data.unit
+                      )}
+                    />
+                    <InsightCard
+                      label="Cobertura estimada"
+                      value={formatCoverage(productQuery.data.usageInsights.coverageDays)}
+                    />
+                  </div>
+
+                  <div className="mt-4 rounded-xl bg-zinc-50 px-4 py-3 text-xs leading-5 text-zinc-600">
+                    <p>
+                      Base: {formatDate(productQuery.data.usageInsights.intervalStart!)} até{" "}
+                      {formatDate(productQuery.data.usageInsights.intervalEnd!)} ·{" "}
+                      {formatDays(productQuery.data.usageInsights.intervalDays!)}
+                    </p>
+                    <p className="mt-1">
+                      Consumo estimado no intervalo:{" "}
+                      {formatAverageQuantity(
+                        productQuery.data.usageInsights.estimatedConsumption,
+                        productQuery.data.unit
+                      )}
+                      {" · "}Entradas no período:{" "}
+                      {formatAverageQuantity(
+                        productQuery.data.usageInsights.entriesDuringInterval,
+                        productQuery.data.unit
+                      )}
+                    </p>
+                    <p className="mt-1 text-zinc-500">
+                      Cálculo baseado nas duas Conferências válidas mais recentes e nas Entradas
+                      registradas entre elas.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-xl bg-zinc-50 px-4 py-4 text-sm leading-6 text-zinc-600">
+                  <p className="font-medium text-zinc-800">Dados insuficientes para calcular.</p>
+                  <p className="mt-1">
+                    {getUsageInsufficientMessage(
+                      productQuery.data.usageInsights.reason,
+                      productQuery.data.usageInsights.conferencesUsed
+                    )}
+                  </p>
+                </div>
+              )}
+            </details>
+          </Card>
 
           <ConfirmDialog
             open={deleteReviewOpen}
@@ -575,6 +634,15 @@ function MetricCard({
   );
 }
 
+function InsightCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-zinc-950">{value}</p>
+    </div>
+  );
+}
+
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
@@ -626,9 +694,52 @@ function formatQuantity(value: number | null, unit: string) {
   }).format(value)} ${unit}`;
 }
 
-function formatOptionalQuantity(value: number | null, unit: string) {
-  if (value === null) return "Não informado";
-  return formatQuantity(value, unit);
+function formatAverageQuantity(value: number | null, unit: string) {
+  if (value === null) return "—";
+  return `${new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 2
+  }).format(value)} ${unit}`;
+}
+
+function formatCoverage(value: number | null) {
+  if (value === null) return "Não calculável";
+
+  if (value < 14) {
+    return `${new Intl.NumberFormat("pt-BR", {
+      maximumFractionDigits: 1
+    }).format(value)} dias`;
+  }
+
+  return `${new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 1
+  }).format(value / 7)} semanas`;
+}
+
+function formatDays(value: number) {
+  return `${new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 1
+  }).format(value)} dias`;
+}
+
+function getUsageInsufficientMessage(
+  reason:
+    | "needs_two_conferences"
+    | "invalid_interval"
+    | "negative_consumption"
+    | null,
+  conferencesUsed: number
+) {
+  if (reason === "needs_two_conferences") {
+    return conferencesUsed === 0
+      ? "Ainda não existem duas Conferências deste produto. Assim que houver duas contagens físicas válidas, o consumo e a cobertura serão calculados automaticamente."
+      : "Existe somente uma Conferência deste produto. É necessária mais uma contagem física para formar um intervalo confiável.";
+  }
+
+  if (reason === "negative_consumption") {
+    return "O último intervalo possui uma variação que não pode ser explicada pelas Entradas registradas. O sistema não exibirá uma média até existir um intervalo confiável.";
+  }
+
+  return "Ainda não existe um intervalo confiável entre duas Conferências para este produto.";
 }
 
 function formatPrice(value: number | null) {

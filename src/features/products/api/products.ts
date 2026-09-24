@@ -1,6 +1,10 @@
 import { supabase } from "../../../shared/lib/supabase";
 import type { Tables } from "../../../shared/types/database.types";
 import type { ProductUnit } from "../lib/productValidation";
+import {
+  calculateProductUsageInsights,
+  type ProductUsageInsights
+} from "../lib/productUsageInsights";
 
 export type ProductCategoryOption = Pick<Tables<"categories">, "id" | "name" | "sort_order">;
 
@@ -53,6 +57,7 @@ export type ProductDetails = {
   currentPrice: number | null;
   currentValue: number | null;
   priceHistory: ProductPriceHistoryItem[];
+  usageInsights: ProductUsageInsights;
 };
 
 export type UpdateProductDetailsInput = {
@@ -206,6 +211,32 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
     (suppliersResult.data ?? []).map((supplier) => [supplier.id, supplier.name] as const)
   );
 
+  const { data: conferenceItems, error: conferenceItemsError } = await client
+    .from("conference_items")
+    .select("conference_id,quantity")
+    .eq("product_id", productId);
+
+  if (conferenceItemsError) throw conferenceItemsError;
+
+  const conferenceIds = [
+    ...new Set((conferenceItems ?? []).map((item) => item.conference_id))
+  ];
+  const conferencesResult = conferenceIds.length
+    ? await client
+        .from("conferences")
+        .select("id,effective_at,created_at")
+        .in("id", conferenceIds)
+        .is("deleted_at", null)
+        .order("effective_at", { ascending: true })
+        .order("created_at", { ascending: true })
+    : { data: [], error: null };
+
+  if (conferencesResult.error) throw conferencesResult.error;
+
+  const conferenceById = new Map(
+    (conferencesResult.data ?? []).map((conference) => [conference.id, conference] as const)
+  );
+
   const priceHistory: ProductPriceHistoryItem[] = (priceItems ?? [])
     .filter((item) => entryById.has(item.entry_id))
     .sort((a, b) => {
@@ -229,6 +260,30 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
       };
     });
 
+  const usageInsights = calculateProductUsageInsights({
+    conferences: (conferenceItems ?? [])
+      .filter((item) => conferenceById.has(item.conference_id))
+      .map((item) => {
+        const conference = conferenceById.get(item.conference_id)!;
+        return {
+          effectiveAt: conference.effective_at,
+          createdAt: conference.created_at,
+          quantity: Number(item.quantity)
+        };
+      }),
+    entries: (priceItems ?? [])
+      .filter((item) => entryById.has(item.entry_id))
+      .map((item) => ({
+        effectiveAt: entryById.get(item.entry_id)!.effective_at,
+        quantity: Number(item.quantity)
+      })),
+    currentQuantity:
+      stockResult.data?.current_quantity === null ||
+      stockResult.data?.current_quantity === undefined
+        ? null
+        : Number(stockResult.data.current_quantity)
+  });
+
   return {
     id: productResult.data.id,
     name: productResult.data.name,
@@ -242,7 +297,8 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
     currentQuantity: stockResult.data?.current_quantity ?? null,
     currentPrice: stockResult.data?.current_price ?? null,
     currentValue: stockResult.data?.current_value ?? null,
-    priceHistory
+    priceHistory,
+    usageInsights
   };
 }
 
