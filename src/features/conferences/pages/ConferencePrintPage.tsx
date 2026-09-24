@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
+import nevesPrintLogo from "../../../assets/neves-logo-print.webp";
 import { CategoryIllustrationVisual } from "../../categories/components/CategoryIllustrationVisual";
-import { PrintNevesLogo } from "../components/PrintNevesLogo";
 import { listConferencePrintData, type ConferencePrintCategory } from "../api/conferences";
 
 const ROWS_PER_PAGE = 18;
@@ -127,7 +127,11 @@ export function ConferencePrintPage() {
                   {page.categoryPages > 1 ? ` · parte ${page.categoryPage}` : ""}
                 </p>
               </div>
-              <PrintNevesLogo className="h-14 w-28 shrink-0" />
+              <img
+                src={nevesPrintLogo}
+                alt="Panificadora Neves"
+                className="h-16 w-auto max-w-36 shrink-0 object-contain"
+              />
             </div>
 
             <div className="mt-4 grid grid-cols-[150px_1fr] gap-3 text-sm">
