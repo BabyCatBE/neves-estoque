@@ -204,6 +204,62 @@ function buildBreadcrumbs(pathname: string): Breadcrumb[] {
 
   if (pathname === "/fornecedores") return [{ label: "Fornecedores" }];
   if (pathname === "/estoque") return [{ label: "Estoque Atual" }];
+
+  if (pathname === "/conferencias/imprimir") {
+    return [
+      { label: "Conferência", to: "/conferencias" },
+      { label: "Imprimir papéis" }
+    ];
+  }
+
+  if (/^\/conferencias\/fazer\/[^/]+$/.test(pathname)) {
+    return [
+      { label: "Conferência", to: "/conferencias" },
+      { label: "Fazer conferência", to: "/conferencias/fazer" },
+      { label: "Categoria" }
+    ];
+  }
+
+  if (pathname === "/conferencias/fazer") {
+    return [
+      { label: "Conferência", to: "/conferencias" },
+      { label: "Fazer conferência" }
+    ];
+  }
+
+  if (/^\/conferencias\/historico\/[^/]+$/.test(pathname)) {
+    return [
+      { label: "Conferência", to: "/conferencias" },
+      { label: "Histórico", to: "/conferencias/historico" },
+      { label: "Categoria" }
+    ];
+  }
+
+  if (pathname === "/conferencias/historico") {
+    return [
+      { label: "Conferência", to: "/conferencias" },
+      { label: "Histórico" }
+    ];
+  }
+
+  if (/^\/conferencias\/[^/]+\/editar$/.test(pathname)) {
+    const conferenceId = pathname.split("/")[2];
+    return [
+      { label: "Conferência", to: "/conferencias" },
+      { label: "Histórico", to: "/conferencias/historico" },
+      { label: "Registro", to: `/conferencias/${conferenceId}` },
+      { label: "Corrigir" }
+    ];
+  }
+
+  if (/^\/conferencias\/[^/]+$/.test(pathname)) {
+    return [
+      { label: "Conferência", to: "/conferencias" },
+      { label: "Histórico", to: "/conferencias/historico" },
+      { label: "Registro" }
+    ];
+  }
+
   if (pathname === "/conferencias") return [{ label: "Conferência" }];
   if (pathname === "/compras") return [{ label: "Compras" }];
 

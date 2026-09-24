@@ -74,8 +74,8 @@ export function HomePage() {
             </div>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight">Controle de estoque</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-              Implementação incremental em ambiente de desenvolvimento. Categorias, Produtos, Fornecedores e
-              Entradas já possuem fluxos operacionais; navegação e alertas estão no bloco atual.
+              Implementação incremental em ambiente de desenvolvimento. Categorias, Produtos, Fornecedores,
+              Entradas e Conferência já possuem fluxos operacionais em evolução.
             </p>
           </div>
 

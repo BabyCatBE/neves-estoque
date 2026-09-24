@@ -17,6 +17,14 @@ import { NewEntryPage } from "../../features/entries/pages/NewEntryPage";
 import { EntriesHistoryPage } from "../../features/entries/pages/EntriesHistoryPage";
 import { EntryDetailPage } from "../../features/entries/pages/EntryDetailPage";
 import { EditEntryPage } from "../../features/entries/pages/EditEntryPage";
+import { ConferencesHubPage } from "../../features/conferences/pages/ConferencesHubPage";
+import { ConferencePrintPage } from "../../features/conferences/pages/ConferencePrintPage";
+import { ConferenceCategoriesPage } from "../../features/conferences/pages/ConferenceCategoriesPage";
+import { NewCategoryConferencePage } from "../../features/conferences/pages/NewCategoryConferencePage";
+import { ConferenceHistoryCategoriesPage } from "../../features/conferences/pages/ConferenceHistoryCategoriesPage";
+import { CategoryConferenceHistoryPage } from "../../features/conferences/pages/CategoryConferenceHistoryPage";
+import { ConferenceDetailPage } from "../../features/conferences/pages/ConferenceDetailPage";
+import { EditConferencePage } from "../../features/conferences/pages/EditConferencePage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
 
 export const router = createBrowserRouter([
@@ -42,7 +50,63 @@ export const router = createBrowserRouter([
     path: "/conferencias",
     element: (
       <ProtectedRoute>
-        <ModulePlaceholder title="Conferências" />
+        <ConferencesHubPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/conferencias/imprimir",
+    element: (
+      <ProtectedRoute>
+        <ConferencePrintPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/conferencias/fazer",
+    element: (
+      <ProtectedRoute>
+        <ConferenceCategoriesPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/conferencias/fazer/:categoryId",
+    element: (
+      <ProtectedRoute>
+        <NewCategoryConferencePage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/conferencias/historico",
+    element: (
+      <ProtectedRoute>
+        <ConferenceHistoryCategoriesPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/conferencias/historico/:categoryId",
+    element: (
+      <ProtectedRoute>
+        <CategoryConferenceHistoryPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/conferencias/:conferenceId/editar",
+    element: (
+      <ProtectedRoute>
+        <EditConferencePage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/conferencias/:conferenceId",
+    element: (
+      <ProtectedRoute>
+        <ConferenceDetailPage />
       </ProtectedRoute>
     )
   },

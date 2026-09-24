@@ -205,6 +205,7 @@ export type Database = {
       }
       conferences: {
         Row: {
+          category_id: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -217,10 +218,13 @@ export type Database = {
           physical_responsible: string
           registered_by: string
           restore_until: string | null
+          scope_product_id: string | null
+          scope_type: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -233,10 +237,13 @@ export type Database = {
           physical_responsible: string
           registered_by: string
           restore_until?: string | null
+          scope_product_id?: string | null
+          scope_type?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -249,16 +256,39 @@ export type Database = {
           physical_responsible?: string
           registered_by?: string
           restore_until?: string | null
+          scope_product_id?: string | null
+          scope_type?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conferences_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conferences_device_id_fkey"
             columns: ["device_id"]
             isOneToOne: false
             referencedRelation: "devices"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferences_scope_product_id_fkey"
+            columns: ["scope_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferences_scope_product_id_fkey"
+            columns: ["scope_product_id"]
+            isOneToOne: false
+            referencedRelation: "stock_current"
+            referencedColumns: ["product_id"]
           },
         ]
       }
@@ -457,7 +487,7 @@ export type Database = {
           initial_stock_at?: string | null
           initial_stock_quantity?: number | null
           name: string
-          quick_entry_idempotency_key: string | null
+          quick_entry_idempotency_key?: string | null
           restore_until?: string | null
           sort_order?: number | null
           unit: string
@@ -476,6 +506,7 @@ export type Database = {
           initial_stock_at?: string | null
           initial_stock_quantity?: number | null
           name?: string
+          quick_entry_idempotency_key?: string | null
           restore_until?: string | null
           sort_order?: number | null
           unit?: string
@@ -502,7 +533,6 @@ export type Database = {
           deleted_by: string | null
           id: string
           name: string
-          quick_entry_idempotency_key: string | null
           observation: string | null
           phone: string | null
           preferred_order_weekday: number | null
@@ -593,6 +623,18 @@ export type Database = {
           role_name: string
         }[]
       }
+      create_category_conference: {
+        Args: {
+          p_category_id: string
+          p_device_id: string
+          p_effective_at: string
+          p_idempotency_key: string
+          p_items: Json
+          p_observation?: string
+          p_physical_responsible: string
+        }
+        Returns: string
+      }
       create_conference: {
         Args: {
           p_device_id: string
@@ -626,20 +668,20 @@ export type Database = {
         }
         Returns: string
       }
-      create_quick_entry_product: {
-        Args: {
-          p_category_id?: string
-          p_entry_idempotency_key: string
-          p_name: string
-          p_unit: string
-        }
-        Returns: string
-      }
       create_product: {
         Args: {
           p_category_id: string
           p_initial_price?: number
           p_initial_stock_quantity?: number
+          p_name: string
+          p_unit: string
+        }
+        Returns: string
+      }
+      create_quick_entry_product: {
+        Args: {
+          p_category_id?: string
+          p_entry_idempotency_key: string
           p_name: string
           p_unit: string
         }
@@ -686,6 +728,17 @@ export type Database = {
       }
       soft_delete_supplier: {
         Args: { p_supplier_id: string }
+        Returns: undefined
+      }
+      update_category_conference: {
+        Args: {
+          p_conference_id: string
+          p_device_id: string
+          p_effective_at: string
+          p_items: Json
+          p_observation?: string
+          p_physical_responsible: string
+        }
         Returns: undefined
       }
       update_entry: {
