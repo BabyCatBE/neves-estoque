@@ -300,12 +300,17 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
           maxLength={2000}
           rows={3}
           onChange={(event) => setObservation(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.metaKey) return;
+            event.preventDefault();
+            document.getElementById("conference-edit-save")?.focus();
+          }}
           className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
         />
       </Card>
 
       <div className="mt-5 flex justify-end">
-        <Button disabled={!dirty || updateMutation.isPending} onClick={requestReview}>
+        <Button id="conference-edit-save" disabled={!dirty || updateMutation.isPending} onClick={requestReview}>
           Salvar correção
         </Button>
       </div>
