@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
@@ -167,6 +167,24 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
     dirty && !reviewOpen && blocker.state !== "blocked" && !updateMutation.isPending
   );
 
+  const focusQuantity = (productId: string) => {
+    window.setTimeout(
+      () => document.getElementById(`conference-edit-qty-${productId}`)?.focus(),
+      0
+    );
+  };
+
+  const handleQuantityEnter = (
+    event: KeyboardEvent<HTMLInputElement>,
+    productIndex: number
+  ) => {
+    if (event.key !== "Enter" || event.ctrlKey || event.metaKey) return;
+    event.preventDefault();
+    const next = details.items[productIndex + 1];
+    if (next) focusQuantity(next.productId);
+    else document.getElementById("conference-edit-observation")?.focus();
+  };
+
   const changes = [
     ...(date !== initialDate ? ["Data da Conferência"] : []),
     ...(responsible !== details.physicalResponsible ? ["Responsável"] : []),
@@ -199,13 +217,33 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
 
       <Card className="mt-5 p-5">
         <div className="grid gap-4 md:grid-cols-2">
-          <TextField label="Data *" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+          <TextField
+            id="conference-edit-date"
+            label="Data *"
+            type="date"
+            value={date}
+            autoFocus
+            onChange={(event) => setDate(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) {
+                event.preventDefault();
+                document.getElementById("conference-edit-responsible")?.focus();
+              }
+            }}
+          />
           <TextField
             id="conference-edit-responsible"
             label="Responsável pela contagem física *"
             value={responsible}
             maxLength={160}
             onChange={(event) => setResponsible(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) {
+                event.preventDefault();
+                const first = details.items[0];
+                if (first) focusQuantity(first.productId);
+              }
+            }}
           />
         </div>
       </Card>
@@ -215,7 +253,7 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
           <h3 className="font-semibold">Quantidades</h3>
         </div>
         <div className="divide-y divide-zinc-100">
-          {details.items.map((item) => (
+          {details.items.map((item, index) => (
             <div
               key={item.productId}
               className="grid gap-3 px-5 py-4 md:grid-cols-[1fr_100px_180px] md:items-center"
@@ -236,6 +274,7 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
                       return next;
                     });
                   }}
+                  onKeyDown={(event) => handleQuantityEnter(event, index)}
                   className={`min-h-11 w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100 ${
                     quantityErrors[item.productId] ? "border-red-400" : "border-zinc-300"
                   }`}
