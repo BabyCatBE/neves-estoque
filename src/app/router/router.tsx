@@ -25,6 +25,7 @@ import { ConferenceHistoryCategoriesPage } from "../../features/conferences/page
 import { CategoryConferenceHistoryPage } from "../../features/conferences/pages/CategoryConferenceHistoryPage";
 import { ConferenceDetailPage } from "../../features/conferences/pages/ConferenceDetailPage";
 import { EditConferencePage } from "../../features/conferences/pages/EditConferencePage";
+import { StockCurrentPage } from "../../features/stock/pages/StockCurrentPage";
 import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
 
 export const router = createBrowserRouter([
@@ -42,7 +43,7 @@ export const router = createBrowserRouter([
     path: "/estoque",
     element: (
       <ProtectedRoute>
-        <ModulePlaceholder title="Estoque Atual" />
+        <StockCurrentPage />
       </ProtectedRoute>
     )
   },
