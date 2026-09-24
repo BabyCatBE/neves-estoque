@@ -224,6 +224,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
             id="conference-date"
             label="Data *"
             type="date"
+            max={localDateInputValue()}
             value={date}
             autoFocus
             onChange={(event) => setDate(event.target.value)}

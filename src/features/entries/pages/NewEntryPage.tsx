@@ -584,6 +584,7 @@ export function NewEntryPage() {
               id="entry-date"
               label="Data *"
               type="date"
+              max={localDateInputValue()}
               value={date}
               onChange={(event) => setDate(event.target.value)}
               onKeyDown={(event) => {

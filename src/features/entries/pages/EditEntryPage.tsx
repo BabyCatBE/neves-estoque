@@ -17,6 +17,7 @@ import {
   buildEffectiveAt,
   formatMoney,
   getEntryErrorMessage,
+  localDateInputValue,
   parseOptionalPrice,
   parsePositiveDecimal
 } from "../lib/entryValidation";
@@ -280,7 +281,13 @@ export function EditEntryPage() {
                 ))}
               </select>
             </label>
-            <TextField label="Data *" type="date" value={draft.date} onChange={(event) => setDraft({ ...draft, date: event.target.value })} />
+            <TextField
+              label="Data *"
+              type="date"
+              max={localDateInputValue()}
+              value={draft.date}
+              onChange={(event) => setDraft({ ...draft, date: event.target.value })}
+            />
           </div>
           <label className="mt-4 block">
             <span className="text-sm font-medium text-zinc-800">Observação</span>

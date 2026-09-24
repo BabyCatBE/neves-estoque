@@ -49,12 +49,8 @@ export function ConferenceDetailPage() {
               </Link>
             </div>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="mt-5">
               <Info label="Responsável pela contagem" value={conferenceQuery.data.physicalResponsible} />
-              <Info
-                label="Produtos conferidos"
-                value={String(conferenceQuery.data.items.length)}
-              />
             </div>
 
             {conferenceQuery.data.observation ? (

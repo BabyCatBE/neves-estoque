@@ -35,6 +35,15 @@ describe("datas de Conferência", () => {
     expect(updated.getSeconds()).toBe(20);
   });
 
+  it("bloqueia data futura ao corrigir uma Conferência", () => {
+    const original = new Date(2026, 8, 20, 14, 35, 20, 100);
+    const today = new Date(2026, 8, 24, 10, 0);
+
+    expect(() =>
+      buildEditedConferenceEffectiveAt("2026-09-25", original.toISOString(), today)
+    ).toThrow("A data não pode ser futura.");
+  });
+
   it("gera intervalo local de um único dia", () => {
     const { start, end } = localDayRange("2026-09-24");
     expect(new Date(end).getTime() - new Date(start).getTime()).toBeGreaterThanOrEqual(

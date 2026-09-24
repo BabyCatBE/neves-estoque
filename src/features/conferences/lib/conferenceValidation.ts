@@ -15,35 +15,20 @@ export function parseConferenceQuantity(value: string, label = "Quantidade") {
 }
 
 export function buildConferenceEffectiveAt(dateValue: string, now = new Date()) {
-  return buildEffectiveAt(dateValue, now);
+  return buildEffectiveAt(dateValue, now, now);
 }
 
-export function buildEditedConferenceEffectiveAt(dateValue: string, originalIso: string) {
+export function buildEditedConferenceEffectiveAt(
+  dateValue: string,
+  originalIso: string,
+  now = new Date()
+) {
   const original = new Date(originalIso);
-  if (Number.isNaN(original.getTime())) return buildEffectiveAt(dateValue);
-
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue);
-  if (!match) throw new Error("Informe uma data válida.");
-
-  const effective = new Date(
-    Number(match[1]),
-    Number(match[2]) - 1,
-    Number(match[3]),
-    original.getHours(),
-    original.getMinutes(),
-    original.getSeconds(),
-    original.getMilliseconds()
+  return buildEffectiveAt(
+    dateValue,
+    Number.isNaN(original.getTime()) ? now : original,
+    now
   );
-
-  if (
-    effective.getFullYear() !== Number(match[1]) ||
-    effective.getMonth() !== Number(match[2]) - 1 ||
-    effective.getDate() !== Number(match[3])
-  ) {
-    throw new Error("Informe uma data válida.");
-  }
-
-  return effective.toISOString();
 }
 
 export function dateInputFromIso(value: string) {
@@ -81,7 +66,8 @@ export function getConferenceErrorMessage(error: unknown) {
     "A Conferência da categoria precisa conter todos os produtos ativos.",
     "Conferência de categoria não encontrada.",
     "A correção precisa manter todos os produtos da Conferência original.",
-    "Responsável físico inválido."
+    "Responsável físico inválido.",
+    "A data da Conferência não pode ser futura."
   ].find((candidate) => message.includes(candidate));
 
   if (known) return known;

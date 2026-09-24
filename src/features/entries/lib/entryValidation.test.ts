@@ -25,10 +25,18 @@ describe("entryValidation", () => {
   });
 
   it("mantém a data escolhida ao gerar o instante efetivo", () => {
-    const iso = buildEffectiveAt("2026-09-20", new Date(2026, 8, 22, 15, 45));
+    const reference = new Date(2026, 8, 22, 15, 45);
+    const iso = buildEffectiveAt("2026-09-20", reference, reference);
     const result = new Date(iso);
     expect(result.getFullYear()).toBe(2026);
     expect(result.getMonth()).toBe(8);
     expect(result.getDate()).toBe(20);
+  });
+
+  it("bloqueia data posterior a hoje", () => {
+    const today = new Date(2026, 8, 22, 15, 45);
+    expect(() => buildEffectiveAt("2026-09-23", today, today)).toThrow(
+      "A data não pode ser futura."
+    );
   });
 });

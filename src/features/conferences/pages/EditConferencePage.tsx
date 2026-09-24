@@ -18,6 +18,7 @@ import {
   buildEditedConferenceEffectiveAt,
   dateInputFromIso,
   getConferenceErrorMessage,
+  localDateInputValue,
   parseConferenceQuantity
 } from "../lib/conferenceValidation";
 
@@ -221,6 +222,7 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
             id="conference-edit-date"
             label="Data *"
             type="date"
+            max={localDateInputValue()}
             value={date}
             autoFocus
             onChange={(event) => setDate(event.target.value)}
