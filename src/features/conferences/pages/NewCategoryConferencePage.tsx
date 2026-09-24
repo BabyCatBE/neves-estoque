@@ -225,6 +225,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
             label="Data *"
             type="date"
             value={date}
+            autoFocus
             onChange={(event) => setDate(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) {
@@ -238,7 +239,6 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
             label="Responsável pela contagem física *"
             value={responsible}
             maxLength={160}
-            autoFocus
             onChange={(event) => setResponsible(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) {
