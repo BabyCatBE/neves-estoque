@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
+import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
 import {
   listCurrentStock,
   type CurrentStockItem
@@ -123,18 +124,13 @@ export function StockCurrentPage() {
                 />
               ) : null}
               {search ? (
-                <button
-                  type="button"
-                  aria-label="Limpar pesquisa"
-                  title="Limpar pesquisa"
-                  onClick={() => {
+                <SearchClearButton
+                  placement="input"
+                  onClear={() => {
                     setSearch("");
                     document.getElementById("stock-search")?.focus();
                   }}
-                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-red-700 transition hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
-                >
-                  <ClearSearchIcon />
-                </button>
+                />
               ) : null}
             </div>
           </label>
@@ -396,19 +392,6 @@ function SearchIcon() {
     >
       <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
       <path d="m16 16 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ClearSearchIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-      <path
-        d="m7 7 10 10M17 7 7 17"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
     </svg>
   );
 }

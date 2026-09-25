@@ -6,6 +6,7 @@ import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
+import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
 import { listEntryHistory } from "../api/entries";
 import { formatMoney } from "../lib/entryValidation";
 
@@ -66,10 +67,11 @@ export function EntriesHistoryPage() {
         <div className="mt-5 max-w-md">
           <div className="relative">
             <TextField
+              id="entries-history-search"
               label="Pesquisar"
               placeholder="Fornecedor ou produto"
               value={search}
-              className="pr-10"
+              className={search ? "pr-20" : "pr-10"}
               onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -81,7 +83,15 @@ export function EntriesHistoryPage() {
             {searchFeedback ? (
               <span
                 aria-label="Pesquisa atualizada"
-                className="absolute bottom-3 right-3 inline-block h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-red-700"
+                className={`absolute bottom-3 inline-block h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-red-700 ${search ? "right-11" : "right-3"}`}
+              />
+            ) : null}
+            {search ? (
+              <SearchClearButton
+                onClear={() => {
+                  setSearch("");
+                  document.getElementById("entries-history-search")?.focus();
+                }}
               />
             ) : null}
           </div>

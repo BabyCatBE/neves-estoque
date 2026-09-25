@@ -8,6 +8,7 @@ import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
+import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
 import { createSupplier, listActiveSuppliers } from "../api/suppliers";
 import {
   formatSupplierPhoneDisplay,
@@ -229,11 +230,13 @@ export function SuppliersPage() {
         {!creating && actionError ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</div> : null}
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="w-full max-w-md">
+          <div className="relative w-full max-w-md">
             <TextField
+              id="suppliers-search"
               label="Pesquisar"
               placeholder="Contato, empresa ou telefone"
               value={search}
+              className={search ? "pr-11" : ""}
               onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && search.trim() && filteredSuppliers[0]) {
@@ -242,6 +245,14 @@ export function SuppliersPage() {
                 }
               }}
             />
+            {search ? (
+              <SearchClearButton
+                onClear={() => {
+                  setSearch("");
+                  document.getElementById("suppliers-search")?.focus();
+                }}
+              />
+            ) : null}
           </div>
           {pendingOnly ? (
             <button

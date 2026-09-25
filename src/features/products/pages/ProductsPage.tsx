@@ -13,6 +13,7 @@ import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
+import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
 import {
   createProduct,
   listActiveProducts,
@@ -459,11 +460,13 @@ export function ProductsPage() {
 
         {!reordering ? (
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="w-full sm:max-w-md">
+            <div className="relative w-full sm:max-w-md">
               <TextField
+                id="products-search"
                 label="Pesquisar"
                 placeholder="Digite qualquer trecho do nome"
                 value={search}
+                className={search ? "pr-11" : ""}
                 onChange={(event) => setSearch(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && search.trim() && filteredProducts[0]) {
@@ -472,6 +475,14 @@ export function ProductsPage() {
                   }
                 }}
               />
+              {search ? (
+                <SearchClearButton
+                  onClear={() => {
+                    setSearch("");
+                    document.getElementById("products-search")?.focus();
+                  }}
+                />
+              ) : null}
             </div>
 
             <div className="flex flex-wrap gap-2">
