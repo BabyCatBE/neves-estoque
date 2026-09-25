@@ -129,8 +129,6 @@ export function calculateProductUsageInsights({
 
   const intervals: UsageInterval[] = [];
   let ignoredNegativeIntervals = 0;
-  let positiveDurationIntervals = 0;
-
   for (let index = 0; index < validConferences.length - 1; index += 1) {
     const start = validConferences[index]!;
     const end = validConferences[index + 1]!;
@@ -141,7 +139,6 @@ export function calculateProductUsageInsights({
       continue;
     }
 
-    positiveDurationIntervals += 1;
     const days = (endTime - startTime) / DAY_MS;
     const intervalEntries = validEntries
       .filter((entry) => entry.time > startTime && entry.time <= endTime)
