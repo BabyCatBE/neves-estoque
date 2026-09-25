@@ -3,6 +3,7 @@ import { useBlocker } from "react-router-dom";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
+import type { PurchaseProjection } from "../lib/purchaseProjection";
 
 export type PurchaseListItem = {
   productId: string;
@@ -10,6 +11,7 @@ export type PurchaseListItem = {
   unit: string;
   currentQuantity: number | null;
   isManualAddition?: boolean;
+  projection?: PurchaseProjection;
 };
 
 type Props = {
@@ -18,7 +20,7 @@ type Props = {
   listTitle: string;
   intro: string;
   emptyText: string;
-  warning?: string;
+  warning?: string | null;
 };
 
 export type PurchaseListEditorHandle = {
@@ -32,7 +34,7 @@ function PurchaseListEditor({
   listTitle,
   intro,
   emptyText,
-  warning = "A recomendação automática ainda não está ativa. Nesta etapa, a quantidade é sempre manual."
+  warning = null
 }: Props, ref) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [quantities, setQuantities] = useState<Record<string, string>>({});
@@ -68,6 +70,20 @@ function PurchaseListEditor({
     [items, selected]
   );
 
+  const applySuggestionIfAvailable = (productId: string) => {
+    const product = items.find((item) => item.productId === productId);
+    const suggestion =
+      product?.projection?.status === "recommended"
+        ? product.projection.suggestedQuantity
+        : null;
+    if (suggestion === null || suggestion === undefined || suggestion <= 0) return;
+
+    setQuantities((current) => {
+      if ((current[productId] ?? "").trim()) return current;
+      return { ...current, [productId]: formatEditableQuantity(suggestion) };
+    });
+  };
+
   useImperativeHandle(
     ref,
     () => ({
@@ -77,6 +93,7 @@ function PurchaseListEditor({
           next.add(productId);
           return next;
         });
+        applySuggestionIfAvailable(productId);
         setActionError(null);
 
         if (shouldAutoFocusQuantity()) {
@@ -86,7 +103,7 @@ function PurchaseListEditor({
         }
       }
     }),
-    []
+    [items]
   );
 
   const clearInvalid = (productId: string) => {
@@ -111,6 +128,10 @@ function PurchaseListEditor({
       return next;
     });
     setActionError(null);
+
+    if (willSelect) {
+      applySuggestionIfAvailable(productId);
+    }
 
     if (willSelect && shouldAutoFocusQuantity()) {
       window.setTimeout(() => {
@@ -228,18 +249,21 @@ function PurchaseListEditor({
         <Card className="mt-5 overflow-hidden">
           <div className="border-b border-zinc-100 px-5 py-4">
             <h3 className="font-semibold">{listTitle}</h3>
-            <p className="mt-1 text-xs text-zinc-500">Todos começam desmarcados.</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Todos começam desmarcados. Ao marcar uma recomendação, a quantidade sugerida é preenchida e continua editável.
+            </p>
           </div>
 
           <div className="divide-y divide-zinc-100">
             {items.map((product) => {
               const checked = selected.has(product.productId);
               const hasInvalidQuantity = invalidIds.has(product.productId);
+              const recommended = product.projection?.status === "recommended";
 
               return (
                 <div
                   key={product.productId}
-                  className="grid gap-3 px-5 py-4 md:grid-cols-[42px_minmax(0,1fr)_120px_188px] md:items-center"
+                  className={`grid gap-3 px-5 py-4 md:grid-cols-[42px_minmax(0,1fr)_120px_188px] md:items-center ${recommended ? "bg-red-50/40" : ""}`}
                 >
                   <label className="flex items-center">
                     <input
@@ -254,13 +278,24 @@ function PurchaseListEditor({
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-zinc-950">{product.productName}</p>
+                      {recommended ? (
+                        <span className="inline-flex rounded-full bg-red-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-800">
+                          Recomendado
+                        </span>
+                      ) : null}
                       {product.isManualAddition ? (
                         <span className="inline-flex rounded-full bg-red-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-700">
                           Nesta simulação
                         </span>
                       ) : null}
+                      {product.projection ? <RiskBadge risk={product.projection.risk} /> : null}
                     </div>
                     <p className="mt-1 text-xs text-zinc-500">{product.unit}</p>
+                    {product.projection ? (
+                      <p className={`mt-1 text-xs ${recommended ? "font-semibold text-red-700" : "text-zinc-500"}`}>
+                        {projectionMessage(product)}
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -410,4 +445,58 @@ function normalizeQuantityForCopy(value: string) {
 function formatQuantity(value: number | null, unit: string) {
   if (value === null) return "Sem dados";
   return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(Number(value))} ${unit}`;
+}
+
+function projectionMessage(product: PurchaseListItem) {
+  const projection = product.projection;
+  if (!projection) return "";
+
+  if (
+    projection.status === "recommended" &&
+    projection.suggestedQuantity !== null
+  ) {
+    return `Sugestão: ${formatQuantity(projection.suggestedQuantity, product.unit)} · cobertura planejada: ${formatDays(projection.cycleDays)}`;
+  }
+
+  if (projection.status === "stock_sufficient") return "Estoque suficiente para o ciclo planejado.";
+  if (projection.status === "insufficient_history") return "Histórico insuficiente para recomendação automática.";
+  if (projection.status === "missing_stock") return "Estoque atual ainda não está contabilizado.";
+  if (projection.status === "missing_supplier") return "Sem fornecedor ativo de referência para projetar.";
+  if (projection.status === "missing_supplier_config") return "Complete frequência, prazo e margem do fornecedor.";
+  if (projection.status === "no_consumption") return "Sem consumo médio positivo para sugerir compra.";
+  if (projection.status === "other_supplier") return "A recomendação automática pertence ao fornecedor da Entrada mais recente.";
+  return "";
+}
+
+function RiskBadge({ risk }: { risk: PurchaseProjection["risk"] }) {
+  if (risk === "risk") {
+    return (
+      <span className="inline-flex rounded-full bg-red-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-800">
+        Risco de falta
+      </span>
+    );
+  }
+
+  if (risk === "vulnerable") {
+    return (
+      <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+        Vulnerável a atraso
+      </span>
+    );
+  }
+
+  if (risk === "protected") {
+    return (
+      <span className="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+        Protegido
+      </span>
+    );
+  }
+
+  return null;
+}
+
+function formatDays(value: number | null) {
+  if (value === null) return "—";
+  return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value)} dias`;
 }

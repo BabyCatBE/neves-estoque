@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Card } from "../../../shared/components/ui/Card";
-import { listActiveProducts, listProductCategories } from "../../products/api/products";
+import { listProductCategories } from "../../products/api/products";
 import { PurchaseListEditor } from "../components/PurchaseListEditor";
+import { listPurchaseIntelligenceProducts } from "../api/purchases";
 
 export function PurchaseCategoryPage() {
   const { categoryId } = useParams();
@@ -15,8 +16,8 @@ export function PurchaseCategoryPage() {
   });
 
   const productsQuery = useQuery({
-    queryKey: ["products", "active"],
-    queryFn: listActiveProducts,
+    queryKey: ["purchases", "intelligence"],
+    queryFn: listPurchaseIntelligenceProducts,
     staleTime: 30_000
   });
 
@@ -27,20 +28,21 @@ export function PurchaseCategoryPage() {
     .sort((a, b) => {
       const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
       const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
-      return aOrder - bOrder || a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+      return aOrder - bOrder || a.productName.localeCompare(b.productName, "pt-BR", { sensitivity: "base" });
     })
     .map((product) => ({
-      productId: product.id,
-      productName: product.name,
+      productId: product.productId,
+      productName: product.productName,
       unit: product.unit,
-      currentQuantity: product.currentQuantity
+      currentQuantity: product.currentQuantity,
+      projection: product.projection
     }));
 
   return (
     <AppShell title="Compras · Por categoria" showBack backTo="/compras/categoria">
       <section>
         {categoriesQuery.isPending || productsQuery.isPending ? (
-          <Card className="p-5 text-sm text-zinc-600">Carregando categoria…</Card>
+          <Card className="p-5 text-sm text-zinc-600">Calculando projeções…</Card>
         ) : null}
 
         {categoriesQuery.isError || productsQuery.isError ? (
@@ -59,7 +61,7 @@ export function PurchaseCategoryPage() {
               items={items}
               orderTitle={`Lista de compras — ${category.name}`}
               listTitle="Produtos da categoria"
-              intro="Selecione os itens na ordem manual da categoria e informe quanto deseja comprar."
+              intro="A ordem manual da categoria é preservada. Quando houver histórico e configuração suficientes, a quantidade sugerida aparece automaticamente; os demais continuam disponíveis para inclusão manual."
               emptyText="Esta categoria não possui Produtos ativos."
             />
           </>

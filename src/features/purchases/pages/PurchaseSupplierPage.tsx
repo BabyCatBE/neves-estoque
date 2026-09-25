@@ -60,9 +60,12 @@ export function PurchaseSupplierPage() {
 
   const purchaseItems = useMemo(
     () =>
-      [...(productsQuery.data ?? []), ...manualProducts].sort((a, b) =>
-        a.productName.localeCompare(b.productName, "pt-BR", { sensitivity: "base" })
-      ),
+      [...(productsQuery.data ?? []), ...manualProducts].sort((a, b) => {
+        const aRecommended = "projection" in a && a.projection?.status === "recommended";
+        const bRecommended = "projection" in b && b.projection?.status === "recommended";
+        if (aRecommended !== bRecommended) return aRecommended ? -1 : 1;
+        return a.productName.localeCompare(b.productName, "pt-BR", { sensitivity: "base" });
+      }),
     [manualProducts, productsQuery.data]
   );
 
@@ -87,11 +90,16 @@ export function PurchaseSupplierPage() {
     setProductSearch("");
   };
 
+  const configurationReady =
+    supplierQuery.data?.purchaseFrequencyDays !== null &&
+    supplierQuery.data?.averageDeliveryDays !== null &&
+    supplierQuery.data?.safetyMarginDays !== null;
+
   return (
     <AppShell title="Compras · Por fornecedor" showBack backTo="/compras/fornecedor">
       <section>
         {supplierQuery.isPending || productsQuery.isPending || allProductsQuery.isPending ? (
-          <Card className="p-5 text-sm text-zinc-600">Carregando simulação…</Card>
+          <Card className="p-5 text-sm text-zinc-600">Calculando simulação…</Card>
         ) : null}
 
         {supplierQuery.isError || productsQuery.isError || allProductsQuery.isError ? (
@@ -106,6 +114,12 @@ export function PurchaseSupplierPage() {
               Por fornecedor
             </p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight">{supplierQuery.data.name}</h2>
+
+            {!configurationReady ? (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+                Complete frequência de compra, prazo de entrega e margem de segurança no cadastro deste fornecedor para liberar recomendações automáticas.
+              </div>
+            ) : null}
 
             <div className="mt-5">
               <Button
@@ -177,7 +191,7 @@ export function PurchaseSupplierPage() {
               items={purchaseItems}
               orderTitle={`Pedido — ${supplierQuery.data.name}`}
               listTitle="Produtos desta simulação"
-              intro="Selecione os itens e informe manualmente quanto deseja comprar."
+              intro="Produtos recomendados aparecem primeiro. A sugestão considera consumo, estoque, próximo ciclo, prazo e margem; qualquer quantidade pode ser alterada manualmente."
               emptyText="Ainda não há Produto ativo nesta simulação."
             />
           </>
@@ -186,7 +200,6 @@ export function PurchaseSupplierPage() {
     </AppShell>
   );
 }
-
 
 function normalize(value: string) {
   return value
