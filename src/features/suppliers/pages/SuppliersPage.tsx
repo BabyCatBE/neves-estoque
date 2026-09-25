@@ -122,7 +122,7 @@ export function SuppliersPage() {
         observation: observation.data.trim() || null,
         purchaseFrequencyDays: parseOptionalInteger(values.purchaseFrequencyDays, "Frequência de compra", 1, 3650),
         preferredOrderWeekday: values.preferredOrderWeekday ? Number(values.preferredOrderWeekday) : null,
-        averageDeliveryDays: parseOptionalInteger(values.averageDeliveryDays, "Prazo médio de entrega", 0, 365),
+        averageDeliveryDays: parseOptionalInteger(values.averageDeliveryDays, "Prazo de entrega", 0, 365),
         safetyMarginDays: parseOptionalInteger(values.safetyMarginDays, "Margem de segurança", 0, 365)
       });
 
@@ -201,7 +201,7 @@ export function SuppliersPage() {
                     <option value="">Não informado</option>
                     {SUPPLIER_WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
                   </SelectField>
-                  <TextField label="Prazo médio de entrega (dias)" placeholder="Ex.: 2" inputMode="numeric" {...register("averageDeliveryDays")} />
+                  <TextField label="Prazo de entrega (dias)" placeholder="Ex.: 2" inputMode="numeric" {...register("averageDeliveryDays")} />
                   <TextField label="Margem de segurança (dias)" placeholder="Ex.: 1" inputMode="numeric" {...register("safetyMarginDays")} />
                 </div>
 

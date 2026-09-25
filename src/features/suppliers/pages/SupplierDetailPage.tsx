@@ -89,7 +89,7 @@ export function SupplierDetailPage() {
     addChange(items, "Telefone", before.phone, draft.phone);
     addChange(items, "Frequência", displayInput(before.purchaseFrequencyDays, "Não informada"), displayInput(draft.purchaseFrequencyDays, "Não informada"));
     addChange(items, "Dia preferencial", weekdayInputLabel(before.preferredOrderWeekday), weekdayInputLabel(draft.preferredOrderWeekday));
-    addChange(items, "Prazo médio", displayDays(before.averageDeliveryDays), displayDays(draft.averageDeliveryDays));
+    addChange(items, "Prazo de entrega", displayDays(before.averageDeliveryDays), displayDays(draft.averageDeliveryDays));
     addChange(items, "Margem de segurança", displayDays(before.safetyMarginDays), displayDays(draft.safetyMarginDays));
     addChange(items, "Observação", before.observation || "Sem observação", draft.observation || "Sem observação");
     return items;
@@ -134,7 +134,7 @@ export function SupplierDetailPage() {
       observation: observation.trim() || null,
       purchaseFrequencyDays: parseOptionalInteger(draft.purchaseFrequencyDays, "Frequência de compra", 1, 3650),
       preferredOrderWeekday: draft.preferredOrderWeekday ? Number(draft.preferredOrderWeekday) : null,
-      averageDeliveryDays: parseOptionalInteger(draft.averageDeliveryDays, "Prazo médio de entrega", 0, 365),
+      averageDeliveryDays: parseOptionalInteger(draft.averageDeliveryDays, "Prazo de entrega", 0, 365),
       safetyMarginDays: parseOptionalInteger(draft.safetyMarginDays, "Margem de segurança", 0, 365)
     };
   };
@@ -248,7 +248,7 @@ export function SupplierDetailPage() {
                       <option value="">Não informado</option>
                       {SUPPLIER_WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
                     </SelectField>
-                    <TextField label="Prazo médio de entrega (dias)" inputMode="numeric" value={draft.averageDeliveryDays} onChange={(event) => setDraft({ ...draft, averageDeliveryDays: event.target.value })} />
+                    <TextField label="Prazo de entrega (dias)" inputMode="numeric" value={draft.averageDeliveryDays} onChange={(event) => setDraft({ ...draft, averageDeliveryDays: event.target.value })} />
                     <TextField label="Margem de segurança (dias)" inputMode="numeric" value={draft.safetyMarginDays} onChange={(event) => setDraft({ ...draft, safetyMarginDays: event.target.value })} />
                   </div>
 
@@ -281,7 +281,7 @@ export function SupplierDetailPage() {
                     <dl className="mt-4 space-y-3 text-sm">
                       <DetailRow label="Frequência de compra" value={supplierQuery.data.purchaseFrequencyDays === null ? "Não informada" : `A cada ${supplierQuery.data.purchaseFrequencyDays} dias`} />
                       <DetailRow label="Dia preferencial" value={weekdayLabel(supplierQuery.data.preferredOrderWeekday)} />
-                      <DetailRow label="Prazo médio de entrega" value={formatDays(supplierQuery.data.averageDeliveryDays)} />
+                      <DetailRow label="Prazo de entrega" value={formatDays(supplierQuery.data.averageDeliveryDays)} />
                       <DetailRow label="Margem de segurança" value={formatDays(supplierQuery.data.safetyMarginDays)} />
                       <DetailRow label="Observação" value={supplierQuery.data.observation ?? "Sem observação"} />
                     </dl>

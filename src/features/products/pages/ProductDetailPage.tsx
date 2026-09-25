@@ -738,20 +738,25 @@ function getUsageInsufficientMessage(
     | "needs_two_conferences"
     | "invalid_interval"
     | "negative_consumption"
+    | "needs_more_history"
     | null,
   conferencesUsed: number
 ) {
   if (reason === "needs_two_conferences") {
     return conferencesUsed === 0
-      ? "Ainda não existem duas Conferências deste produto. Assim que houver duas contagens físicas válidas, o consumo e a cobertura serão calculados automaticamente."
-      : "Existe somente uma Conferência deste produto. É necessária mais uma contagem física para formar um intervalo confiável.";
+      ? "Ainda não existem duas Conferências deste produto."
+      : "Existe somente uma Conferência deste produto. É necessária mais uma contagem física para formar um intervalo.";
   }
 
   if (reason === "negative_consumption") {
-    return "O último intervalo possui uma variação que não pode ser explicada pelas Entradas registradas. O sistema não exibirá uma média até existir um intervalo confiável.";
+    return "Os intervalos disponíveis possuem variação que não pode ser explicada pelas Entradas registradas. Eles não entram na média.";
   }
 
-  return "Ainda não existe um intervalo confiável entre duas Conferências para este produto.";
+  if (reason === "needs_more_history") {
+    return "O consumo preliminar já pode ser observado, mas a recomendação automática só é liberada com pelo menos 28 dias e 3 intervalos válidos.";
+  }
+
+  return "Ainda não existe histórico válido suficiente para calcular uma média confiável.";
 }
 
 function formatPrice(value: number | null) {
