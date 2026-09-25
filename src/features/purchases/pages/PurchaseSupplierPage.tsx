@@ -14,7 +14,7 @@ export function PurchaseSupplierPage() {
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [invalidIds, setInvalidIds] = useState<Set<string>>(() => new Set());
   const [copyError, setCopyError] = useState<string | null>(null);
-  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const supplierQuery = useQuery({
@@ -85,12 +85,12 @@ export function PurchaseSupplierPage() {
     setCopyError(null);
   };
 
-  const copyOrder = async () => {
+  const buildOrderText = () => {
     setCopyError(null);
 
     if (!selectedProducts.length) {
       setCopyError("Selecione pelo menos um produto.");
-      return;
+      return null;
     }
 
     const invalidProductIds = new Set<string>();
@@ -102,7 +102,7 @@ export function PurchaseSupplierPage() {
     if (invalidProductIds.size > 0) {
       setInvalidIds(invalidProductIds);
       setCopyError("Informe uma quantidade maior que zero para todos os itens selecionados.");
-      return;
+      return null;
     }
 
     const supplierName = supplierQuery.data?.name ?? "Fornecedor";
@@ -110,15 +110,50 @@ export function PurchaseSupplierPage() {
       const quantity = normalizeQuantityForCopy(quantities[product.productId] ?? "");
       return `${product.productName} — ${quantity} — ${product.unit}`;
     });
-    const text = [`Pedido — ${supplierName}`, "", ...lines].join("\n");
+
+    return [`Pedido — ${supplierName}`, "", ...lines].join("\n");
+  };
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMessage(null), 2200);
+  };
+
+  const copyOrder = async () => {
+    const text = buildOrderText();
+    if (!text) return;
 
     try {
       await navigator.clipboard.writeText(text);
-      setToastVisible(true);
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setToastVisible(false), 2200);
+      showToast("Texto copiado");
     } catch {
       setCopyError("Não foi possível copiar o pedido neste dispositivo.");
+    }
+  };
+
+  const shareOrder = async () => {
+    const text = buildOrderText();
+    if (!text) return;
+
+    if (typeof navigator.share !== "function") {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Compartilhamento indisponível · texto copiado");
+      } catch {
+        setCopyError("O compartilhamento não está disponível neste navegador.");
+      }
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: `Pedido — ${supplierQuery.data?.name ?? "Fornecedor"}`,
+        text
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setCopyError("Não foi possível compartilhar o pedido neste dispositivo.");
     }
   };
 
@@ -227,7 +262,14 @@ export function PurchaseSupplierPage() {
 
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <Button onClick={() => void copyOrder()} disabled={productsQuery.data.length === 0}>
-                Copiar pedido
+                Copiar texto
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void shareOrder()}
+                disabled={productsQuery.data.length === 0}
+              >
+                Compartilhar texto
               </Button>
               <span className="text-sm text-zinc-500">
                 {selected.size} {selected.size === 1 ? "item selecionado" : "itens selecionados"}
@@ -253,12 +295,12 @@ export function PurchaseSupplierPage() {
         onConfirm={() => blocker.proceed?.()}
       />
 
-      {toastVisible ? (
+      {toastMessage ? (
         <div
           role="status"
           className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-zinc-950 px-4 py-3 text-sm font-semibold text-white shadow-lg"
         >
-          Pedido copiado
+          {toastMessage}
         </div>
       ) : null}
     </AppShell>
