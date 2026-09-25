@@ -26,7 +26,9 @@ import { CategoryConferenceHistoryPage } from "../../features/conferences/pages/
 import { ConferenceDetailPage } from "../../features/conferences/pages/ConferenceDetailPage";
 import { EditConferencePage } from "../../features/conferences/pages/EditConferencePage";
 import { StockCurrentPage } from "../../features/stock/pages/StockCurrentPage";
-import { ModulePlaceholder } from "../../shared/components/ModulePlaceholder";
+import { PurchasesHubPage } from "../../features/purchases/pages/PurchasesHubPage";
+import { PurchaseSupplierSelectPage } from "../../features/purchases/pages/PurchaseSupplierSelectPage";
+import { PurchaseSupplierPage } from "../../features/purchases/pages/PurchaseSupplierPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -227,7 +229,23 @@ export const router = createBrowserRouter([
     path: "/compras",
     element: (
       <ProtectedRoute>
-        <ModulePlaceholder title="Compras" />
+        <PurchasesHubPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/compras/fornecedor",
+    element: (
+      <ProtectedRoute>
+        <PurchaseSupplierSelectPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/compras/fornecedor/:supplierId",
+    element: (
+      <ProtectedRoute>
+        <PurchaseSupplierPage />
       </ProtectedRoute>
     )
   }
