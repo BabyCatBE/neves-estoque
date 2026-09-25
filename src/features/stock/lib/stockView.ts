@@ -1,6 +1,7 @@
 import type {
   CurrentStockItem,
-  StockCategory
+  StockCategory,
+  StockSupplier
 } from "../api/stock";
 
 export type StockCategoryGroup = {
@@ -12,6 +13,18 @@ export type StockCategoryGroup = {
 export type StockCategoryView = {
   groups: StockCategoryGroup[];
   pending: CurrentStockItem[];
+};
+
+export type StockSupplierGroup = {
+  id: string;
+  name: string;
+  items: CurrentStockItem[];
+};
+
+export type StockSupplierView = {
+  groups: StockSupplierGroup[];
+  withoutSupplier: CurrentStockItem[];
+  unavailableSupplier: CurrentStockItem[];
 };
 
 export type StockValueSummary = {
@@ -98,6 +111,51 @@ export function buildCategoryStockView(
   return {
     groups,
     pending: sortItems(pending)
+  };
+}
+
+export function buildSupplierStockView(
+  suppliers: StockSupplier[],
+  items: CurrentStockItem[],
+  search = ""
+): StockSupplierView {
+  const visibleItems = items.filter((item) => matchesSearch(item, search));
+  const supplierById = new Map(suppliers.map((supplier) => [supplier.id, supplier]));
+  const bySupplier = new Map<string, CurrentStockItem[]>();
+  const withoutSupplier: CurrentStockItem[] = [];
+  const unavailableSupplier: CurrentStockItem[] = [];
+
+  for (const item of visibleItems) {
+    if (!item.currentSupplierId) {
+      withoutSupplier.push(item);
+      continue;
+    }
+
+    if (!supplierById.has(item.currentSupplierId)) {
+      unavailableSupplier.push(item);
+      continue;
+    }
+
+    const current = bySupplier.get(item.currentSupplierId) ?? [];
+    current.push(item);
+    bySupplier.set(item.currentSupplierId, current);
+  }
+
+  const groups = [...suppliers]
+    .sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })
+    )
+    .map((supplier) => ({
+      id: supplier.id,
+      name: supplier.name,
+      items: sortByName(bySupplier.get(supplier.id) ?? [])
+    }))
+    .filter((group) => group.items.length > 0);
+
+  return {
+    groups,
+    withoutSupplier: sortByName(withoutSupplier),
+    unavailableSupplier: sortByName(unavailableSupplier)
   };
 }
 

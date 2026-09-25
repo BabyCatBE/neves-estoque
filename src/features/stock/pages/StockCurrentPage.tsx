@@ -12,11 +12,12 @@ import {
 import {
   buildAlphabeticalStockView,
   buildCategoryStockView,
+  buildSupplierStockView,
   calculateStockValueSummary
 } from "../lib/stockView";
 
 const stockKey = ["stock", "current"] as const;
-type ViewMode = "category" | "alphabetical";
+type ViewMode = "category" | "supplier" | "alphabetical";
 
 export function StockCurrentPage() {
   const [search, setSearch] = useState("");
@@ -53,6 +54,16 @@ export function StockCurrentPage() {
     [search, stockQuery.data]
   );
 
+  const supplierView = useMemo(
+    () =>
+      buildSupplierStockView(
+        stockQuery.data?.suppliers ?? [],
+        stockQuery.data?.items ?? [],
+        search
+      ),
+    [search, stockQuery.data]
+  );
+
   const alphabeticalItems = useMemo(
     () => buildAlphabeticalStockView(stockQuery.data?.items ?? [], search),
     [search, stockQuery.data]
@@ -67,8 +78,16 @@ export function StockCurrentPage() {
   const categoryVisibleCount =
     categoryView.groups.reduce((total, group) => total + group.items.length, 0) +
     categoryView.pending.length;
+  const supplierVisibleCount =
+    supplierView.groups.reduce((total, group) => total + group.items.length, 0) +
+    supplierView.withoutSupplier.length +
+    supplierView.unavailableSupplier.length;
   const visibleCount =
-    viewMode === "category" ? categoryVisibleCount : alphabeticalItems.length;
+    viewMode === "category"
+      ? categoryVisibleCount
+      : viewMode === "supplier"
+        ? supplierVisibleCount
+        : alphabeticalItems.length;
 
   return (
     <AppShell title="Estoque Atual" showBack backTo="/">
@@ -150,6 +169,13 @@ export function StockCurrentPage() {
             </Button>
             <Button
               size="sm"
+              variant={viewMode === "supplier" ? "primary" : "secondary"}
+              onClick={() => setViewMode("supplier")}
+            >
+              Por fornecedor
+            </Button>
+            <Button
+              size="sm"
               variant={viewMode === "alphabetical" ? "primary" : "secondary"}
               onClick={() => setViewMode("alphabetical")}
             >
@@ -219,6 +245,43 @@ export function StockCurrentPage() {
                     showValues={showValues}
                   />
                 ))}
+              </div>
+            ) : null}
+
+            {visibleCount > 0 && viewMode === "supplier" ? (
+              <div className="mt-6 space-y-3">
+                {supplierView.groups.map((group) => (
+                  <StockGroup
+                    key={group.id}
+                    name={group.name}
+                    subtitle="Fornecedor da Entrada mais recente"
+                    items={group.items}
+                    forceOpen={searching}
+                    showValues={showValues}
+                  />
+                ))}
+
+                {supplierView.unavailableSupplier.length > 0 ? (
+                  <StockGroup
+                    name="Fornecedor indisponível"
+                    subtitle="Há referência histórica, mas o cadastro não pôde ser carregado"
+                    items={supplierView.unavailableSupplier}
+                    forceOpen={searching}
+                    showValues={showValues}
+                    accentClassName="bg-amber-500"
+                  />
+                ) : null}
+
+                {supplierView.withoutSupplier.length > 0 ? (
+                  <StockGroup
+                    name="Sem fornecedor"
+                    subtitle="Sem Entrada válida registrada"
+                    items={supplierView.withoutSupplier}
+                    forceOpen={searching}
+                    showValues={showValues}
+                    accentClassName="bg-zinc-400"
+                  />
+                ) : null}
               </div>
             ) : null}
 
