@@ -17,6 +17,7 @@ import {
   buildEffectiveAt,
   formatMoney,
   getEntryErrorMessage,
+  getFutureOperationalDateError,
   localDateInputValue,
   parseOptionalPrice,
   parsePositiveDecimal
@@ -57,6 +58,7 @@ export function EditEntryPage() {
   const [missingPriceReview, setMissingPriceReview] = useState(false);
   const [saveReviewOpen, setSaveReviewOpen] = useState(false);
   const [leaveReviewOpen, setLeaveReviewOpen] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const entryQuery = useQuery({
@@ -282,11 +284,30 @@ export function EditEntryPage() {
               </select>
             </label>
             <TextField
+              id="edit-entry-date"
               label="Data *"
               type="date"
               max={localDateInputValue()}
               value={draft.date}
-              onChange={(event) => setDraft({ ...draft, date: event.target.value })}
+              error={dateError}
+              onChange={(event) => {
+                const nextDate = event.target.value;
+                setDraft({ ...draft, date: nextDate });
+                setDateError(getFutureOperationalDateError(nextDate));
+              }}
+              onKeyDown={(event) => {
+                if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  const error = getFutureOperationalDateError(draft.date);
+                  setDateError(error);
+                  if (error) {
+                    document.getElementById("edit-entry-date")?.focus();
+                    return;
+                  }
+                  document.getElementById("edit-entry-product-search")?.focus();
+                }
+              }}
             />
           </div>
           <label className="mt-4 block">

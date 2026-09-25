@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildEffectiveAt,
+  getFutureOperationalDateError,
   localDateInputValue,
   parseOptionalPrice,
   parsePositiveDecimal
@@ -31,6 +32,14 @@ describe("entryValidation", () => {
     expect(result.getFullYear()).toBe(2026);
     expect(result.getMonth()).toBe(8);
     expect(result.getDate()).toBe(20);
+  });
+
+  it("identifica data futura antes do salvamento", () => {
+    const today = new Date(2026, 8, 22, 15, 45);
+    expect(getFutureOperationalDateError("2026-09-23", today)).toBe(
+      "A data não pode ser futura."
+    );
+    expect(getFutureOperationalDateError("2026-09-22", today)).toBeNull();
   });
 
   it("bloqueia data posterior a hoje", () => {

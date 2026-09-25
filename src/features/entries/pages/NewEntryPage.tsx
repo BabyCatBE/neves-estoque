@@ -28,6 +28,7 @@ import {
   buildEffectiveAt,
   formatMoney,
   getEntryErrorMessage,
+  getFutureOperationalDateError,
   localDateInputValue,
   parseOptionalPrice,
   parsePositiveDecimal
@@ -70,6 +71,7 @@ export function NewEntryPage() {
   const [draftSupplier, setDraftSupplier] = useState<DraftSupplier | null>(null);
   const [initialDate] = useState(() => localDateInputValue());
   const [date, setDate] = useState(initialDate);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [observationOpen, setObservationOpen] = useState(false);
   const [observation, setObservation] = useState("");
   const [productSearch, setProductSearch] = useState("");
@@ -586,11 +588,22 @@ export function NewEntryPage() {
               type="date"
               max={localDateInputValue()}
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              error={dateError}
+              onChange={(event) => {
+                const nextDate = event.target.value;
+                setDate(nextDate);
+                setDateError(getFutureOperationalDateError(nextDate));
+              }}
               onKeyDown={(event) => {
                 if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
                 if (event.key === "Enter") {
                   event.preventDefault();
+                  const error = getFutureOperationalDateError(date);
+                  setDateError(error);
+                  if (error) {
+                    document.getElementById("entry-date")?.focus();
+                    return;
+                  }
                   document.getElementById("entry-product-search")?.focus();
                 }
               }}

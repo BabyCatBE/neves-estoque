@@ -21,6 +21,7 @@ import {
   buildConferenceEffectiveAt,
   formatConferenceTime,
   getConferenceErrorMessage,
+  getFutureOperationalDateError,
   localDateInputValue,
   parseConferenceQuantity
 } from "../lib/conferenceValidation";
@@ -59,6 +60,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const { deviceId } = useAuth();
   const [initialDate] = useState(() => localDateInputValue());
   const [date, setDate] = useState(initialDate);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [responsible, setResponsible] = useState("");
   const [observation, setObservation] = useState("");
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
@@ -227,10 +229,21 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
             max={localDateInputValue()}
             value={date}
             autoFocus
-            onChange={(event) => setDate(event.target.value)}
+            error={dateError}
+            onChange={(event) => {
+              const nextDate = event.target.value;
+              setDate(nextDate);
+              setDateError(getFutureOperationalDateError(nextDate));
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) {
                 event.preventDefault();
+                const error = getFutureOperationalDateError(date);
+                setDateError(error);
+                if (error) {
+                  document.getElementById("conference-date")?.focus();
+                  return;
+                }
                 document.getElementById("conference-responsible")?.focus();
               }
             }}

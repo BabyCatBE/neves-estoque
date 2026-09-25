@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { CurrentStockItem, StockCategory } from "../api/stock";
-import { buildCategoryStockView } from "./stockView";
+import {
+  buildAlphabeticalStockView,
+  buildCategoryStockView,
+  calculateStockValueSummary
+} from "./stockView";
 
 const categories: StockCategory[] = [
   { id: "cat-b", name: "Boleria", sortOrder: 2 },
@@ -33,14 +37,14 @@ const items: CurrentStockItem[] = [
     productName: "Fermento",
     categoryId: null,
     unit: "PCT",
-    currentQuantity: null,
+    currentQuantity: 2,
     currentPrice: null,
     currentValue: null,
     sortOrder: null
   }
 ];
 
-describe("buildCategoryStockView", () => {
+describe("stockView", () => {
   it("respeita ordem de categoria e ordem manual dos produtos", () => {
     const result = buildCategoryStockView(categories, items);
 
@@ -62,5 +66,18 @@ describe("buildCategoryStockView", () => {
       "Açúcar"
     ]);
     expect(result.pending).toEqual([]);
+  });
+
+  it("ordena a visualização alfabética por nome", () => {
+    expect(
+      buildAlphabeticalStockView(items).map((item) => item.productName)
+    ).toEqual(["Açúcar", "Farinha", "Fermento"]);
+  });
+
+  it("soma valores conhecidos e sinaliza estoque positivo sem preço", () => {
+    expect(calculateStockValueSummary(items)).toEqual({
+      totalKnown: 19,
+      hasMissingPrice: true
+    });
   });
 });

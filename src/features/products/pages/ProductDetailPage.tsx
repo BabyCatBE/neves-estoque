@@ -53,7 +53,8 @@ export function ProductDetailPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: productsKey }),
         queryClient.invalidateQueries({ queryKey: ["products", "detail", productId] }),
-        queryClient.invalidateQueries({ queryKey: ["categories", "active"] })
+        queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
+        queryClient.invalidateQueries({ queryKey: ["stock", "current"] })
       ]);
     }
   });
@@ -65,7 +66,8 @@ export function ProductDetailPage() {
         queryClient.invalidateQueries({ queryKey: productsKey }),
         queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
         queryClient.invalidateQueries({ queryKey: ["products", "categories"] }),
-        queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] })
+        queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] }),
+        queryClient.invalidateQueries({ queryKey: ["stock", "current"] })
       ]);
     }
   });
@@ -141,13 +143,23 @@ export function ProductDetailPage() {
     setEditing(false);
   };
 
+  const navigateBack = () => {
+    const state = window.history.state as { idx?: number } | null;
+    if (typeof state?.idx === "number" && state.idx > 0) {
+      navigate(-1);
+      return;
+    }
+
+    navigate("/produtos/lista");
+  };
+
   const leaveProduct = () => {
     if (editing && dirty) {
       setExitReview("back");
       return;
     }
 
-    navigate("/produtos/lista");
+    navigateBack();
   };
 
   const continueEditing = () => {
@@ -161,7 +173,7 @@ export function ProductDetailPage() {
     setEditing(false);
 
     if (mode === "back") {
-      navigate("/produtos/lista");
+      navigateBack();
     }
   };
 
@@ -213,7 +225,7 @@ export function ProductDetailPage() {
       setNotice("Produto atualizado com sucesso.");
 
       if (navigateAfterSave) {
-        navigate("/produtos/lista");
+        navigateBack();
       }
     } catch (error) {
       setActionError(getProductErrorMessage(error));

@@ -1,6 +1,10 @@
-import { buildEffectiveAt, localDateInputValue } from "../../entries/lib/entryValidation";
+import {
+  buildEffectiveAt,
+  getFutureOperationalDateError,
+  localDateInputValue
+} from "../../entries/lib/entryValidation";
 
-export { localDateInputValue };
+export { getFutureOperationalDateError, localDateInputValue };
 
 export function parseConferenceQuantity(value: string, label = "Quantidade") {
   const normalized = value.trim().replace(",", ".");

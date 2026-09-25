@@ -14,6 +14,11 @@ export type StockCategoryView = {
   pending: CurrentStockItem[];
 };
 
+export type StockValueSummary = {
+  totalKnown: number;
+  hasMissingPrice: boolean;
+};
+
 export function normalizeStockSearch(value: string) {
   return value
     .normalize("NFD")
@@ -22,17 +27,32 @@ export function normalizeStockSearch(value: string) {
     .trim();
 }
 
+function matchesSearch(item: CurrentStockItem, search: string) {
+  const term = normalizeStockSearch(search);
+  return !term || normalizeStockSearch(item.productName).includes(term);
+}
+
+function sortByName(items: CurrentStockItem[]) {
+  return [...items].sort((a, b) =>
+    a.productName.localeCompare(b.productName, "pt-BR", {
+      sensitivity: "base"
+    })
+  );
+}
+
+export function buildAlphabeticalStockView(
+  items: CurrentStockItem[],
+  search = ""
+) {
+  return sortByName(items.filter((item) => matchesSearch(item, search)));
+}
+
 export function buildCategoryStockView(
   categories: StockCategory[],
   items: CurrentStockItem[],
   search = ""
 ): StockCategoryView {
-  const term = normalizeStockSearch(search);
-  const visibleItems = items.filter(
-    (item) =>
-      !term || normalizeStockSearch(item.productName).includes(term)
-  );
-
+  const visibleItems = items.filter((item) => matchesSearch(item, search));
   const byCategory = new Map<string, CurrentStockItem[]>();
   const pending: CurrentStockItem[] = [];
 
@@ -79,4 +99,27 @@ export function buildCategoryStockView(
     groups,
     pending: sortItems(pending)
   };
+}
+
+export function calculateStockValueSummary(
+  items: CurrentStockItem[]
+): StockValueSummary {
+  return items.reduce<StockValueSummary>(
+    (summary, item) => {
+      if (item.currentValue !== null) {
+        summary.totalKnown += Number(item.currentValue);
+      }
+
+      if (
+        item.currentQuantity !== null &&
+        Number(item.currentQuantity) > 0 &&
+        item.currentPrice === null
+      ) {
+        summary.hasMissingPrice = true;
+      }
+
+      return summary;
+    },
+    { totalKnown: 0, hasMissingPrice: false }
+  );
 }

@@ -18,6 +18,7 @@ import {
   buildEditedConferenceEffectiveAt,
   dateInputFromIso,
   getConferenceErrorMessage,
+  getFutureOperationalDateError,
   localDateInputValue,
   parseConferenceQuantity
 } from "../lib/conferenceValidation";
@@ -56,6 +57,7 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
   const { deviceId } = useAuth();
   const initialDate = dateInputFromIso(details.effectiveAt);
   const [date, setDate] = useState(initialDate);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [responsible, setResponsible] = useState(details.physicalResponsible);
   const [observation, setObservation] = useState(details.observation ?? "");
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
@@ -225,10 +227,21 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
             max={localDateInputValue()}
             value={date}
             autoFocus
-            onChange={(event) => setDate(event.target.value)}
+            error={dateError}
+            onChange={(event) => {
+              const nextDate = event.target.value;
+              setDate(nextDate);
+              setDateError(getFutureOperationalDateError(nextDate));
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) {
                 event.preventDefault();
+                const error = getFutureOperationalDateError(date);
+                setDateError(error);
+                if (error) {
+                  document.getElementById("conference-edit-date")?.focus();
+                  return;
+                }
                 document.getElementById("conference-edit-responsible")?.focus();
               }
             }}

@@ -27,6 +27,16 @@ export function localDateInputValue(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+export function getFutureOperationalDateError(
+  dateValue: string,
+  today = new Date()
+) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return null;
+  return dateValue > localDateInputValue(today)
+    ? "A data não pode ser futura."
+    : null;
+}
+
 export function buildEffectiveAt(
   dateValue: string,
   timeSource = new Date(),
@@ -56,8 +66,9 @@ export function buildEffectiveAt(
     throw new Error("Informe uma data válida.");
   }
 
-  if (dateValue > localDateInputValue(today)) {
-    throw new Error("A data não pode ser futura.");
+  const futureDateError = getFutureOperationalDateError(dateValue, today);
+  if (futureDateError) {
+    throw new Error(futureDateError);
   }
 
   return effective.toISOString();
