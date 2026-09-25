@@ -29,6 +29,9 @@ import { StockCurrentPage } from "../../features/stock/pages/StockCurrentPage";
 import { PurchasesHubPage } from "../../features/purchases/pages/PurchasesHubPage";
 import { PurchaseSupplierSelectPage } from "../../features/purchases/pages/PurchaseSupplierSelectPage";
 import { PurchaseSupplierPage } from "../../features/purchases/pages/PurchaseSupplierPage";
+import { PurchaseStockPage } from "../../features/purchases/pages/PurchaseStockPage";
+import { PurchaseCategorySelectPage } from "../../features/purchases/pages/PurchaseCategorySelectPage";
+import { PurchaseCategoryPage } from "../../features/purchases/pages/PurchaseCategoryPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -246,6 +249,30 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <PurchaseSupplierPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/compras/estoque",
+    element: (
+      <ProtectedRoute>
+        <PurchaseStockPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/compras/categoria",
+    element: (
+      <ProtectedRoute>
+        <PurchaseCategorySelectPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/compras/categoria/:categoryId",
+    element: (
+      <ProtectedRoute>
+        <PurchaseCategoryPage />
       </ProtectedRoute>
     )
   }

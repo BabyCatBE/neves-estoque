@@ -27,25 +27,29 @@ export function PurchasesHubPage() {
             </InteractiveCard>
           </Link>
 
-          <InteractiveCard className="h-full cursor-default p-6 opacity-70">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-              Próxima etapa
-            </p>
-            <h3 className="mt-2 text-xl font-semibold">Por estoque</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Reunirá os produtos que precisarem de reposição.
-            </p>
-          </InteractiveCard>
+          <Link to="/compras/estoque" className="block">
+            <InteractiveCard className="h-full p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
+                Modo manual
+              </p>
+              <h3 className="mt-2 text-xl font-semibold">Por estoque</h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
+                Selecione manualmente produtos ordenados do menor estoque atual para o maior.
+              </p>
+            </InteractiveCard>
+          </Link>
 
-          <InteractiveCard className="h-full cursor-default p-6 opacity-70">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-              Próxima etapa
-            </p>
-            <h3 className="mt-2 text-xl font-semibold">Por categoria</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Permitirá preparar a lista seguindo a ordem manual da categoria.
-            </p>
-          </InteractiveCard>
+          <Link to="/compras/categoria" className="block">
+            <InteractiveCard className="h-full p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
+                Disponível
+              </p>
+              <h3 className="mt-2 text-xl font-semibold">Por categoria</h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
+                Escolha uma categoria e prepare a lista na ordem manual dos Produtos.
+              </p>
+            </InteractiveCard>
+          </Link>
         </div>
 
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
