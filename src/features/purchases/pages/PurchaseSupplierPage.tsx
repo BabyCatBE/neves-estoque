@@ -85,6 +85,26 @@ export function PurchaseSupplierPage() {
     setCopyError(null);
   };
 
+  const stepQuantity = (productId: string, direction: 1 | -1) => {
+    const currentValue = parseQuantity(quantities[productId] ?? "") ?? 0;
+    const nextValue = Math.max(0, currentValue + direction);
+    updateQuantity(productId, formatEditableQuantity(nextValue));
+  };
+
+  const focusNextSelectedQuantity = (productId: string) => {
+    const products = productsQuery.data ?? [];
+    const currentIndex = products.findIndex((product) => product.productId === productId);
+    if (currentIndex < 0) return;
+
+    for (let index = currentIndex + 1; index < products.length; index += 1) {
+      const nextProduct = products[index];
+      if (nextProduct && selected.has(nextProduct.productId)) {
+        document.getElementById(`purchase-quantity-${nextProduct.productId}`)?.focus();
+        return;
+      }
+    }
+  };
+
   const buildOrderText = () => {
     setCopyError(null);
 
@@ -230,29 +250,71 @@ export function PurchaseSupplierPage() {
                           </p>
                         </div>
 
-                        <label>
+                        <div>
                           <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
                             Qnt. a comprar
                           </span>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={quantities[product.productId] ?? ""}
-                            disabled={!checked}
-                            onChange={(event) =>
-                              updateQuantity(product.productId, event.target.value)
-                            }
-                            placeholder={checked ? "Ex.: 5" : "Selecione"}
-                            className={`mt-1 min-h-10 w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none transition disabled:bg-zinc-100 disabled:text-zinc-400 ${hasInvalidQuantity
-                              ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                              : "border-zinc-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"}`}
-                          />
+                          <div className="mt-1 grid grid-cols-[44px_minmax(72px,1fr)_44px] items-stretch gap-1">
+                            <button
+                              type="button"
+                              disabled={!checked}
+                              onClick={() => stepQuantity(product.productId, 1)}
+                              aria-label={`Aumentar quantidade de ${product.productName}`}
+                              className="min-h-11 rounded-xl border border-red-200 bg-white text-xl font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
+                            >
+                              +
+                            </button>
+                            <input
+                              id={`purchase-quantity-${product.productId}`}
+                              type="text"
+                              inputMode="decimal"
+                              enterKeyHint="next"
+                              value={quantities[product.productId] ?? ""}
+                              disabled={!checked}
+                              onChange={(event) =>
+                                updateQuantity(product.productId, event.target.value)
+                              }
+                              onKeyDown={(event) => {
+                                if (!checked) return;
+
+                                if (event.key === "ArrowUp") {
+                                  event.preventDefault();
+                                  stepQuantity(product.productId, 1);
+                                  return;
+                                }
+
+                                if (event.key === "ArrowDown") {
+                                  event.preventDefault();
+                                  stepQuantity(product.productId, -1);
+                                  return;
+                                }
+
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  focusNextSelectedQuantity(product.productId);
+                                }
+                              }}
+                              placeholder={checked ? "Ex.: 5" : "Selecione"}
+                              className={`min-h-11 w-full rounded-xl border bg-white px-2 py-2 text-center text-sm font-semibold outline-none transition disabled:bg-zinc-100 disabled:text-zinc-400 ${hasInvalidQuantity
+                                ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                : "border-zinc-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"}`}
+                            />
+                            <button
+                              type="button"
+                              disabled={!checked}
+                              onClick={() => stepQuantity(product.productId, -1)}
+                              aria-label={`Reduzir quantidade de ${product.productName}`}
+                              className="min-h-11 rounded-xl border border-red-200 bg-white text-xl font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
+                            >
+                              −
+                            </button>
+                          </div>
                           {hasInvalidQuantity ? (
                             <span className="mt-1 block text-xs font-medium text-red-700">
                               Informe uma quantidade maior que zero.
                             </span>
                           ) : null}
-                        </label>
+                        </div>
                       </div>
                     );
                   })}
@@ -312,6 +374,13 @@ function parseQuantity(value: string) {
   if (!normalized) return null;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatEditableQuantity(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 2,
+    useGrouping: false
+  }).format(value);
 }
 
 function normalizeQuantityForCopy(value: string) {
