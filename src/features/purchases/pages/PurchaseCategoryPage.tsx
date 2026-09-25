@@ -17,8 +17,7 @@ export function PurchaseCategoryPage() {
 
   const productsQuery = useQuery({
     queryKey: ["purchases", "intelligence"],
-    queryFn: listPurchaseIntelligenceProducts,
-    staleTime: 30_000
+    queryFn: listPurchaseIntelligenceProducts
   });
 
   const category = categoriesQuery.data?.find((item) => item.id === categoryId);

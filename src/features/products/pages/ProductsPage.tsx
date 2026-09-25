@@ -94,7 +94,8 @@ export function ProductsPage() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: productsKey }),
-        queryClient.invalidateQueries({ queryKey: ["categories", "active"] })
+        queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
     }
   });

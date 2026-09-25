@@ -54,7 +54,8 @@ export function ProductDetailPage() {
         queryClient.invalidateQueries({ queryKey: productsKey }),
         queryClient.invalidateQueries({ queryKey: ["products", "detail", productId] }),
         queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
-        queryClient.invalidateQueries({ queryKey: ["stock", "current"] })
+        queryClient.invalidateQueries({ queryKey: ["stock", "current"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
     }
   });
@@ -67,7 +68,8 @@ export function ProductDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
         queryClient.invalidateQueries({ queryKey: ["products", "categories"] }),
         queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] }),
-        queryClient.invalidateQueries({ queryKey: ["stock", "current"] })
+        queryClient.invalidateQueries({ queryKey: ["stock", "current"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
     }
   });

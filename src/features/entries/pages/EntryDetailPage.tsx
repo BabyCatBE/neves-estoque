@@ -32,7 +32,8 @@ export function EntryDetailPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["entries"] }),
         queryClient.invalidateQueries({ queryKey: ["products", "active"] }),
-        queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] })
+        queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
     }
   });

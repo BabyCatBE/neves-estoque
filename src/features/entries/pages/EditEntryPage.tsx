@@ -225,7 +225,8 @@ export function EditEntryPage() {
       await updateMutation.mutateAsync(payload);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["entries"] }),
-        queryClient.invalidateQueries({ queryKey: ["products", "active"] })
+        queryClient.invalidateQueries({ queryKey: ["products", "active"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
       setSaveReviewOpen(false);
       setMissingPriceReview(false);

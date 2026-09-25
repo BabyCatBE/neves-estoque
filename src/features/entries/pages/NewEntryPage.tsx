@@ -480,7 +480,8 @@ export function NewEntryPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["entries"] }),
         queryClient.invalidateQueries({ queryKey: ["products", "active"] }),
-        queryClient.invalidateQueries({ queryKey: ["suppliers"] })
+        queryClient.invalidateQueries({ queryKey: ["suppliers"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
       allowNavigationRef.current = true;
       navigate(`/entradas/${entryId}`, { replace: true });

@@ -31,7 +31,8 @@ export function TrashPage() {
         queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
         queryClient.invalidateQueries({ queryKey: ["products", "categories"] }),
         queryClient.invalidateQueries({ queryKey: ["suppliers"] }),
-        queryClient.invalidateQueries({ queryKey: ["entries"] })
+        queryClient.invalidateQueries({ queryKey: ["entries"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
     }
   });

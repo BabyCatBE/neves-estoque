@@ -10,8 +10,7 @@ export function PurchaseStockPage() {
   const [showRest, setShowRest] = useState(false);
   const productsQuery = useQuery({
     queryKey: ["purchases", "intelligence"],
-    queryFn: listPurchaseIntelligenceProducts,
-    staleTime: 30_000
+    queryFn: listPurchaseIntelligenceProducts
   });
 
   const { recommended, remaining } = useMemo(() => {

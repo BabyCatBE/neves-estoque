@@ -60,7 +60,8 @@ export function SupplierDetailPage() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["suppliers"] }),
-        queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] })
+        queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
     }
   });
@@ -70,7 +71,8 @@ export function SupplierDetailPage() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["suppliers"] }),
-        queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] })
+        queryClient.invalidateQueries({ queryKey: ["trash", "restorable"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
     }
   });
