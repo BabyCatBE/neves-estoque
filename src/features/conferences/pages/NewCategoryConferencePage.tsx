@@ -13,8 +13,10 @@ import {
   createCategoryConference,
   getCategoryConferenceSetup,
   listSameDayCategoryConferences,
+  reviewConferenceConsumption,
   type CategoryConferenceSetup,
   type CategoryConferenceWriteInput,
+  type ConferenceConsumptionWarning,
   type ConferenceHistoryItem
 } from "../api/conferences";
 import {
@@ -69,8 +71,9 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const [quantityErrors, setQuantityErrors] = useState<Record<string, string>>({});
   const [actionError, setActionError] = useState<string | null>(null);
   const [sameDayConferences, setSameDayConferences] = useState<ConferenceHistoryItem[]>([]);
+  const [consumptionWarnings, setConsumptionWarnings] = useState<ConferenceConsumptionWarning[]>([]);
   const [pendingPayload, setPendingPayload] = useState<CategoryConferenceWriteInput | null>(null);
-  const [checkingSameDay, setCheckingSameDay] = useState(false);
+  const [checkingSave, setCheckingSave] = useState(false);
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const allowNavigationRef = useRef(false);
 
@@ -146,13 +149,24 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
       await saveMutation.mutateAsync(payload);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["conferences"] }),
-        queryClient.invalidateQueries({ queryKey: ["products"] })
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
       allowNavigationRef.current = true;
       navigate("/conferencias/fazer?saved=1", { replace: true });
     } catch (error) {
       setActionError(getConferenceErrorMessage(error));
     }
+  };
+
+  const continueAfterConsumptionReview = async (payload: CategoryConferenceWriteInput) => {
+    const existing = await listSameDayCategoryConferences(setup.category.id, date);
+    if (existing.length) {
+      setPendingPayload(payload);
+      setSameDayConferences(existing);
+      return;
+    }
+    await persist(payload);
   };
 
   const requestSave = async () => {
@@ -165,19 +179,39 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
       return;
     }
 
-    setCheckingSameDay(true);
+    setCheckingSave(true);
     try {
-      const existing = await listSameDayCategoryConferences(setup.category.id, date);
-      if (existing.length) {
+      const warnings = await reviewConferenceConsumption({
+        effectiveAt: payload.effectiveAt,
+        items: payload.items
+      });
+
+      if (warnings.length) {
         setPendingPayload(payload);
-        setSameDayConferences(existing);
+        setConsumptionWarnings(warnings);
         return;
       }
-      await persist(payload);
+
+      await continueAfterConsumptionReview(payload);
     } catch (error) {
       setActionError(getConferenceErrorMessage(error));
     } finally {
-      setCheckingSameDay(false);
+      setCheckingSave(false);
+    }
+  };
+
+  const confirmConsumptionWarnings = async () => {
+    if (!pendingPayload) return;
+    const payload = pendingPayload;
+    setPendingPayload(null);
+    setConsumptionWarnings([]);
+    setCheckingSave(true);
+    try {
+      await continueAfterConsumptionReview(payload);
+    } catch (error) {
+      setActionError(getConferenceErrorMessage(error));
+    } finally {
+      setCheckingSave(false);
     }
   };
 
@@ -186,7 +220,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
     blocker.state !== "blocked" &&
       !pendingPayload &&
       !saveMutation.isPending &&
-      !checkingSameDay
+      !checkingSave
   );
 
   const handleQuantityEnter = (
@@ -338,19 +372,72 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         <div className="mx-auto flex max-w-6xl justify-end">
           <Button
             id="conference-save"
-            disabled={saveMutation.isPending || checkingSameDay}
+            disabled={saveMutation.isPending || checkingSave}
             onClick={() => void requestSave()}
           >
             {saveMutation.isPending
               ? "Salvando…"
-              : checkingSameDay
+              : checkingSave
                 ? "Verificando…"
                 : "Salvar Conferência"}
           </Button>
         </div>
       </div>
 
-      {pendingPayload && latestSameDay ? (
+      {pendingPayload && consumptionWarnings.length > 0 ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="consumption-warning-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6"
+          onKeyDown={handleDialogButtonArrowNavigation}
+        >
+          <Card className="max-h-[85vh] w-full max-w-xl overflow-y-auto p-5 shadow-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
+              Confira o consumo
+            </p>
+            <h3 id="consumption-warning-title" className="mt-1 text-xl font-semibold text-zinc-950">
+              Há consumo fora do padrão
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              Confira as quantidades. Se confirmar, estes valores serão considerados verdadeiros e entrarão integralmente nos cálculos futuros.
+            </p>
+            <div className="mt-4 space-y-3">
+              {consumptionWarnings.map((warning) => {
+                const product = setup.products.find((item) => item.id === warning.productId);
+                return (
+                  <div key={warning.productId} className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+                    <p className="font-semibold text-zinc-950">{product?.name ?? "Produto"}</p>
+                    <p className="mt-1 text-zinc-700">{warningTitle(warning)}</p>
+                    <p className="mt-2 text-xs leading-5 text-zinc-600">
+                      Esperado: <strong>{formatConsumption(warning.expectedConsumption, product?.unit)}</strong>
+                      {" · "}Conferência indica: <strong>{formatConsumption(warning.actualConsumption, product?.unit)}</strong>
+                      {" · "}Diferença: <strong>{formatDifference(warning, product?.unit)}</strong>
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                autoFocus
+                variant="ghost"
+                onClick={() => {
+                  setPendingPayload(null);
+                  setConsumptionWarnings([]);
+                }}
+              >
+                Voltar e conferir
+              </Button>
+              <Button onClick={() => void confirmConsumptionWarnings()}>
+                Confirmar mesmo assim
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
+      {pendingPayload && consumptionWarnings.length === 0 && latestSameDay ? (
         <div
           role="dialog"
           aria-modal="true"
@@ -422,4 +509,30 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
       />
     </section>
   );
+}
+
+
+function warningTitle(warning: ConferenceConsumptionWarning) {
+  if (warning.kind === "inconsistent") {
+    return "A contagem indica aumento de estoque que não é explicado pelas Entradas registradas.";
+  }
+  return warning.kind === "above"
+    ? "Consumo muito acima do esperado."
+    : "Consumo muito abaixo do esperado.";
+}
+
+function formatConsumption(value: number, unit?: string) {
+  const formatted = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(value);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+function formatDifference(warning: ConferenceConsumptionWarning, unit?: string) {
+  const sign = warning.difference > 0 ? "+" : "";
+  const amount = `${sign}${formatConsumption(warning.difference, unit)}`;
+  if (warning.differencePercent === null) return amount;
+  const percentSign = warning.differencePercent > 0 ? "+" : "";
+  const percent = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(
+    warning.differencePercent
+  );
+  return `${amount} (${percentSign}${percent}%)`;
 }

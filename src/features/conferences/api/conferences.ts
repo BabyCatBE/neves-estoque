@@ -1,5 +1,10 @@
 import { supabase } from "../../../shared/lib/supabase";
 import { listActiveCategories, type CategoryListItem } from "../../categories/api/categories";
+import { calculateProductUsageInsights } from "../../products/lib/productUsageInsights";
+import {
+  evaluateConferenceConsumption,
+  type ConferenceConsumptionWarning as ConsumptionWarning
+} from "../lib/conferenceConsumptionReview";
 import {
   localDateInputValue,
   localDateKey,
@@ -78,6 +83,14 @@ export type ConferencePrintCategory = CategoryListItem & {
 export type ConferencePrintData = {
   categories: ConferencePrintCategory[];
   pendingProductCount: number;
+};
+
+export type ConferenceConsumptionWarning = ConsumptionWarning;
+
+export type ConferenceConsumptionReviewInput = {
+  effectiveAt: string;
+  items: Array<{ productId: string; quantity: number }>;
+  excludeConferenceId?: string;
 };
 
 function requireClient() {
@@ -184,6 +197,139 @@ export async function updateCategoryConference(input: CategoryConferenceUpdateIn
   });
 
   if (error) throw error;
+}
+
+export async function reviewConferenceConsumption(
+  input: ConferenceConsumptionReviewInput
+): Promise<ConferenceConsumptionWarning[]> {
+  const client = requireClient();
+  const productIds = [...new Set(input.items.map((item) => item.productId))];
+  if (!productIds.length) return [];
+
+  const [
+    conferenceItemsResult,
+    conferencesResult,
+    entryItemsResult,
+    entriesResult
+  ] = await Promise.all([
+    client
+      .from("conference_items")
+      .select("conference_id,product_id,quantity")
+      .in("product_id", productIds),
+    client
+      .from("conferences")
+      .select("id,effective_at,created_at")
+      .is("deleted_at", null)
+      .lt("effective_at", input.effectiveAt),
+    client
+      .from("entry_items")
+      .select("entry_id,product_id,quantity")
+      .in("product_id", productIds),
+    client
+      .from("entries")
+      .select("id,effective_at")
+      .is("deleted_at", null)
+      .lte("effective_at", input.effectiveAt)
+  ]);
+
+  if (conferenceItemsResult.error) throw conferenceItemsResult.error;
+  if (conferencesResult.error) throw conferencesResult.error;
+  if (entryItemsResult.error) throw entryItemsResult.error;
+  if (entriesResult.error) throw entriesResult.error;
+
+  const conferenceById = new Map(
+    (conferencesResult.data ?? [])
+      .filter((conference) => conference.id !== input.excludeConferenceId)
+      .map((conference) => [conference.id, conference] as const)
+  );
+  const entryById = new Map(
+    (entriesResult.data ?? []).map((entry) => [entry.id, entry] as const)
+  );
+
+  const conferencePointsByProduct = new Map<
+    string,
+    Array<{ effectiveAt: string; createdAt: string; quantity: number }>
+  >();
+  for (const item of conferenceItemsResult.data ?? []) {
+    const conference = conferenceById.get(item.conference_id);
+    if (!conference) continue;
+    const points = conferencePointsByProduct.get(item.product_id) ?? [];
+    points.push({
+      effectiveAt: conference.effective_at,
+      createdAt: conference.created_at,
+      quantity: Number(item.quantity)
+    });
+    conferencePointsByProduct.set(item.product_id, points);
+  }
+
+  const entriesByProduct = new Map<
+    string,
+    Array<{ effectiveAt: string; quantity: number }>
+  >();
+  for (const item of entryItemsResult.data ?? []) {
+    const entry = entryById.get(item.entry_id);
+    if (!entry) continue;
+    const points = entriesByProduct.get(item.product_id) ?? [];
+    points.push({
+      effectiveAt: entry.effective_at,
+      quantity: Number(item.quantity)
+    });
+    entriesByProduct.set(item.product_id, points);
+  }
+
+  const candidateTime = new Date(input.effectiveAt).getTime();
+  const warnings: ConferenceConsumptionWarning[] = [];
+
+  for (const candidate of input.items) {
+    const conferencesForProduct = [...(conferencePointsByProduct.get(candidate.productId) ?? [])]
+      .sort((a, b) => {
+        const effectiveDiff =
+          new Date(a.effectiveAt).getTime() - new Date(b.effectiveAt).getTime();
+        if (effectiveDiff !== 0) return effectiveDiff;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+
+    const usage = calculateProductUsageInsights({
+      conferences: conferencesForProduct,
+      entries: entriesByProduct.get(candidate.productId) ?? [],
+      currentQuantity: null,
+      referenceAt: input.effectiveAt
+    });
+
+    if (usage.status !== "ready" || usage.dailyAverage === null) continue;
+
+    const previous = conferencesForProduct.at(-1);
+    if (!previous) continue;
+    const previousTime = new Date(previous.effectiveAt).getTime();
+    if (
+      !Number.isFinite(candidateTime) ||
+      !Number.isFinite(previousTime) ||
+      candidateTime <= previousTime
+    ) {
+      continue;
+    }
+
+    const intervalDays = (candidateTime - previousTime) / (24 * 60 * 60 * 1000);
+    const entriesQuantity = (entriesByProduct.get(candidate.productId) ?? [])
+      .filter((entry) => {
+        const time = new Date(entry.effectiveAt).getTime();
+        return time > previousTime && time <= candidateTime;
+      })
+      .reduce((total, entry) => total + entry.quantity, 0);
+
+    const warning = evaluateConferenceConsumption({
+      productId: candidate.productId,
+      expectedDailyAverage: usage.dailyAverage,
+      intervalDays,
+      previousQuantity: previous.quantity,
+      entriesQuantity,
+      candidateQuantity: candidate.quantity
+    });
+
+    if (warning) warnings.push(warning);
+  }
+
+  return warnings;
 }
 
 export async function listSameDayCategoryConferences(

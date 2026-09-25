@@ -11,7 +11,9 @@ import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKey
 import { useAuth } from "../../auth/context/AuthContext";
 import {
   getConferenceDetails,
+  reviewConferenceConsumption,
   updateCategoryConference,
+  type ConferenceConsumptionWarning,
   type ConferenceDetails
 } from "../api/conferences";
 import {
@@ -71,6 +73,8 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
   const [quantityErrors, setQuantityErrors] = useState<Record<string, string>>({});
   const [actionError, setActionError] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [consumptionWarnings, setConsumptionWarnings] = useState<ConferenceConsumptionWarning[]>([]);
+  const [checkingReview, setCheckingReview] = useState(false);
   const allowNavigationRef = useRef(false);
 
   const dirty = useMemo(() => {
@@ -138,13 +142,29 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
     };
   };
 
-  const requestReview = () => {
+  const requestReview = async () => {
     setActionError(null);
+    let payload;
     try {
-      buildPayload();
+      payload = buildPayload();
+    } catch (error) {
+      setActionError(getConferenceErrorMessage(error));
+      return;
+    }
+
+    setCheckingReview(true);
+    try {
+      const warnings = await reviewConferenceConsumption({
+        effectiveAt: payload.effectiveAt,
+        items: payload.items,
+        excludeConferenceId: details.id
+      });
+      setConsumptionWarnings(warnings);
       setReviewOpen(true);
     } catch (error) {
       setActionError(getConferenceErrorMessage(error));
+    } finally {
+      setCheckingReview(false);
     }
   };
 
@@ -155,7 +175,8 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
       await updateMutation.mutateAsync(payload);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["conferences"] }),
-        queryClient.invalidateQueries({ queryKey: ["products"] })
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
       allowNavigationRef.current = true;
       navigate(`/conferencias/${details.id}`, { replace: true });
@@ -166,8 +187,12 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
   };
 
   useCtrlEnter(
-    requestReview,
-    dirty && !reviewOpen && blocker.state !== "blocked" && !updateMutation.isPending
+    () => void requestReview(),
+    dirty &&
+      !reviewOpen &&
+      blocker.state !== "blocked" &&
+      !updateMutation.isPending &&
+      !checkingReview
   );
 
   const focusQuantity = (productId: string) => {
@@ -325,8 +350,12 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
       </Card>
 
       <div className="mt-5 flex justify-end">
-        <Button id="conference-edit-save" disabled={!dirty || updateMutation.isPending} onClick={requestReview}>
-          Salvar correção
+        <Button
+          id="conference-edit-save"
+          disabled={!dirty || updateMutation.isPending || checkingReview}
+          onClick={() => void requestReview()}
+        >
+          {checkingReview ? "Verificando…" : "Salvar correção"}
         </Button>
       </div>
 
@@ -348,6 +377,27 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
             <p className="mt-2 text-sm leading-6 text-zinc-600">
               O registro manterá o mesmo ID e a auditoria guardará o antes/depois.
             </p>
+            {consumptionWarnings.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  Há consumo fora do padrão. Se confirmar a correção, os valores serão considerados verdadeiros nos cálculos futuros.
+                </div>
+                {consumptionWarnings.map((warning) => {
+                  const product = details.items.find((item) => item.productId === warning.productId);
+                  return (
+                    <div key={warning.productId} className="rounded-xl border border-amber-200 bg-white p-4 text-sm">
+                      <p className="font-semibold">{product?.productName ?? "Produto"}</p>
+                      <p className="mt-1 text-zinc-700">{warningTitle(warning)}</p>
+                      <p className="mt-2 text-xs text-zinc-600">
+                        Esperado: <strong>{formatConsumption(warning.expectedConsumption, product?.unit)}</strong>
+                        {" · "}Correção indica: <strong>{formatConsumption(warning.actualConsumption, product?.unit)}</strong>
+                        {" · "}Diferença: <strong>{formatDifference(warning, product?.unit)}</strong>
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
             <div className="mt-4 rounded-xl bg-zinc-50 p-4 text-sm text-zinc-700">
               {changes.map((change) => (
                 <p key={change}>• {change}</p>
@@ -379,4 +429,30 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
       />
     </section>
   );
+}
+
+
+function warningTitle(warning: ConferenceConsumptionWarning) {
+  if (warning.kind === "inconsistent") {
+    return "A contagem indica aumento de estoque que não é explicado pelas Entradas registradas.";
+  }
+  return warning.kind === "above"
+    ? "Consumo muito acima do esperado."
+    : "Consumo muito abaixo do esperado.";
+}
+
+function formatConsumption(value: number, unit?: string) {
+  const formatted = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(value);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+function formatDifference(warning: ConferenceConsumptionWarning, unit?: string) {
+  const sign = warning.difference > 0 ? "+" : "";
+  const amount = `${sign}${formatConsumption(warning.difference, unit)}`;
+  if (warning.differencePercent === null) return amount;
+  const percentSign = warning.differencePercent > 0 ? "+" : "";
+  const percent = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(
+    warning.differencePercent
+  );
+  return `${amount} (${percentSign}${percent}%)`;
 }
