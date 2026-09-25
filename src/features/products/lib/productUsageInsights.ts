@@ -156,7 +156,7 @@ export function calculateProductUsageInsights({
       days,
       entries: intervalEntries,
       consumption,
-      weight: endTime >= recentCutoffTime ? 2 : 1
+      weight: endTime > recentCutoffTime ? 2 : 1
     });
   }
 
