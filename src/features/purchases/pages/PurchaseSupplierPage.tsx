@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
@@ -8,7 +8,10 @@ import { SearchClearButton } from "../../../shared/components/ui/SearchClearButt
 import { TextField } from "../../../shared/components/ui/TextField";
 import { listActiveProducts } from "../../products/api/products";
 import { getSupplierDetails } from "../../suppliers/api/suppliers";
-import { PurchaseListEditor } from "../components/PurchaseListEditor";
+import {
+  PurchaseListEditor,
+  type PurchaseListEditorHandle
+} from "../components/PurchaseListEditor";
 import { listSupplierPurchaseProducts } from "../api/purchases";
 
 export function PurchaseSupplierPage() {
@@ -16,7 +19,7 @@ export function PurchaseSupplierPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [manualProductIds, setManualProductIds] = useState<string[]>([]);
-  const [autoSelectProductId, setAutoSelectProductId] = useState<string | null>(null);
+  const editorRef = useRef<PurchaseListEditorHandle>(null);
 
   const supplierQuery = useQuery({
     queryKey: ["suppliers", "detail", supplierId],
@@ -80,7 +83,7 @@ export function PurchaseSupplierPage() {
     setManualProductIds((current) =>
       current.includes(productId) ? current : [...current, productId]
     );
-    setAutoSelectProductId(productId);
+    editorRef.current?.selectProduct(productId);
     setProductSearch("");
   };
 
@@ -170,13 +173,12 @@ export function PurchaseSupplierPage() {
             ) : null}
 
             <PurchaseListEditor
+              ref={editorRef}
               items={purchaseItems}
               orderTitle={`Pedido — ${supplierQuery.data.name}`}
               listTitle="Produtos desta simulação"
               intro="Selecione os itens e informe manualmente quanto deseja comprar."
               emptyText="Ainda não há Produto ativo nesta simulação."
-              autoSelectProductId={autoSelectProductId}
-              onAutoSelectHandled={() => setAutoSelectProductId(null)}
             />
           </>
         ) : null}

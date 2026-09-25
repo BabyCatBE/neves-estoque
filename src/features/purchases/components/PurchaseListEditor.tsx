@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useBlocker } from "react-router-dom";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
@@ -19,20 +19,21 @@ type Props = {
   intro: string;
   emptyText: string;
   warning?: string;
-  autoSelectProductId?: string | null;
-  onAutoSelectHandled?: () => void;
 };
 
-export function PurchaseListEditor({
+export type PurchaseListEditorHandle = {
+  selectProduct: (productId: string) => void;
+};
+
+export const PurchaseListEditor = forwardRef<PurchaseListEditorHandle, Props>(
+function PurchaseListEditor({
   items,
   orderTitle,
   listTitle,
   intro,
   emptyText,
-  warning = "A recomendação automática ainda não está ativa. Nesta etapa, a quantidade é sempre manual.",
-  autoSelectProductId = null,
-  onAutoSelectHandled
-}: Props) {
+  warning = "A recomendação automática ainda não está ativa. Nesta etapa, a quantidade é sempre manual."
+}: Props, ref) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [invalidIds, setInvalidIds] = useState<Set<string>>(() => new Set());
@@ -67,24 +68,26 @@ export function PurchaseListEditor({
     [items, selected]
   );
 
-  useEffect(() => {
-    if (!autoSelectProductId) return;
+  useImperativeHandle(
+    ref,
+    () => ({
+      selectProduct(productId: string) {
+        setSelected((current) => {
+          const next = new Set(current);
+          next.add(productId);
+          return next;
+        });
+        setActionError(null);
 
-    setSelected((current) => {
-      const next = new Set(current);
-      next.add(autoSelectProductId);
-      return next;
-    });
-    setActionError(null);
-
-    if (shouldAutoFocusQuantity()) {
-      window.setTimeout(() => {
-        document.getElementById(`purchase-quantity-${autoSelectProductId}`)?.focus();
-      }, 0);
-    }
-
-    onAutoSelectHandled?.();
-  }, [autoSelectProductId, onAutoSelectHandled]);
+        if (shouldAutoFocusQuantity()) {
+          window.setTimeout(() => {
+            document.getElementById(`purchase-quantity-${productId}`)?.focus();
+          }, 0);
+        }
+      }
+    }),
+    []
+  );
 
   const clearInvalid = (productId: string) => {
     setInvalidIds((current) => {
@@ -377,7 +380,7 @@ export function PurchaseListEditor({
       ) : null}
     </>
   );
-}
+});
 
 function shouldAutoFocusQuantity() {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true;
