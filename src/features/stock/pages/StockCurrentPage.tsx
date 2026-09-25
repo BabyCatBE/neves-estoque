@@ -72,48 +72,78 @@ export function StockCurrentPage() {
   return (
     <AppShell title="Estoque Atual" showBack backTo="/">
       <section>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
-            Posição atual
-          </p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-            Estoque atual
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-            Calculado pela última Conferência física válida + Entradas posteriores.
-          </p>
-        </div>
-
-        <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="w-full max-w-2xl">
-            <label className="block" htmlFor="stock-search">
-              <span className="text-sm font-medium text-zinc-800">Pesquisar</span>
-              <div className="relative mt-2">
-                <SearchIcon />
-                <input
-                  id="stock-search"
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      pulseSearchFeedback();
-                    }
-                  }}
-                  placeholder="Buscar produto por nome"
-                  className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white py-2 pl-10 pr-11 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                />
-                {searchFeedback ? (
-                  <span
-                    aria-label="Pesquisa atualizada"
-                    className="absolute right-3 top-1/2 inline-block h-5 w-5 -translate-y-1/2 animate-spin rounded-full border-2 border-zinc-300 border-t-red-700"
-                  />
-                ) : null}
-              </div>
-            </label>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
+              Posição atual
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+              Estoque atual
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
+              Calculado pela última Conferência física válida + Entradas posteriores.
+            </p>
           </div>
 
+          <Button
+            variant={showValues ? "primary" : "secondary"}
+            onClick={() => setShowValues((current) => !current)}
+            aria-pressed={showValues}
+            title={showValues ? "Ocultar valores" : "Mostrar valores"}
+            className="gap-2 self-start"
+          >
+            <EyeMoneyIcon />
+            {showValues ? "Ocultar valores" : "Mostrar valores"}
+          </Button>
+        </div>
+
+        <div className="mt-5 max-w-2xl">
+          <label className="block" htmlFor="stock-search">
+            <span className="text-sm font-medium text-zinc-800">Pesquisar</span>
+            <div className="relative mt-2">
+              <SearchIcon />
+              <input
+                id="stock-search"
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    pulseSearchFeedback();
+                  }
+                }}
+                placeholder="Buscar produto por nome"
+                className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white py-2 pl-10 pr-20 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              />
+              {searchFeedback ? (
+                <span
+                  aria-label="Pesquisa atualizada"
+                  className={`absolute top-1/2 inline-block h-5 w-5 -translate-y-1/2 animate-spin rounded-full border-2 border-zinc-300 border-t-red-700 ${search ? "right-10" : "right-3"}`}
+                />
+              ) : null}
+              {search ? (
+                <button
+                  type="button"
+                  aria-label="Limpar pesquisa"
+                  title="Limpar pesquisa"
+                  onClick={() => {
+                    setSearch("");
+                    document.getElementById("stock-search")?.focus();
+                  }}
+                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-red-700 transition hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                >
+                  <ClearSearchIcon />
+                </button>
+              ) : null}
+            </div>
+          </label>
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Organizar por
+          </p>
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -128,16 +158,6 @@ export function StockCurrentPage() {
               onClick={() => setViewMode("alphabetical")}
             >
               Alfabética
-            </Button>
-            <Button
-              size="sm"
-              variant={showValues ? "primary" : "secondary"}
-              onClick={() => setShowValues((current) => !current)}
-              aria-pressed={showValues}
-              title={showValues ? "Ocultar valores" : "Mostrar valores"}
-            >
-              <EyeMoneyIcon />
-              {showValues ? "Ocultar R$" : "Mostrar R$"}
             </Button>
           </div>
         </div>
@@ -376,6 +396,19 @@ function SearchIcon() {
     >
       <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
       <path d="m16 16 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ClearSearchIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none">
+      <path
+        d="m7 7 10 10M17 7 7 17"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
