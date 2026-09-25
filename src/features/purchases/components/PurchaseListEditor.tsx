@@ -9,6 +9,7 @@ export type PurchaseListItem = {
   productName: string;
   unit: string;
   currentQuantity: number | null;
+  isManualAddition?: boolean;
 };
 
 type Props = {
@@ -18,6 +19,8 @@ type Props = {
   intro: string;
   emptyText: string;
   warning?: string;
+  autoSelectProductId?: string | null;
+  onAutoSelectHandled?: () => void;
 };
 
 export function PurchaseListEditor({
@@ -26,7 +29,9 @@ export function PurchaseListEditor({
   listTitle,
   intro,
   emptyText,
-  warning = "A recomendação automática ainda não está ativa. Nesta etapa, a quantidade é sempre manual."
+  warning = "A recomendação automática ainda não está ativa. Nesta etapa, a quantidade é sempre manual.",
+  autoSelectProductId = null,
+  onAutoSelectHandled
 }: Props) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [quantities, setQuantities] = useState<Record<string, string>>({});
@@ -61,6 +66,25 @@ export function PurchaseListEditor({
     () => items.filter((product) => selected.has(product.productId)),
     [items, selected]
   );
+
+  useEffect(() => {
+    if (!autoSelectProductId) return;
+
+    setSelected((current) => {
+      const next = new Set(current);
+      next.add(autoSelectProductId);
+      return next;
+    });
+    setActionError(null);
+
+    if (shouldAutoFocusQuantity()) {
+      window.setTimeout(() => {
+        document.getElementById(`purchase-quantity-${autoSelectProductId}`)?.focus();
+      }, 0);
+    }
+
+    onAutoSelectHandled?.();
+  }, [autoSelectProductId, onAutoSelectHandled]);
 
   const clearInvalid = (productId: string) => {
     setInvalidIds((current) => {
@@ -225,7 +249,14 @@ export function PurchaseListEditor({
                   </label>
 
                   <div>
-                    <p className="font-semibold text-zinc-950">{product.productName}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-zinc-950">{product.productName}</p>
+                      {product.isManualAddition ? (
+                        <span className="inline-flex rounded-full bg-red-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-700">
+                          Nesta simulação
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="mt-1 text-xs text-zinc-500">{product.unit}</p>
                   </div>
 
