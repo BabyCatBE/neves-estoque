@@ -21,10 +21,16 @@ describe("offline pending sync", () => {
     );
 
     expect(options.map((item) => item.id)).toEqual(["before-first", "after-last"]);
-    expect(new Date(options[0].effectiveAt).getTime()).toBeLessThan(
+    const before = options[0];
+    const after = options[1];
+    expect(before).toBeDefined();
+    expect(after).toBeDefined();
+    if (!before || !after) throw new Error("Posições esperadas não foram geradas.");
+
+    expect(new Date(before.effectiveAt).getTime()).toBeLessThan(
       new Date("2026-09-27T15:00:00.000Z").getTime()
     );
-    expect(new Date(options[1].effectiveAt).getTime()).toBeGreaterThan(
+    expect(new Date(after.effectiveAt).getTime()).toBeGreaterThan(
       new Date("2026-09-27T15:00:00.000Z").getTime()
     );
   });

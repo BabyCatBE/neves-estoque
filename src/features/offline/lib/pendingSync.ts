@@ -31,13 +31,17 @@ export function buildEntryConflictPositions(
   const dayEnd = new Date(end).getTime();
   const positions: EntryConflictPosition[] = [];
 
-  const firstTime = new Date(sorted[0].effectiveAt).getTime();
+  const first = sorted[0];
+  const last = sorted.at(-1);
+  if (!first || !last) return [];
+
+  const firstTime = new Date(first.effectiveAt).getTime();
   const before = midpointIso(dayStart, firstTime);
   if (before) {
     positions.push({
       id: "before-first",
       label: sorted.length === 1 ? "Antes da Conferência" : "Antes de todas",
-      description: `Antes da Conferência das ${formatTime(sorted[0].effectiveAt)}`,
+      description: `Antes da Conferência das ${formatTime(first.effectiveAt)}`,
       effectiveAt: before
     });
   }
@@ -45,6 +49,8 @@ export function buildEntryConflictPositions(
   for (let index = 0; index < sorted.length - 1; index += 1) {
     const left = sorted[index];
     const right = sorted[index + 1];
+    if (!left || !right) continue;
+
     const value = midpointIso(
       new Date(left.effectiveAt).getTime(),
       new Date(right.effectiveAt).getTime()
@@ -59,7 +65,6 @@ export function buildEntryConflictPositions(
     });
   }
 
-  const last = sorted[sorted.length - 1];
   const lastTime = new Date(last.effectiveAt).getTime();
   const after = midpointIso(lastTime, dayEnd);
   if (after) {

@@ -25,10 +25,10 @@ import {
 import {
   createEntry,
   findEntryConferenceConflicts,
-  getEntryErrorMessage,
   type CreateEntryInput,
   type EntryConferenceConflict
 } from "../../entries/api/entries";
+import { getEntryErrorMessage } from "../../entries/lib/entryValidation";
 import { listActiveProducts, type ProductListItem } from "../../products/api/products";
 import { listCurrentStock } from "../../stock/api/stock";
 import { listActiveSuppliers } from "../../suppliers/api/suppliers";
@@ -140,12 +140,19 @@ export function OfflinePendingPage() {
             );
           }
 
+          const firstPosition = positions[0];
+          if (!firstPosition) {
+            throw new Error(
+              "Há Conferências relevantes nesta data, mas não foi possível definir uma posição cronológica segura para a Entrada."
+            );
+          }
+
           setEntryConflictReview({
             record,
             payload,
             conflicts,
             positions,
-            selectedPositionId: positions[0].id
+            selectedPositionId: firstPosition.id
           });
           return;
         }
