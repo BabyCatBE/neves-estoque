@@ -34,6 +34,7 @@ type EditDraft = {
   averageDeliveryDays: string;
   safetyMarginDays: string;
 };
+type DraftErrors = Partial<Record<keyof EditDraft, string>>;
 
 export function SupplierDetailPage() {
   const { supplierId } = useParams();
@@ -45,6 +46,7 @@ export function SupplierDetailPage() {
   const [deleteReviewOpen, setDeleteReviewOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<DraftErrors>({});
 
   const supplierQuery = useQuery({
     queryKey: ["suppliers", "detail", supplierId],
@@ -101,6 +103,7 @@ export function SupplierDetailPage() {
     if (!supplierQuery.data) return;
     setNotice(null);
     setActionError(null);
+    setFieldErrors({});
     setDraft(toDraft(supplierQuery.data));
     setEditing(true);
   };
@@ -121,23 +124,117 @@ export function SupplierDetailPage() {
     setDraft(null);
     setEditing(false);
     setActionError(null);
+    setFieldErrors({});
+  };
+
+  const updateDraftField = (field: keyof EditDraft, value: string) => {
+    setDraft((current) => (current ? { ...current, [field]: value } : current));
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+    setActionError(null);
+  };
+
+  const focusFirstFieldError = (errors: DraftErrors) => {
+    const order: Array<keyof EditDraft> = [
+      "name",
+      "company",
+      "phone",
+      "purchaseFrequencyDays",
+      "preferredOrderWeekday",
+      "averageDeliveryDays",
+      "safetyMarginDays",
+      "observation"
+    ];
+    const first = order.find((field) => errors[field]);
+    if (!first) return;
+    window.setTimeout(() => {
+      document.getElementById(`supplier-${first}`)?.focus();
+    }, 0);
   };
 
   const validateDraft = () => {
-    if (!draft) throw new Error("Não há alterações para salvar.");
-    const name = supplierNameSchema.parse(draft.name);
-    const company = supplierCompanySchema.parse(draft.company);
-    const phone = supplierPhoneSchema.parse(draft.phone);
-    const observation = supplierObservationSchema.parse(draft.observation);
+    if (!draft) return null;
+
+    const errors: DraftErrors = {};
+    const name = supplierNameSchema.safeParse(draft.name);
+    const company = supplierCompanySchema.safeParse(draft.company);
+    const phone = supplierPhoneSchema.safeParse(draft.phone);
+    const observation = supplierObservationSchema.safeParse(draft.observation);
+
+    if (!name.success) errors.name = name.error.issues[0]?.message ?? "Informe o contato.";
+    if (!company.success) errors.company = company.error.issues[0]?.message ?? "Informe a empresa.";
+    if (!phone.success) errors.phone = phone.error.issues[0]?.message ?? "Informe um telefone válido.";
+    if (!observation.success) errors.observation = observation.error.issues[0]?.message ?? "Observação inválida.";
+
+    let purchaseFrequencyDays: number | null = null;
+    let preferredOrderWeekday: number | null = null;
+    let averageDeliveryDays: number | null = null;
+    let safetyMarginDays: number | null = null;
+
+    try {
+      purchaseFrequencyDays = parseOptionalInteger(
+        draft.purchaseFrequencyDays,
+        "Frequência de compra",
+        1,
+        3650
+      );
+    } catch (error) {
+      errors.purchaseFrequencyDays = getSupplierErrorMessage(error);
+    }
+
+    try {
+      preferredOrderWeekday = parseOptionalInteger(
+        draft.preferredOrderWeekday,
+        "Dia preferencial",
+        1,
+        7
+      );
+    } catch (error) {
+      errors.preferredOrderWeekday = getSupplierErrorMessage(error);
+    }
+
+    try {
+      averageDeliveryDays = parseOptionalInteger(
+        draft.averageDeliveryDays,
+        "Prazo de entrega",
+        0,
+        365
+      );
+    } catch (error) {
+      errors.averageDeliveryDays = getSupplierErrorMessage(error);
+    }
+
+    try {
+      safetyMarginDays = parseOptionalInteger(
+        draft.safetyMarginDays,
+        "Margem de segurança",
+        0,
+        365
+      );
+    } catch (error) {
+      errors.safetyMarginDays = getSupplierErrorMessage(error);
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      focusFirstFieldError(errors);
+      return null;
+    }
+
+    setFieldErrors({});
     return {
-      name,
-      company,
-      phone,
-      observation: observation.trim() || null,
-      purchaseFrequencyDays: parseOptionalInteger(draft.purchaseFrequencyDays, "Frequência de compra", 1, 3650),
-      preferredOrderWeekday: draft.preferredOrderWeekday ? Number(draft.preferredOrderWeekday) : null,
-      averageDeliveryDays: parseOptionalInteger(draft.averageDeliveryDays, "Prazo de entrega", 0, 365),
-      safetyMarginDays: parseOptionalInteger(draft.safetyMarginDays, "Margem de segurança", 0, 365)
+      name: name.success ? name.data : draft.name,
+      company: company.success ? company.data : draft.company,
+      phone: phone.success ? phone.data : draft.phone,
+      observation: observation.success ? observation.data.trim() || null : null,
+      purchaseFrequencyDays,
+      preferredOrderWeekday,
+      averageDeliveryDays,
+      safetyMarginDays
     };
   };
 
@@ -147,10 +244,12 @@ export function SupplierDetailPage() {
     setActionError(null);
     try {
       const values = validateDraft();
+      if (!values) return;
       await updateMutation.mutateAsync({ id: supplierId, ...values });
       setEditing(false);
       setDraft(null);
       setExitReview(null);
+      setFieldErrors({});
       setNotice("Fornecedor atualizado com sucesso.");
       if (goBackAfterSave) navigate("/fornecedores");
     } catch (error) {
@@ -176,6 +275,7 @@ export function SupplierDetailPage() {
     setDraft(null);
     setEditing(false);
     setActionError(null);
+    setFieldErrors({});
     if (action === "back") navigate("/fornecedores");
   };
 
@@ -230,39 +330,51 @@ export function SupplierDetailPage() {
             {editing && draft ? (
               <Card className="mt-5 p-5">
                 <div className="grid gap-4 lg:grid-cols-3">
-                  <TextField label="Contato / vendedor" value={draft.name} autoFocus onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-                  <TextField label="Empresa" value={draft.company} onChange={(event) => setDraft({ ...draft, company: event.target.value })} />
+                  <TextField id="supplier-name" label="Contato / vendedor" value={draft.name} autoFocus error={fieldErrors.name} onChange={(event) => updateDraftField("name", event.target.value)} />
+                  <TextField id="supplier-company" label="Empresa" value={draft.company} error={fieldErrors.company} onChange={(event) => updateDraftField("company", event.target.value)} />
                   <TextField
+                    id="supplier-phone"
                     label="Telefone"
                     value={draft.phone}
+                    error={fieldErrors.phone}
                     inputMode="tel"
                     maxLength={16}
                     placeholder="(75) 9 9999-9999"
-                    onChange={(event) => setDraft({ ...draft, phone: formatSupplierPhoneInput(event.target.value) })}
+                    onChange={(event) => updateDraftField("phone", formatSupplierPhoneInput(event.target.value))}
                   />
                 </div>
 
                 <details open className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
                   <summary className="cursor-pointer text-sm font-semibold text-zinc-800">Mais detalhes</summary>
                   <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <TextField label="Frequência de compra (dias)" inputMode="numeric" value={draft.purchaseFrequencyDays} onChange={(event) => setDraft({ ...draft, purchaseFrequencyDays: event.target.value })} />
-                    <SelectField label="Dia preferencial" value={draft.preferredOrderWeekday} onChange={(event) => setDraft({ ...draft, preferredOrderWeekday: event.target.value })}>
+                    <TextField id="supplier-purchaseFrequencyDays" label="Frequência de compra (dias)" inputMode="numeric" value={draft.purchaseFrequencyDays} error={fieldErrors.purchaseFrequencyDays} onChange={(event) => updateDraftField("purchaseFrequencyDays", event.target.value)} />
+                    <SelectField id="supplier-preferredOrderWeekday" label="Dia preferencial" value={draft.preferredOrderWeekday} error={fieldErrors.preferredOrderWeekday} onChange={(event) => updateDraftField("preferredOrderWeekday", event.target.value)}>
                       <option value="">Não informado</option>
                       {SUPPLIER_WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
                     </SelectField>
-                    <TextField label="Prazo de entrega (dias)" inputMode="numeric" value={draft.averageDeliveryDays} onChange={(event) => setDraft({ ...draft, averageDeliveryDays: event.target.value })} />
-                    <TextField label="Margem de segurança (dias)" inputMode="numeric" value={draft.safetyMarginDays} onChange={(event) => setDraft({ ...draft, safetyMarginDays: event.target.value })} />
+                    <TextField id="supplier-averageDeliveryDays" label="Prazo de entrega (dias)" inputMode="numeric" value={draft.averageDeliveryDays} error={fieldErrors.averageDeliveryDays} onChange={(event) => updateDraftField("averageDeliveryDays", event.target.value)} />
+                    <TextField id="supplier-safetyMarginDays" label="Margem de segurança (dias)" inputMode="numeric" value={draft.safetyMarginDays} error={fieldErrors.safetyMarginDays} onChange={(event) => updateDraftField("safetyMarginDays", event.target.value)} />
                   </div>
 
                   <label className="mt-4 block">
                     <span className="text-sm font-medium text-zinc-800">Observação</span>
-                    <textarea rows={3} value={draft.observation} onChange={(event) => setDraft({ ...draft, observation: event.target.value })} className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100" />
+                    <textarea
+                      id="supplier-observation"
+                      rows={3}
+                      value={draft.observation}
+                      aria-invalid={fieldErrors.observation ? true : undefined}
+                      onChange={(event) => updateDraftField("observation", event.target.value)}
+                      className={`mt-2 w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100 ${fieldErrors.observation ? "border-red-400" : "border-zinc-300"}`}
+                    />
+                    {fieldErrors.observation ? (
+                      <span className="mt-1.5 block text-xs font-medium text-red-700">{fieldErrors.observation}</span>
+                    ) : null}
                   </label>
                 </details>
 
                 <div className="mt-5 flex flex-wrap justify-end gap-2">
                   <Button variant="ghost" disabled={updateMutation.isPending} onClick={cancelEditing}>Cancelar</Button>
-                  <Button disabled={!dirty || updateMutation.isPending} onClick={() => void save()}>{updateMutation.isPending ? "Salvando…" : "Salvar alterações"}</Button>
+                  <Button disabled={!dirty} isLoading={updateMutation.isPending} loadingLabel="Salvando…" onClick={() => void save()}>Salvar alterações</Button>
                 </div>
               </Card>
             ) : (
@@ -329,7 +441,7 @@ export function SupplierDetailPage() {
                   <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <Button autoFocus variant="ghost" disabled={updateMutation.isPending} onClick={() => setExitReview(null)}>Continuar editando</Button>
                     <Button variant="secondary" disabled={updateMutation.isPending} onClick={discardChanges}>Descartar alterações</Button>
-                    <Button disabled={updateMutation.isPending} onClick={() => void save(exitReview === "back")}>{updateMutation.isPending ? "Salvando…" : "Salvar alterações"}</Button>
+                    <Button isLoading={updateMutation.isPending} loadingLabel="Salvando…" onClick={() => void save(exitReview === "back")}>Salvar alterações</Button>
                   </div>
                 </Card>
               </div>
@@ -387,6 +499,23 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return <div className="flex items-start justify-between gap-4 border-b border-zinc-100 pb-3 last:border-0 last:pb-0"><dt className="text-zinc-500">{label}</dt><dd className="max-w-[65%] whitespace-pre-wrap text-right font-medium text-zinc-900">{value}</dd></div>;
 }
 
-function SelectField({ label, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
-  return <label className="block"><span className="text-sm font-medium text-zinc-800">{label}</span><select className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100" {...props}>{children}</select></label>;
+function SelectField({
+  label,
+  error,
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { label: string; error?: string | null }) {
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-zinc-800">{label}</span>
+      <select
+        aria-invalid={error ? true : props["aria-invalid"]}
+        className={`mt-2 min-h-11 w-full rounded-xl border bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100 ${error ? "border-red-400" : "border-zinc-300"}`}
+        {...props}
+      >
+        {children}
+      </select>
+      {error ? <span className="mt-1.5 block text-xs font-medium text-red-700">{error}</span> : null}
+    </label>
+  );
 }
