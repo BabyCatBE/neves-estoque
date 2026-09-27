@@ -28,6 +28,8 @@ export function ProductDetailPage() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [exitReview, setExitReview] = useState<ExitReviewMode>(null);
@@ -124,6 +126,8 @@ export function ProductDetailPage() {
     if (!productQuery.data) return;
     setName(productQuery.data.name);
     setCategoryId(productQuery.data.categoryId ?? "");
+    setNameError(null);
+    setCategoryError(null);
     setActionError(null);
     setNotice(null);
     setEditing(true);
@@ -132,6 +136,8 @@ export function ProductDetailPage() {
   const resetDraft = () => {
     setName(productQuery.data?.name ?? "");
     setCategoryId(productQuery.data?.categoryId ?? "");
+    setNameError(null);
+    setCategoryError(null);
     setActionError(null);
   };
 
@@ -207,14 +213,18 @@ export function ProductDetailPage() {
 
     const parsedName = productNameSchema.safeParse(name);
     if (!parsedName.success) {
-      setActionError(parsedName.error.issues[0]?.message ?? "Nome inválido.");
+      setNameError(parsedName.error.issues[0]?.message ?? "Nome inválido.");
+      window.setTimeout(() => document.getElementById("product-edit-name")?.focus(), 0);
       return;
     }
+    setNameError(null);
 
     if (!categoryId) {
-      setActionError("Escolha a categoria.");
+      setCategoryError("Escolha a categoria.");
+      window.setTimeout(() => document.getElementById("product-edit-category")?.focus(), 0);
       return;
     }
+    setCategoryError(null);
 
     try {
       await updateMutation.mutateAsync({
@@ -320,16 +330,26 @@ export function ProductDetailPage() {
             <Card className="mt-5 p-5">
               <div className="grid gap-4 lg:grid-cols-2">
                 <TextField
+                  id="product-edit-name"
                   label="Nome"
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  error={nameError}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    if (nameError) setNameError(null);
+                  }}
                   autoFocus
                 />
 
                 <SelectField
+                  id="product-edit-category"
                   label="Categoria"
                   value={categoryId}
-                  onChange={(event) => setCategoryId(event.target.value)}
+                  error={categoryError}
+                  onChange={(event) => {
+                    setCategoryId(event.target.value);
+                    if (categoryError) setCategoryError(null);
+                  }}
                 >
                   <option value="">Selecione…</option>
                   {categoriesQuery.data?.map((category) => (
@@ -363,10 +383,12 @@ export function ProductDetailPage() {
                   Cancelar
                 </Button>
                 <Button
-                  disabled={!dirty || updateMutation.isPending}
+                  disabled={!dirty}
+                  isLoading={updateMutation.isPending}
+                  loadingLabel="Salvando…"
                   onClick={() => void save(false)}
                 >
-                  {updateMutation.isPending ? "Salvando…" : "Salvar alterações"}
+                  Salvar alterações
                 </Button>
               </div>
             </Card>
@@ -615,10 +637,11 @@ export function ProductDetailPage() {
                     Descartar alterações
                   </Button>
                   <Button
-                    disabled={updateMutation.isPending}
+                    isLoading={updateMutation.isPending}
+                    loadingLabel="Salvando…"
                     onClick={() => void save(exitReview === "back")}
                   >
-                    {updateMutation.isPending ? "Salvando…" : "Salvar alterações"}
+                    Salvar alterações
                   </Button>
                 </div>
               </Card>
@@ -668,20 +691,24 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 function SelectField({
   label,
+  error,
   children,
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;
+  error?: string | null;
 }) {
   return (
     <label className="block">
       <span className="text-sm font-medium text-zinc-800">{label}</span>
       <select
-        className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
+        aria-invalid={error ? true : props["aria-invalid"]}
+        className={`mt-2 min-h-11 w-full rounded-xl border bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100 ${error ? "border-red-400" : "border-zinc-300"}`}
         {...props}
       >
         {children}
       </select>
+      {error ? <span className="mt-1.5 block text-xs font-medium text-red-700">{error}</span> : null}
     </label>
   );
 }
