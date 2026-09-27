@@ -187,7 +187,7 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
         queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
       allowNavigationRef.current = true;
-      navigate(`/conferencias/${details.id}`, { replace: true });
+      navigate(`/conferencias/${details.id}?updated=1`, { replace: true });
     } catch (error) {
       setReviewOpen(false);
       setActionError(getConferenceErrorMessage(error));
