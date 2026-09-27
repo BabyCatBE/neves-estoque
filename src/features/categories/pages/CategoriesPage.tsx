@@ -4,6 +4,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
+import { createBrowserUuid } from "../../../shared/lib/browserUuid";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -175,7 +176,7 @@ export function CategoriesPage() {
       0,
       ...(categoriesQuery.data ?? []).map((category) => category.sort_order ?? 0)
     );
-    const categoryId = crypto.randomUUID();
+    const categoryId = createBrowserUuid();
     let prepared: PreparedIllustration | null = null;
 
     setIllustrationSaving(true);
@@ -424,8 +425,12 @@ export function CategoriesPage() {
               <Button variant="ghost" disabled={reorderMutation.isPending} onClick={cancelReordering}>
                 Cancelar
               </Button>
-              <Button disabled={reorderMutation.isPending} onClick={() => void saveReordering()}>
-                {reorderMutation.isPending ? "Salvando…" : "Salvar ordem"}
+              <Button
+                isLoading={reorderMutation.isPending}
+                loadingLabel="Salvando…"
+                onClick={() => void saveReordering()}
+              >
+                Salvar ordem
               </Button>
             </div>
           ) : (
@@ -484,8 +489,12 @@ export function CategoriesPage() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending || illustrationSaving}>
-                  {createMutation.isPending || illustrationSaving ? "Salvando…" : "Salvar categoria"}
+                <Button
+                  type="submit"
+                  isLoading={createMutation.isPending || illustrationSaving}
+                  loadingLabel="Salvando…"
+                >
+                  Salvar categoria
                 </Button>
               </div>
             </form>
@@ -554,14 +563,14 @@ export function CategoriesPage() {
                 editing?.id === category.id && !reordering
                   ? "p-5 sm:col-span-2 lg:col-span-3"
                   : "p-4"
-              } ${draggingId === category.id ? "ring-2 ring-red-300" : ""}`}
+              } ${draggingId === category.id ? "relative z-10 scale-[1.01] bg-red-50/60 opacity-95 shadow-lg ring-2 ring-red-300" : "transition-[transform,box-shadow,background-color,opacity] duration-200 ease-out hover:shadow-md"}`}
             >
               {reordering ? (
                 <>
                   <div className="flex items-start gap-3">
                     <button
                       type="button"
-                      className="flex h-11 w-11 shrink-0 touch-none select-none items-center justify-center rounded-xl bg-red-50 text-red-700 transition hover:bg-red-100 active:cursor-grabbing"
+                      className="flex h-11 w-11 shrink-0 touch-none select-none items-center justify-center rounded-xl bg-red-50 text-red-700 shadow-sm transition-[transform,background-color,box-shadow] duration-150 hover:bg-red-100 hover:shadow active:scale-95 active:cursor-grabbing sm:cursor-grab"
                       aria-label={`Arrastar categoria ${category.name}`}
                       aria-pressed={draggingId === category.id}
                       onPointerDown={(event) => beginDrag(event, category.id)}
