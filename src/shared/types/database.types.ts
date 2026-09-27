@@ -641,6 +641,18 @@ export type Database = {
         }
         Returns: string
       }
+      create_product_conference: {
+        Args: {
+          p_device_id: string
+          p_effective_at: string
+          p_idempotency_key: string
+          p_observation?: string
+          p_physical_responsible: string
+          p_product_id: string
+          p_quantity: number
+        }
+        Returns: string
+      }
       create_conference: {
         Args: {
           p_device_id: string

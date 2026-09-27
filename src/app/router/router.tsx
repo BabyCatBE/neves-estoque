@@ -8,6 +8,7 @@ import { HomePage } from "../../features/home/pages/HomePage";
 import { AlertsHubPage } from "../../features/alerts/pages/AlertsHubPage";
 import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
 import { ProductDetailPage } from "../../features/products/pages/ProductDetailPage";
+import { ProductStockUpdatePage } from "../../features/products/pages/ProductStockUpdatePage";
 import { ProductsPage } from "../../features/products/pages/ProductsPage";
 import { TrashPage } from "../../features/trash/pages/TrashPage";
 import { SupplierDetailPage } from "../../features/suppliers/pages/SupplierDetailPage";
@@ -21,6 +22,7 @@ import { ConferencesHubPage } from "../../features/conferences/pages/Conferences
 import { ConferencePrintPage } from "../../features/conferences/pages/ConferencePrintPage";
 import { ConferenceCategoriesPage } from "../../features/conferences/pages/ConferenceCategoriesPage";
 import { NewCategoryConferencePage } from "../../features/conferences/pages/NewCategoryConferencePage";
+import { NewProductConferencePage } from "../../features/conferences/pages/NewProductConferencePage";
 import { ConferenceHistoryCategoriesPage } from "../../features/conferences/pages/ConferenceHistoryCategoriesPage";
 import { CategoryConferenceHistoryPage } from "../../features/conferences/pages/CategoryConferenceHistoryPage";
 import { ConferenceDetailPage } from "../../features/conferences/pages/ConferenceDetailPage";
@@ -169,6 +171,22 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ProductsPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/produtos/:productId/estoque",
+    element: (
+      <ProtectedRoute>
+        <ProductStockUpdatePage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/produtos/:productId/estoque/conferencia",
+    element: (
+      <ProtectedRoute>
+        <NewProductConferencePage />
       </ProtectedRoute>
     )
   },

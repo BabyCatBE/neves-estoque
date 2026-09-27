@@ -76,6 +76,16 @@ export type CategoryConferenceUpdateInput = Omit<
   "categoryId" | "idempotencyKey"
 > & { conferenceId: string };
 
+export type ProductConferenceWriteInput = {
+  productId: string;
+  effectiveAt: string;
+  physicalResponsible: string;
+  deviceId: string;
+  idempotencyKey: string;
+  quantity: number;
+  observation: string | null;
+};
+
 export type ConferencePrintCategory = CategoryListItem & {
   products: ConferenceProduct[];
 };
@@ -197,6 +207,22 @@ export async function updateCategoryConference(input: CategoryConferenceUpdateIn
   });
 
   if (error) throw error;
+}
+
+export async function createProductConference(input: ProductConferenceWriteInput) {
+  const client = requireClient();
+  const { data, error } = await client.rpc("create_product_conference", {
+    p_product_id: input.productId,
+    p_effective_at: input.effectiveAt,
+    p_physical_responsible: input.physicalResponsible,
+    p_device_id: input.deviceId,
+    p_idempotency_key: input.idempotencyKey,
+    p_quantity: input.quantity,
+    ...(input.observation === null ? {} : { p_observation: input.observation })
+  });
+
+  if (error) throw error;
+  return data;
 }
 
 export async function reviewConferenceConsumption(

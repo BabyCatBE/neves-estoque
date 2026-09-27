@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState, type KeyboardEvent, type SelectHTMLAttributes } from "react";
-import { useBlocker, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type SelectHTMLAttributes } from "react";
+import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
@@ -62,6 +62,7 @@ type ItemFieldErrors = Record<string, {
 
 export function NewEntryPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { deviceId } = useAuth();
   const controlKeyPressed = useControlKeyPressed();
@@ -94,6 +95,8 @@ export function NewEntryPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [idempotencyKey] = useState(() => createBrowserUuid());
   const allowNavigationRef = useRef(false);
+  const preselectedProductHandledRef = useRef(false);
+  const preselectedProductId = searchParams.get("productId");
 
   const dirty = useMemo(
     () =>
@@ -128,6 +131,38 @@ export function NewEntryPage() {
     queryKey: ["products", "categories"],
     queryFn: listProductCategories
   });
+
+  useEffect(() => {
+    if (
+      preselectedProductHandledRef.current ||
+      !preselectedProductId ||
+      !productsQuery.data
+    ) {
+      return;
+    }
+
+    preselectedProductHandledRef.current = true;
+    const product = productsQuery.data.find((item) => item.id === preselectedProductId);
+    if (!product) {
+      setActionError("Produto não encontrado para iniciar a Entrada.");
+      return;
+    }
+
+    if (product.categoryId === null) {
+      setPendingProduct(product);
+      setPendingProductCategoryId("");
+      setPendingProductError(null);
+      return;
+    }
+
+    const localId = createBrowserUuid();
+    setItems((current) =>
+      current.length
+        ? current
+        : [{ localId, product, quantity: "", unitPrice: "" }]
+    );
+    window.setTimeout(() => document.getElementById("entry-supplier-search")?.focus(), 0);
+  }, [preselectedProductId, productsQuery.data]);
 
   const completePendingProductMutation = useMutation({
     mutationFn: updateProductDetails,

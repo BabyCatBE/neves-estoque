@@ -304,6 +304,13 @@ export function ProductDetailPage() {
                 <Button
                   variant="secondary"
                   disabled={deleteMutation.isPending}
+                  onClick={() => navigate(`/produtos/${productQuery.data.id}/estoque`)}
+                >
+                  Atualizar estoque
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={deleteMutation.isPending}
                   className="text-red-700"
                   onClick={() => void deleteProduct()}
                 >
