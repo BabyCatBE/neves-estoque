@@ -14,7 +14,9 @@ import { formatMoney } from "../lib/entryValidation";
 export function EntriesHistoryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice] = useState<string | null>(() =>
+    searchParams.get("deleted") === "1" ? "Entrada enviada para a lixeira." : null
+  );
   const [searchFeedback, setSearchFeedback] = useState(false);
   const searchFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyQuery = useQuery({
@@ -23,12 +25,10 @@ export function EntriesHistoryPage() {
   });
 
   useEffect(() => {
-    if (searchParams.get("deleted") === "1") {
-      setNotice("Entrada enviada para a lixeira.");
-      const next = new URLSearchParams(searchParams);
-      next.delete("deleted");
-      setSearchParams(next, { replace: true });
-    }
+    if (searchParams.get("deleted") !== "1") return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("deleted");
+    setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {

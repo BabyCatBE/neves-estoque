@@ -138,9 +138,13 @@ export function NewEntryPage() {
 
   const saveMutation = useMutation({ mutationFn: createEntry });
 
-  const selectedSupplier = draftSupplier
-    ? { id: "draft-supplier", name: draftSupplier.name, company: null }
-    : (suppliersQuery.data ?? []).find((supplier) => supplier.id === supplierId) ?? null;
+  const selectedSupplier = useMemo(
+    () =>
+      draftSupplier
+        ? { id: "draft-supplier", name: draftSupplier.name, company: null }
+        : (suppliersQuery.data ?? []).find((supplier) => supplier.id === supplierId) ?? null,
+    [draftSupplier, supplierId, suppliersQuery.data]
+  );
 
   const supplierSuggestions = useMemo(() => {
     const term = normalizeSearchText(supplierSearch);

@@ -62,12 +62,13 @@ export function ProductsPage() {
   const [originalOrder, setOriginalOrder] = useState<ProductOrderDraft>({});
   const [draftOrder, setDraftOrder] = useState<ProductOrderDraft>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(() =>
+    searchParams.get("deleted") === "1" ? "Produto enviado para a lixeira." : null
+  );
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get("deleted") !== "1") return;
-    setNotice("Produto enviado para a lixeira.");
     const next = new URLSearchParams(searchParams);
     next.delete("deleted");
     setSearchParams(next, { replace: true });

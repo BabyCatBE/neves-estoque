@@ -1,4 +1,12 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { useBlocker } from "react-router-dom";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { copyText } from "../../../shared/lib/copyText";
@@ -72,7 +80,7 @@ function PurchaseListEditor({
     [items, selected]
   );
 
-  const applySuggestionIfAvailable = (productId: string) => {
+  const applySuggestionIfAvailable = useCallback((productId: string) => {
     const product = items.find((item) => item.productId === productId);
     const suggestion =
       product?.projection?.status === "recommended"
@@ -84,7 +92,7 @@ function PurchaseListEditor({
       if ((current[productId] ?? "").trim()) return current;
       return { ...current, [productId]: formatEditableQuantity(suggestion) };
     });
-  };
+  }, [items]);
 
   useImperativeHandle(
     ref,
@@ -105,7 +113,7 @@ function PurchaseListEditor({
         }
       }
     }),
-    [items]
+    [applySuggestionIfAvailable]
   );
 
   const clearInvalid = (productId: string) => {

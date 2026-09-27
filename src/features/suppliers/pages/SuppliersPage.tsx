@@ -53,12 +53,13 @@ export function SuppliersPage() {
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const pendingOnly = searchParams.get("filter") === "pending";
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(() =>
+    searchParams.get("deleted") === "1" ? "Fornecedor enviado para a lixeira." : null
+  );
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get("deleted") !== "1") return;
-    setNotice("Fornecedor enviado para a lixeira.");
     const next = new URLSearchParams(searchParams);
     next.delete("deleted");
     setSearchParams(next, { replace: true });
