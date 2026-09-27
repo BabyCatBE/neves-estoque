@@ -106,11 +106,7 @@ function PurchaseListEditor({
         applySuggestionIfAvailable(productId);
         setActionError(null);
 
-        if (shouldAutoFocusQuantity()) {
-          window.setTimeout(() => {
-            document.getElementById(`purchase-quantity-${productId}`)?.focus();
-          }, 0);
-        }
+        focusQuantity(productId, true);
       }
     }),
     [applySuggestionIfAvailable]
@@ -144,9 +140,7 @@ function PurchaseListEditor({
     }
 
     if (willSelect && shouldAutoFocusQuantity()) {
-      window.setTimeout(() => {
-        document.getElementById(`purchase-quantity-${productId}`)?.focus();
-      }, 0);
+      focusQuantity(productId, false);
     }
   };
 
@@ -451,8 +445,32 @@ function PurchaseListEditor({
   );
 });
 
+function focusQuantity(productId: string, force: boolean) {
+  if (!force && !shouldAutoFocusQuantity()) return;
+
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      const input = document.getElementById(
+        `purchase-quantity-${productId}`
+      ) as HTMLInputElement | null;
+
+      if (!input || input.disabled) return;
+
+      input.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest"
+      });
+      input.focus({ preventScroll: true });
+      input.select();
+    });
+  });
+}
+
 function shouldAutoFocusQuantity() {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true;
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return true;
+  }
   return !window.matchMedia("(pointer: coarse)").matches;
 }
 

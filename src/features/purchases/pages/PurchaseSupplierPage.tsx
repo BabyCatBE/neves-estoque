@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
@@ -20,7 +20,9 @@ export function PurchaseSupplierPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [manualProductIds, setManualProductIds] = useState<string[]>([]);
+  const [pendingManualFocusId, setPendingManualFocusId] = useState<string | null>(null);
   const editorRef = useRef<PurchaseListEditorHandle>(null);
+  const restorePickerFocusRef = useRef(true);
 
   const supplierQuery = useQuery({
     queryKey: ["suppliers", "detail", supplierId],
@@ -79,16 +81,61 @@ export function PurchaseSupplierPage() {
       .filter((product) => !term || normalizeSearchText(product.name).includes(term))
       .sort((a, b) =>
         a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })
-      )
-      .slice(0, 20);
+      );
   }, [allProductsQuery.data, historicalProductIds, manualProductIds, productSearch]);
 
+  useEffect(() => {
+    if (!addOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    window.requestAnimationFrame(() => {
+      document.getElementById("purchase-add-product-search")?.focus();
+    });
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      restorePickerFocusRef.current = true;
+      setAddOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+
+      if (restorePickerFocusRef.current) {
+        window.requestAnimationFrame(() => {
+          document.getElementById("purchase-add-product-trigger")?.focus();
+        });
+      }
+    };
+  }, [addOpen]);
+
+  useEffect(() => {
+    if (!pendingManualFocusId) return;
+    if (!purchaseItems.some((item) => item.productId === pendingManualFocusId)) return;
+
+    editorRef.current?.selectProduct(pendingManualFocusId);
+    setPendingManualFocusId(null);
+  }, [pendingManualFocusId, purchaseItems]);
+
+  const closeProductPicker = () => {
+    restorePickerFocusRef.current = true;
+    setAddOpen(false);
+    setProductSearch("");
+  };
+
   const addManualProduct = (productId: string) => {
+    restorePickerFocusRef.current = false;
     setManualProductIds((current) =>
       current.includes(productId) ? current : [...current, productId]
     );
-    editorRef.current?.selectProduct(productId);
     setProductSearch("");
+    setAddOpen(false);
+    setPendingManualFocusId(productId);
   };
 
   const configurationReady =
@@ -124,67 +171,121 @@ export function PurchaseSupplierPage() {
 
             <div className="mt-5">
               <Button
+                id="purchase-add-product-trigger"
                 variant="secondary"
-                onClick={() => setAddOpen((current) => !current)}
+                onClick={() => {
+                  restorePickerFocusRef.current = true;
+                  setAddOpen(true);
+                }}
+                aria-haspopup="dialog"
                 aria-expanded={addOpen}
               >
-                {addOpen ? "Fechar adicionar produto" : "Adicionar outro produto"}
+                Adicionar outro produto
               </Button>
             </div>
 
             {addOpen ? (
-              <Card className="mt-4 p-5">
-                <h3 className="font-semibold">Adicionar produto à simulação</h3>
-                <p className="mt-1 text-xs leading-5 text-zinc-500">
-                  Esta inclusão vale somente para a lista atual e não cria relação permanente com o fornecedor.
-                </p>
-
-                <div className="relative mt-4 max-w-md">
-                  <TextField
-                    id="purchase-add-product-search"
-                    label="Pesquisar produto"
-                    placeholder="Digite qualquer trecho do nome"
-                    value={productSearch}
-                    className={productSearch ? "pr-11" : ""}
-                    onChange={(event) => setProductSearch(event.target.value)}
-                  />
-                  {productSearch ? (
-                    <SearchClearButton
-                      onClear={() => {
-                        setProductSearch("");
-                        document.getElementById("purchase-add-product-search")?.focus();
-                      }}
-                    />
-                  ) : null}
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  {availableProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <p className="font-semibold text-zinc-950">{product.name}</p>
-                        <p className="mt-1 text-xs text-zinc-500">
-                          {product.unit} · Estoque atual: {formatStock(product.currentQuantity, product.unit)}
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="purchase-add-product-title"
+                className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 sm:items-center sm:px-4 sm:py-6"
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget) {
+                    closeProductPicker();
+                  }
+                }}
+              >
+                <Card className="flex max-h-[88dvh] w-full max-w-2xl flex-col overflow-hidden rounded-b-none shadow-xl sm:rounded-2xl">
+                  <div className="shrink-0 border-b border-zinc-100 bg-white px-4 py-4 sm:px-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3
+                          id="purchase-add-product-title"
+                          className="text-lg font-semibold text-zinc-950"
+                        >
+                          Adicionar produto à simulação
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-zinc-500">
+                          Pesquise ou role a lista. Esta inclusão vale somente para a
+                          simulação atual.
                         </p>
                       </div>
-                      <Button size="sm" variant="secondary" onClick={() => addManualProduct(product.id)}>
-                        Adicionar
-                      </Button>
-                    </div>
-                  ))}
 
-                  {availableProducts.length === 0 ? (
-                    <p className="text-sm text-zinc-500">
-                      {productSearch
-                        ? "Nenhum outro Produto encontrado."
-                        : "Todos os Produtos ativos já estão no histórico deste fornecedor ou foram adicionados à simulação."}
+                      <button
+                        type="button"
+                        onClick={closeProductPicker}
+                        aria-label="Fechar seleção de produto"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white text-xl text-zinc-600 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <div className="relative mt-4">
+                      <TextField
+                        id="purchase-add-product-search"
+                        label="Pesquisar produto"
+                        placeholder="Digite qualquer trecho do nome"
+                        value={productSearch}
+                        className={productSearch ? "pr-11" : ""}
+                        onChange={(event) => setProductSearch(event.target.value)}
+                      />
+                      {productSearch ? (
+                        <SearchClearButton
+                          onClear={() => {
+                            setProductSearch("");
+                            document
+                              .getElementById("purchase-add-product-search")
+                              ?.focus();
+                          }}
+                        />
+                      ) : null}
+                    </div>
+
+                    <p className="mt-2 text-xs text-zinc-500">
+                      {availableProducts.length}{" "}
+                      {availableProducts.length === 1
+                        ? "Produto disponível"
+                        : "Produtos disponíveis"}
                     </p>
-                  ) : null}
-                </div>
-              </Card>
+                  </div>
+
+                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-zinc-50 p-3 sm:p-4">
+                    <div className="space-y-2">
+                      {availableProducts.map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => addManualProduct(product.id)}
+                          className="flex min-h-16 w-full items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-left transition hover:border-red-200 hover:bg-red-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-zinc-950">
+                              {product.name}
+                            </p>
+                            <p className="mt-1 text-xs text-zinc-500">
+                              {product.unit} · Estoque atual:{" "}
+                              {formatStock(product.currentQuantity, product.unit)}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs font-semibold text-red-700">
+                            Adicionar
+                          </span>
+                        </button>
+                      ))}
+
+                      {availableProducts.length === 0 ? (
+                        <div className="rounded-xl border border-zinc-200 bg-white p-5 text-center text-sm text-zinc-500">
+                          {productSearch
+                            ? "Nenhum outro Produto encontrado."
+                            : "Todos os Produtos ativos já estão no histórico deste fornecedor ou foram adicionados à simulação."}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </Card>
+              </div>
             ) : null}
 
             <PurchaseListEditor
