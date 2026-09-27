@@ -77,10 +77,11 @@ const check = runCaptured(checkCommand.command, checkCommand.args);
 if (check.error || check.status !== 0) fail("CHECK", check);
 console.log("✓ Typecheck, lint, testes e build aprovados.");
 
-console.log("\n[3/3] Iniciando o aplicativo local...");
-console.log("✓ Tudo aprovado. Abrindo o Vite. Use Ctrl+C para encerrar.\n");
+console.log("\n[3/3] Iniciando o aplicativo local na rede...");
+console.log("✓ Tudo aprovado. Abrindo o Vite. Use Ctrl+C para encerrar.");
+console.log("→ No celular conectado à mesma rede, abra o endereço exibido em Network.\n");
 
-const devCommand = npmInvocation(["run", "dev"]);
+const devCommand = npmInvocation(["run", "dev", "--", "--host", "0.0.0.0"]);
 const dev = spawn(devCommand.command, devCommand.args, {
   cwd: process.cwd(),
   stdio: "inherit",
