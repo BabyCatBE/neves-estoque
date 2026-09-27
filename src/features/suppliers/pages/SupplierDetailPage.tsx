@@ -251,7 +251,7 @@ export function SupplierDetailPage() {
       setExitReview(null);
       setFieldErrors({});
       setNotice("Fornecedor atualizado com sucesso.");
-      if (goBackAfterSave) navigate("/fornecedores");
+      if (goBackAfterSave) navigate("/fornecedores?deleted=1");
     } catch (error) {
       setExitReview(null);
       setActionError(getSupplierErrorMessage(error));
