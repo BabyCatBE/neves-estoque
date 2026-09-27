@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  getValidationErrorMessage,
+  looksTechnicalErrorMessage
+} from "../../../shared/lib/friendlyError";
 
 export const supplierNameSchema = z.string().trim().min(1, "Informe o contato ou vendedor.").max(200, "O contato deve ter no máximo 200 caracteres.");
 export const supplierCompanySchema = z.string().trim().min(1, "Informe a empresa.").max(200, "A empresa deve ter no máximo 200 caracteres.");
@@ -70,11 +74,16 @@ export function weekdayLabel(value: number | null) {
 }
 
 export function getSupplierErrorMessage(error: unknown) {
+  const validationMessage = getValidationErrorMessage(error);
+  if (validationMessage) return validationMessage;
+
   if (error instanceof Error && error.message) {
     if (error.message.includes("Já existe um fornecedor ativo com este contato")) return "Já existe um fornecedor ativo com este contato.";
     if (error.message.includes("Fornecedor não encontrado")) return "Este fornecedor não está mais disponível.";
     if (error.message.includes("Prazo de restauração expirado")) return "O prazo de 7 dias para restaurar este fornecedor expirou.";
-    return error.message;
+    return looksTechnicalErrorMessage(error.message)
+      ? "Não foi possível concluir a operação com o fornecedor. Tente novamente."
+      : error.message;
   }
 
   if (typeof error === "object" && error !== null) {
@@ -82,7 +91,9 @@ export function getSupplierErrorMessage(error: unknown) {
     if (typeof message === "string") {
       if (message.includes("suppliers_active_name_uq")) return "Já existe um fornecedor ativo com este contato.";
       if (message.includes("Acesso não autorizado")) return "Sua sessão não tem autorização para executar esta ação.";
-      return message;
+      return looksTechnicalErrorMessage(message)
+        ? "Não foi possível concluir a operação com o fornecedor. Tente novamente."
+        : message;
     }
   }
 
