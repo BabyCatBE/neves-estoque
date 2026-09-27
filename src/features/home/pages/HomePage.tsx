@@ -7,6 +7,7 @@ import { APP_VERSION, SHOW_DEVELOPMENT_VERSION } from "../../../shared/config/ap
 import { listRestorableTrashItems } from "../../trash/api/trash";
 import { listActiveSuppliers } from "../../suppliers/api/suppliers";
 import { listActiveProducts } from "../../products/api/products";
+import { useOfflinePendingOperations } from "../../offline/hooks/useOfflinePendingOperations";
 
 const modules = [
   ["Estoque Atual", "/estoque", "Posição derivada da última conferência válida e entradas posteriores."],
@@ -19,6 +20,7 @@ const modules = [
 
 export function HomePage() {
   const { session, roleName, deviceId, displayName, username, authMethod, signOut } = useAuth();
+  const { items: offlinePending } = useOfflinePendingOperations();
   const trashAlertsQuery = useQuery({
     queryKey: ["trash", "restorable"],
     queryFn: listRestorableTrashItems,
@@ -38,7 +40,7 @@ export function HomePage() {
   const trashAlerts = trashAlertsQuery.data?.length ?? 0;
   const pendingSupplierAlerts = (supplierAlertsQuery.data ?? []).filter((supplier) => supplier.isPending).length;
   const pendingProductAlerts = (productAlertsQuery.data ?? []).filter((product) => product.categoryId === null).length;
-  const alertCount = trashAlerts + pendingSupplierAlerts + pendingProductAlerts;
+  const alertCount = trashAlerts + pendingSupplierAlerts + pendingProductAlerts + offlinePending.length;
   const hasAlerts = alertCount > 0;
 
   return (

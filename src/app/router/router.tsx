@@ -6,6 +6,7 @@ import { CategoriesPage } from "../../features/categories/pages/CategoriesPage";
 import { CategoryTrashPage } from "../../features/categories/pages/CategoryTrashPage";
 import { HomePage } from "../../features/home/pages/HomePage";
 import { AlertsHubPage } from "../../features/alerts/pages/AlertsHubPage";
+import { OfflinePendingPage } from "../../features/offline/pages/OfflinePendingPage";
 import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
 import { ProductDetailPage } from "../../features/products/pages/ProductDetailPage";
 import { MergeProductsPage } from "../../features/products/pages/MergeProductsPage";
@@ -246,6 +247,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <AlertsHubPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/alertas/pendencias-locais",
+    element: (
+      <ProtectedRoute>
+        <OfflinePendingPage />
       </ProtectedRoute>
     )
   },

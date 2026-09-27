@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type SelectHTMLAttributes } from "react";
 import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { useNetworkStatus } from "../../../shared/offline/NetworkContext";
 import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
 import { createBrowserUuid } from "../../../shared/lib/browserUuid";
@@ -25,6 +26,7 @@ import {
 } from "../../products/lib/productValidation";
 import { listActiveSuppliers } from "../../suppliers/api/suppliers";
 import { createEntry } from "../api/entries";
+import { savePendingEntry } from "../../offline/lib/pendingOperations";
 import { useControlKeyPressed } from "../lib/useControlKeyPressed";
 import {
   buildEffectiveAt,
@@ -64,7 +66,8 @@ export function NewEntryPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { deviceId } = useAuth();
+  const { session, appUserId, deviceId, displayName, username } = useAuth();
+  const { isOnline } = useNetworkStatus();
   const controlKeyPressed = useControlKeyPressed();
   const [supplierId, setSupplierId] = useState("");
   const [supplierSearch, setSupplierSearch] = useState("");
@@ -457,6 +460,12 @@ export function NewEntryPage() {
 
   const completePendingProduct = async () => {
     if (!pendingProduct) return;
+    if (!isOnline) {
+      setPendingProductError(
+        "Este Produto precisa ter a Categoria concluída online antes de ser usado em uma Entrada offline."
+      );
+      return;
+    }
     if (!pendingProductCategoryId) {
       setPendingProductError("Escolha uma categoria para continuar.");
       window.setTimeout(() => document.getElementById("pending-product-category")?.focus(), 0);
@@ -597,6 +606,25 @@ export function NewEntryPage() {
   const persist = async (payload = validateAndBuild()) => {
     setActionError(null);
     try {
+      if (!isOnline) {
+        if (!session?.user.id || !deviceId) {
+          throw new Error("Este acesso ainda não está pronto para guardar uma Entrada offline.");
+        }
+
+        await savePendingEntry(payload, {
+          authUserId: session.user.id,
+          appUserId,
+          deviceId,
+          actorLabel: displayName ?? (username ? `@${username}` : "Usuário autorizado"),
+          supplierLabel: selectedSupplier?.name ?? draftSupplier?.name ?? "Fornecedor"
+        });
+
+        setMissingPriceReview(false);
+        allowNavigationRef.current = true;
+        navigate("/alertas/pendencias-locais?saved=entry", { replace: true });
+        return;
+      }
+
       const entryId = await saveMutation.mutateAsync(payload);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["entries"] }),
@@ -626,6 +654,12 @@ export function NewEntryPage() {
   return (
     <AppShell title="Nova Entrada" showBack backTo="/entradas">
       <section className="pb-28">
+        {!isOnline ? (
+          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+            Você está offline. Ao salvar, esta Entrada ficará somente neste aparelho como <strong>PENDENTE DE CONFIRMAÇÃO</strong> e não alterará o estoque oficial.
+          </div>
+        ) : null}
+
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Mercadoria recebida</h2>
           <p className="mt-1 text-sm text-zinc-600">Registre somente mercadoria que realmente chegou à Panificadora.</p>
@@ -972,7 +1006,7 @@ export function NewEntryPage() {
                 loadingLabel="Salvando…"
                 onClick={requestSave}
               >
-                Salvar Entrada
+                {isOnline ? "Salvar Entrada" : "Salvar pendência"}
               </Button>
             </div>
           </div>

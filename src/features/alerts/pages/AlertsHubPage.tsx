@@ -7,8 +7,10 @@ import { Card } from "../../../shared/components/ui/Card";
 import { listActiveProducts } from "../../products/api/products";
 import { listActiveSuppliers } from "../../suppliers/api/suppliers";
 import { listRestorableTrashItems } from "../../trash/api/trash";
+import { useOfflinePendingOperations } from "../../offline/hooks/useOfflinePendingOperations";
 
 export function AlertsHubPage() {
+  const { items: offlinePending, loading: offlinePendingLoading } = useOfflinePendingOperations();
   const trashQuery = useQuery({ queryKey: ["trash", "restorable"], queryFn: listRestorableTrashItems });
   const suppliersQuery = useQuery({ queryKey: ["suppliers", "active"], queryFn: listActiveSuppliers });
   const productsQuery = useQuery({ queryKey: ["products", "active"], queryFn: listActiveProducts });
@@ -17,6 +19,7 @@ export function AlertsHubPage() {
   const pendingSuppliers = (suppliersQuery.data ?? []).filter((supplier) => supplier.isPending);
   const pendingProducts = (productsQuery.data ?? []).filter((product) => product.categoryId === null);
   const pendingCount = pendingSuppliers.length + pendingProducts.length;
+  const offlinePendingCount = offlinePending.length;
   const loading = trashQuery.isPending || suppliersQuery.isPending || productsQuery.isPending;
 
   return (
@@ -27,7 +30,36 @@ export function AlertsHubPage() {
           A Lixeira é uma área de recuperação. Abaixo ficam apenas cadastros e tarefas que exigem atenção.
         </p>
 
-        {loading ? <Card className="mt-5 p-5 text-sm text-zinc-600">Carregando alertas…</Card> : null}
+        <div className="mt-6">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
+            Offline
+          </p>
+          <Link to="/alertas/pendencias-locais" className="block">
+            <InteractiveCard className="p-5 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-800">
+                  <PendingLocalIcon />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-semibold">Pendências locais</h3>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      offlinePendingCount > 0 ? "bg-amber-50 text-amber-900" : "bg-zinc-100 text-zinc-500"
+                    }`}>
+                      {offlinePendingLoading ? "…" : offlinePendingCount}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm leading-6 text-zinc-600">
+                    Entradas e Conferências preparadas offline que ainda não foram enviadas ao estoque oficial.
+                  </p>
+                </div>
+                <span className="text-sm font-semibold text-amber-800">Abrir pendências ›</span>
+              </div>
+            </InteractiveCard>
+          </Link>
+        </div>
+
+        {loading ? <Card className="mt-5 p-5 text-sm text-zinc-600">Carregando alertas online…</Card> : null}
 
         {!loading ? (
           <>
@@ -149,4 +181,8 @@ function SupplierIcon() {
 }
 function ProductIcon() {
   return <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none"><path d="M6 7.5 12 4l6 3.5v9L12 20l-6-3.5v-9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /><path d="m6 7.5 6 3.5 6-3.5M12 11v9" stroke="currentColor" strokeWidth="1.8" /></svg>;
+}
+
+function PendingLocalIcon() {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none"><path d="M12 3v9l4 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" /></svg>;
 }

@@ -198,6 +198,13 @@ function buildBreadcrumbs(pathname: string): Breadcrumb[] {
 
   if (pathname === "/entradas") return [{ label: "Entradas" }];
 
+  if (pathname === "/alertas/pendencias-locais") {
+    return [
+      { label: "Alertas", to: "/alertas" },
+      { label: "Pendências locais" }
+    ];
+  }
+
   if (pathname === "/alertas/lixeira") {
     return [
       { label: "Alertas", to: "/alertas" },
