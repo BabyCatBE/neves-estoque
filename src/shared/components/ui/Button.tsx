@@ -1,4 +1,8 @@
-import type { ButtonHTMLAttributes, PropsWithChildren } from "react";
+import type {
+  ButtonHTMLAttributes,
+  PropsWithChildren,
+  ReactNode
+} from "react";
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 type ButtonSize = "sm" | "md";
@@ -7,6 +11,8 @@ type Props = PropsWithChildren<
   ButtonHTMLAttributes<HTMLButtonElement> & {
     variant?: ButtonVariant;
     size?: ButtonSize;
+    isLoading?: boolean;
+    loadingLabel?: ReactNode;
   }
 >;
 
@@ -29,15 +35,26 @@ export function Button({
   variant = "primary",
   size = "md",
   type = "button",
+  isLoading = false,
+  loadingLabel,
+  disabled,
   ...props
 }: Props) {
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center rounded-xl font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:active:scale-100 ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       {...props}
     >
-      {children}
+      {isLoading ? (
+        <span
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent opacity-70"
+        />
+      ) : null}
+      {isLoading && loadingLabel ? loadingLabel : children}
     </button>
   );
 }
