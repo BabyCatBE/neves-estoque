@@ -168,7 +168,7 @@ export function CategoriesPage() {
 
     const parsed = categoryNameSchema.safeParse(values.name);
     if (!parsed.success) {
-      setError("name", { message: parsed.error.issues[0]?.message ?? "Nome inválido." });
+      setError("name", { message: parsed.error.issues[0]?.message ?? "Nome inválido." }, { shouldFocus: true });
       return;
     }
 
@@ -200,7 +200,7 @@ export function CategoriesPage() {
       setNotice("Categoria criada com sucesso.");
     } catch (error) {
       await cleanupUploadedPath(prepared?.uploadedPath ?? null);
-      setError("name", { message: getCategoryErrorMessage(error) });
+      setError("name", { message: getCategoryErrorMessage(error) }, { shouldFocus: true });
     } finally {
       setIllustrationSaving(false);
     }
