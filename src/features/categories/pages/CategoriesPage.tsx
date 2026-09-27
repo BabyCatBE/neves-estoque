@@ -634,12 +634,11 @@ export function CategoriesPage() {
                     </Button>
                     <Button
                       size="sm"
-                      disabled={updateMutation.isPending || illustrationSaving}
+                      isLoading={updateMutation.isPending || illustrationSaving}
+                      loadingLabel="Salvando…"
                       onClick={() => void saveEditing()}
                     >
-                      {updateMutation.isPending || illustrationSaving
-                        ? "Salvando…"
-                        : "Salvar alterações"}
+                      Salvar alterações
                     </Button>
                   </div>
                 </>
