@@ -17,7 +17,7 @@ export function isUuid(value: string | null): value is string {
   );
 }
 
-export function createBrowserUuid(cryptoObject: BrowserCrypto = crypto) {
+export function createBrowserUuid(cryptoObject: BrowserCrypto = crypto as BrowserCrypto) {
   if (typeof cryptoObject.randomUUID === "function") {
     return cryptoObject.randomUUID();
   }
