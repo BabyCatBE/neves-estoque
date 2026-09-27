@@ -18,7 +18,8 @@ import {
 } from "../lib/deviceIdentity";
 import {
   isValidSecondaryUsername,
-  normalizeSecondaryUsername
+  normalizeSecondaryUsername,
+  secondaryAuthEmail
 } from "../lib/secondaryAuth";
 
 export type AuthStatus =
@@ -238,19 +239,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setErrorMessage(null);
     setStatus("loading");
 
-    const { data: loginEmail, error: resolveError } = await client.rpc(
-      "resolve_secondary_login",
-      { p_username: normalizedUsername }
-    );
-
-    if (resolveError || !loginEmail) {
-      setErrorMessage("Usuário ou senha incorretos.");
-      setStatus("signed-out");
-      return;
-    }
-
     const { error } = await client.auth.signInWithPassword({
-      email: loginEmail,
+      email: secondaryAuthEmail(normalizedUsername),
       password
     });
 
