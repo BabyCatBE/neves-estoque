@@ -9,3 +9,18 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: #f7f7f8; }
 button, input, select, textarea { font: inherit; }
+
+html { scroll-behavior: smooth; }
+button, [role="button"] { -webkit-tap-highlight-color: transparent; }
+input, select, textarea { scroll-margin-top: 6rem; scroll-margin-bottom: 7rem; }
+::selection { background: #fecaca; color: #18181b; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
