@@ -7,6 +7,7 @@ import { Card } from "../../../shared/components/ui/Card";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
+import { normalizeSearchText } from "../../../shared/lib/searchText";
 import { listEntryHistory } from "../api/entries";
 import { formatMoney } from "../lib/entryValidation";
 
@@ -32,10 +33,10 @@ export function EntriesHistoryPage() {
   };
 
   const filtered = useMemo(() => {
-    const term = normalize(search);
+    const term = normalizeSearchText(search);
     return (historyQuery.data ?? []).filter((entry) => {
       if (!term) return true;
-      return [entry.supplierName, ...entry.productNames].some((value) => normalize(value).includes(term));
+      return [entry.supplierName, ...entry.productNames].some((value) => normalizeSearchText(value).includes(term));
     });
   }, [historyQuery.data, search]);
 
@@ -144,9 +145,6 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(new Date(value));
 }
 
-function normalize(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
-}
 
 
 function TrashIcon() {
