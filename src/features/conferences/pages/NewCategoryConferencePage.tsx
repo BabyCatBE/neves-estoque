@@ -8,6 +8,7 @@ import { Card } from "../../../shared/components/ui/Card";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
+import { createBrowserUuid } from "../../../shared/lib/browserUuid";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
   createCategoryConference,
@@ -64,6 +65,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const [date, setDate] = useState(initialDate);
   const [dateError, setDateError] = useState<string | null>(null);
   const [responsible, setResponsible] = useState("");
+  const [responsibleError, setResponsibleError] = useState<string | null>(null);
   const [observation, setObservation] = useState("");
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
     Object.fromEntries(setup.products.map((product) => [product.id, ""]))
@@ -74,7 +76,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const [consumptionWarnings, setConsumptionWarnings] = useState<ConferenceConsumptionWarning[]>([]);
   const [pendingPayload, setPendingPayload] = useState<CategoryConferenceWriteInput | null>(null);
   const [checkingSave, setCheckingSave] = useState(false);
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey] = useState(() => createBrowserUuid());
   const allowNavigationRef = useRef(false);
 
   const dirty = useMemo(
@@ -104,10 +106,17 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const validateAndBuild = (): CategoryConferenceWriteInput => {
     setQuantityErrors({});
     const cleanResponsible = responsible.trim().replace(/\s+/g, " ");
-    if (!cleanResponsible || cleanResponsible.length > 160) {
-      document.getElementById("conference-responsible")?.focus();
-      throw new Error("Responsável físico inválido.");
+    if (!cleanResponsible) {
+      setResponsibleError("Informe o responsável pela contagem física.");
+      window.setTimeout(() => document.getElementById("conference-responsible")?.focus(), 0);
+      throw new Error("Informe o responsável pela contagem física.");
     }
+    if (cleanResponsible.length > 160) {
+      setResponsibleError("O responsável pode ter no máximo 160 caracteres.");
+      window.setTimeout(() => document.getElementById("conference-responsible")?.focus(), 0);
+      throw new Error("O responsável pode ter no máximo 160 caracteres.");
+    }
+    setResponsibleError(null);
     if (!deviceId) throw new Error("Este dispositivo ainda não está pronto para registrar Conferências.");
     if (!setup.products.length) throw new Error("A categoria não possui produtos ativos para conferir.");
 
@@ -287,7 +296,11 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
             label="Responsável pela contagem física *"
             value={responsible}
             maxLength={160}
-            onChange={(event) => setResponsible(event.target.value)}
+            error={responsibleError}
+            onChange={(event) => {
+              setResponsible(event.target.value);
+              if (responsibleError) setResponsibleError(null);
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) {
                 event.preventDefault();
@@ -372,14 +385,11 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         <div className="mx-auto flex max-w-6xl justify-end">
           <Button
             id="conference-save"
-            disabled={saveMutation.isPending || checkingSave}
+            isLoading={saveMutation.isPending || checkingSave}
+            loadingLabel={saveMutation.isPending ? "Salvando…" : "Verificando…"}
             onClick={() => void requestSave()}
           >
-            {saveMutation.isPending
-              ? "Salvando…"
-              : checkingSave
-                ? "Verificando…"
-                : "Salvar Conferência"}
+            Salvar Conferência
           </Button>
         </div>
       </div>
@@ -429,7 +439,11 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
               >
                 Voltar e conferir
               </Button>
-              <Button onClick={() => void confirmConsumptionWarnings()}>
+              <Button
+                isLoading={checkingSave || saveMutation.isPending}
+                loadingLabel={saveMutation.isPending ? "Salvando…" : "Verificando…"}
+                onClick={() => void confirmConsumptionWarnings()}
+              >
                 Confirmar mesmo assim
               </Button>
             </div>
@@ -481,6 +495,8 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
                 Corrigir existente
               </Button>
               <Button
+                isLoading={saveMutation.isPending}
+                loadingLabel="Salvando…"
                 onClick={() => {
                   const payload = pendingPayload;
                   setPendingPayload(null);
