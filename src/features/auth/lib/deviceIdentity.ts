@@ -5,7 +5,10 @@ type StorageReadWrite = Pick<Storage, "getItem" | "setItem">;
 type StorageRead = Pick<Storage, "getItem">;
 type StorageWrite = Pick<Storage, "setItem">;
 type StorageRemove = Pick<Storage, "removeItem">;
-type BrowserCrypto = Pick<Crypto, "getRandomValues"> & Partial<Pick<Crypto, "randomUUID">>;
+type BrowserCrypto = {
+  getRandomValues<T extends ArrayBufferView | null>(array: T): T;
+  randomUUID?: () => string;
+};
 
 export function isUuid(value: string | null): value is string {
   return Boolean(
@@ -22,8 +25,8 @@ export function createBrowserUuid(cryptoObject: BrowserCrypto = crypto) {
   const bytes = new Uint8Array(16);
   cryptoObject.getRandomValues(bytes);
 
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
 
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
   return [
