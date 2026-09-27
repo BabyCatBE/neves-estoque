@@ -42,10 +42,11 @@ function parseMonth(value: string) {
   const match = /^(\d{4})-(\d{2})$/.exec(value);
   if (!match) throw new Error("Mês inválido.");
 
-  return {
-    year: Number(match[1]),
-    month: Number(match[2])
-  };
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) throw new Error("Mês inválido.");
+
+  return { year, month };
 }
 
 function formatMonth(year: number, month: number) {
@@ -85,10 +86,11 @@ export function firstHistoricalMonth(facts: MonthlyStockReportFacts) {
   const dates = historicalPresenceDates(facts);
   if (!dates.length) return null;
 
-  return dates
+  const firstDate = dates
     .map((value) => historicalDateKey(value))
-    .sort()[0]
-    .slice(0, 7);
+    .sort()[0];
+
+  return firstDate ? firstDate.slice(0, 7) : null;
 }
 
 export function reportCurrentDateKey(now = new Date()) {
