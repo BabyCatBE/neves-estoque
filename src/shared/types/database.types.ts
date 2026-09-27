@@ -718,7 +718,6 @@ export type Database = {
         Returns: undefined
       }
       reorder_products: { Args: { p_orders: Json }; Returns: undefined }
-      resolve_secondary_login: { Args: { p_username: string }; Returns: string }
       restore_entry: {
         Args: { p_device_id: string; p_entry_id: string }
         Returns: undefined
