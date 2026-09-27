@@ -6,6 +6,7 @@ import { Card } from "../../../shared/components/ui/Card";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
 import { TextField } from "../../../shared/components/ui/TextField";
+import { normalizeSearchText } from "../../../shared/lib/searchText";
 import { listActiveSuppliers } from "../../suppliers/api/suppliers";
 
 export function PurchaseSupplierSelectPage() {
@@ -17,11 +18,11 @@ export function PurchaseSupplierSelectPage() {
   });
 
   const suppliers = useMemo(() => {
-    const term = normalize(search);
+    const term = normalizeSearchText(search);
     return [...(suppliersQuery.data ?? [])]
       .filter((supplier) => {
         if (!term) return true;
-        return normalize(
+        return normalizeSearchText(
           [supplier.name, supplier.company, supplier.phone]
             .filter(Boolean)
             .join(" ")
@@ -101,10 +102,3 @@ export function PurchaseSupplierSelectPage() {
   );
 }
 
-function normalize(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .trim();
-}
