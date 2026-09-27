@@ -4,7 +4,10 @@ import {
   type OfflinePendingOperationRecord
 } from "../../../shared/offline/offlineDb";
 import type { CreateEntryInput } from "../../entries/api/entries";
-import type { CategoryConferenceWriteInput } from "../../conferences/api/conferences";
+import type {
+  CategoryConferenceWriteInput,
+  ProductConferenceWriteInput
+} from "../../conferences/api/conferences";
 
 export const OFFLINE_PENDING_UPDATED_EVENT = "neves-offline-pending-updated";
 
@@ -117,6 +120,59 @@ export async function savePendingConference(
   metadata: SavePendingConferenceMetadata
 ) {
   const record = buildPendingConferenceRecord(input, metadata);
+  await offlineDb.pendingOperations.put(record);
+  emitPendingUpdated();
+  return record.id;
+}
+
+
+export type OfflinePendingProductConference = Omit<
+  OfflinePendingOperationRecord,
+  "kind" | "payload"
+> & {
+  kind: "conference";
+  payload: ProductConferenceWriteInput;
+};
+
+export type SavePendingProductConferenceMetadata = {
+  authUserId: string;
+  appUserId: string | null;
+  deviceId: string;
+  actorLabel: string;
+  productLabel: string;
+};
+
+export function buildPendingProductConferenceRecord(
+  input: ProductConferenceWriteInput,
+  metadata: SavePendingProductConferenceMetadata,
+  localId = createBrowserUuid(),
+  now = new Date().toISOString()
+): OfflinePendingProductConference {
+  const product = metadata.productLabel.trim() || "Produto não identificado";
+  return {
+    id: localId,
+    kind: "conference",
+    status: "pending_confirmation",
+    createdAt: now,
+    updatedAt: now,
+    effectiveAt: input.effectiveAt,
+    authUserId: metadata.authUserId,
+    appUserId: metadata.appUserId,
+    deviceId: metadata.deviceId,
+    actorLabel: metadata.actorLabel,
+    idempotencyKey: input.idempotencyKey,
+    summaryTitle: product,
+    summarySubtitle: `Conferência unitária · Responsável físico: ${input.physicalResponsible}`,
+    itemCount: 1,
+    payload: input
+  };
+}
+
+export async function savePendingProductConference(
+  input: ProductConferenceWriteInput,
+  metadata: SavePendingProductConferenceMetadata
+) {
+  const record = buildPendingProductConferenceRecord(input, metadata);
   await offlineDb.pendingOperations.put(record);
   emitPendingUpdated();
   return record.id;

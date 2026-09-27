@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { useNetworkStatus } from "../../../shared/offline/NetworkContext";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -10,7 +11,8 @@ import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
 import { createBrowserUuid } from "../../../shared/lib/browserUuid";
 import { useAuth } from "../../auth/context/AuthContext";
-import { getProductDetails, type ProductDetails } from "../../products/api/products";
+import { savePendingProductConference } from "../../offline/lib/pendingOperations";
+import { listActiveProducts, type ProductListItem } from "../../products/api/products";
 import {
   createProductConference,
   reviewConferenceConsumption,
@@ -30,7 +32,11 @@ export function NewProductConferencePage() {
     queryKey: ["products", "detail", productId],
     queryFn: () => {
       if (!productId) throw new Error("Produto não encontrado.");
-      return getProductDetails(productId);
+      return listActiveProducts().then((products) => {
+        const product = products.find((item) => item.id === productId);
+        if (!product) throw new Error("Produto não encontrado.");
+        return product;
+      });
     },
     enabled: Boolean(productId)
   });
@@ -54,10 +60,11 @@ export function NewProductConferencePage() {
   );
 }
 
-function ProductConferenceForm({ product }: { product: ProductDetails }) {
+function ProductConferenceForm({ product }: { product: ProductListItem }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { deviceId } = useAuth();
+  const { session, appUserId, deviceId, displayName, username } = useAuth();
+  const { isOnline } = useNetworkStatus();
   const [responsible, setResponsible] = useState("");
   const [responsibleError, setResponsibleError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState("");
@@ -124,6 +131,24 @@ function ProductConferenceForm({ product }: { product: ProductDetails }) {
   };
 
   const persist = async (payload: ProductConferenceWriteInput) => {
+    if (!isOnline) {
+      if (!session?.user.id || !deviceId) {
+        throw new Error("Este acesso ainda não está pronto para guardar uma Conferência offline.");
+      }
+
+      await savePendingProductConference(payload, {
+        authUserId: session.user.id,
+        appUserId,
+        deviceId,
+        actorLabel: displayName ?? (username ? `@${username}` : "Usuário autorizado"),
+        productLabel: product.name
+      });
+
+      allowNavigationRef.current = true;
+      navigate("/alertas/pendencias-locais?saved=conference", { replace: true });
+      return;
+    }
+
     await saveMutation.mutateAsync(payload);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["conferences"] }),
@@ -147,6 +172,15 @@ function ProductConferenceForm({ product }: { product: ProductDetails }) {
         message === "O responsável pode ter no máximo 160 caracteres." ||
         message.startsWith("Nova quantidade");
       setActionError(fieldValidationError ? null : getConferenceErrorMessage(error));
+      return;
+    }
+
+    if (!isOnline) {
+      try {
+        await persist(payload);
+      } catch (error) {
+        setActionError(getConferenceErrorMessage(error));
+      }
       return;
     }
 
@@ -191,6 +225,11 @@ function ProductConferenceForm({ product }: { product: ProductDetails }) {
 
   return (
     <section>
+      {!isOnline ? (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+          Você está offline. Ao salvar, esta Conferência unitária ficará somente neste aparelho como <strong>PENDENTE DE CONFIRMAÇÃO</strong>. A revisão de consumo será feita quando o envio for confirmado online.
+        </div>
+      ) : null}
       <Card className="p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Produto</p>
         <h2 className="mt-1 text-xl font-semibold text-zinc-950">{product.name}</h2>
@@ -280,7 +319,7 @@ function ProductConferenceForm({ product }: { product: ProductDetails }) {
             loadingLabel={saveMutation.isPending ? "Salvando…" : "Verificando…"}
             onClick={() => void requestSave()}
           >
-            Salvar Conferência
+            {isOnline ? "Salvar Conferência" : "Salvar pendência"}
           </Button>
         </div>
       </Card>
