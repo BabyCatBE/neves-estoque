@@ -308,7 +308,7 @@ export function EditEntryPage() {
       ]);
       setSaveReviewOpen(false);
       setMissingPriceReview(false);
-      navigate(`/entradas/${entryId}`, { replace: true });
+      navigate(`/entradas/${entryId}?saved=edit`, { replace: true });
     } catch (error) {
       setSaveReviewOpen(false);
       setMissingPriceReview(false);
