@@ -315,7 +315,7 @@ function StockValueLineChart({ points }: { points: MonthlyStockSeriesPoint[] }) 
         </svg>
       </div>
 
-      {points.length === 1 ? (
+      {points.length === 1 && points[0] ? (
         <p className="mt-2 text-center text-xs text-zinc-500">
           O histórico começa em {formatMonth(points[0].month)}. O gráfico ganhará linha
           quando houver mais de um mês disponível.
@@ -399,8 +399,25 @@ function formatCompactMoney(value: number) {
   }).format(value);
 }
 
+function parseDateParts(value: string, expectedParts: number) {
+  const parts = value.split("-").map(Number);
+  if (
+    parts.length !== expectedParts ||
+    parts.some((part) => !Number.isFinite(part))
+  ) {
+    throw new Error("Data de relatório inválida.");
+  }
+  return parts;
+}
+
 function formatMonth(month: string) {
-  const [year, monthNumber] = month.split("-").map(Number);
+  const parts = parseDateParts(month, 2);
+  const year = parts[0];
+  const monthNumber = parts[1];
+  if (year === undefined || monthNumber === undefined) {
+    throw new Error("Mês de relatório inválido.");
+  }
+
   return new Intl.DateTimeFormat("pt-BR", {
     month: "long",
     year: "numeric",
@@ -409,7 +426,13 @@ function formatMonth(month: string) {
 }
 
 function formatShortMonth(month: string) {
-  const [year, monthNumber] = month.split("-").map(Number);
+  const parts = parseDateParts(month, 2);
+  const year = parts[0];
+  const monthNumber = parts[1];
+  if (year === undefined || monthNumber === undefined) {
+    throw new Error("Mês de relatório inválido.");
+  }
+
   return new Intl.DateTimeFormat("pt-BR", {
     month: "short",
     year: "2-digit",
@@ -420,7 +443,14 @@ function formatShortMonth(month: string) {
 }
 
 function formatDate(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
+  const parts = parseDateParts(date, 3);
+  const year = parts[0];
+  const month = parts[1];
+  const day = parts[2];
+  if (year === undefined || month === undefined || day === undefined) {
+    throw new Error("Data de relatório inválida.");
+  }
+
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
