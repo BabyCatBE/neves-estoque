@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import nevesLogo from "../../../assets/neves-logo.webp";
 import { AppShell } from "../../../shared/components/AppShell";
+import { Button } from "../../../shared/components/ui/Button";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { hasSupabaseConfig } from "../../../shared/lib/env";
 import { useAuth } from "../context/AuthContext";
@@ -26,6 +27,8 @@ export function LoginPage() {
   const { status, errorMessage, signInWithGoogle, signInWithUsername } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   if (status === "ready") return <Navigate to="/" replace />;
 
@@ -34,7 +37,26 @@ export function LoginPage() {
 
   const submitSecondaryAccess = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void signInWithUsername(username, password);
+    if (isBusy || isUnavailable) return;
+
+    const cleanUsername = username.trim();
+    if (!cleanUsername) {
+      setUsernameError("Informe o nome de usuário.");
+      setPasswordError(null);
+      window.setTimeout(() => document.getElementById("secondary-username")?.focus(), 0);
+      return;
+    }
+
+    if (!password) {
+      setUsernameError(null);
+      setPasswordError("Informe a senha.");
+      window.setTimeout(() => document.getElementById("secondary-password")?.focus(), 0);
+      return;
+    }
+
+    setUsernameError(null);
+    setPasswordError(null);
+    void signInWithUsername(cleanUsername, password);
   };
 
   return (
@@ -94,7 +116,11 @@ export function LoginPage() {
                   autoCapitalize="none"
                   spellCheck={false}
                   value={username}
-                  onChange={(event) => setUsername(event.target.value)}
+                  error={usernameError}
+                  onChange={(event) => {
+                    setUsername(event.target.value);
+                    if (usernameError) setUsernameError(null);
+                  }}
                   placeholder="Ex.: marcio"
                   disabled={isBusy || isUnavailable}
                 />
@@ -104,19 +130,25 @@ export function LoginPage() {
                   type="password"
                   autoComplete="current-password"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  error={passwordError}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
                   placeholder="Digite sua senha"
                   disabled={isBusy || isUnavailable}
                 />
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={isBusy || isUnavailable}
-                className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-red-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-500"
+                className="mt-5 w-full"
+                disabled={isUnavailable}
+                isLoading={isBusy}
+                loadingLabel="Verificando…"
               >
-                {isBusy ? "Verificando…" : "Entrar"}
-              </button>
+                Entrar
+              </Button>
             </div>
           </form>
 
