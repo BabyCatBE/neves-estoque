@@ -116,17 +116,17 @@ export function ProductsPage() {
     if (!parsedName.success) {
       setError("name", {
         message: parsedName.error.issues[0]?.message ?? "Nome inválido."
-      });
+      }, { shouldFocus: true });
       return;
     }
 
     if (!values.categoryId) {
-      setError("categoryId", { message: "Escolha a categoria." });
+      setError("categoryId", { message: "Escolha a categoria." }, { shouldFocus: true });
       return;
     }
 
     if (!values.unit || !PRODUCT_UNITS.includes(values.unit as ProductUnit)) {
-      setError("unit", { message: "Escolha a unidade." });
+      setError("unit", { message: "Escolha a unidade." }, { shouldFocus: true });
       return;
     }
 
@@ -139,14 +139,14 @@ export function ProductsPage() {
         "Estoque inicial"
       );
     } catch (error) {
-      setError("initialStock", { message: getProductErrorMessage(error) });
+      setError("initialStock", { message: getProductErrorMessage(error) }, { shouldFocus: true });
       return;
     }
 
     try {
       initialPrice = parseOptionalNonNegativeDecimal(values.initialPrice, "Preço inicial");
     } catch (error) {
-      setError("initialPrice", { message: getProductErrorMessage(error) });
+      setError("initialPrice", { message: getProductErrorMessage(error) }, { shouldFocus: true });
       return;
     }
 
