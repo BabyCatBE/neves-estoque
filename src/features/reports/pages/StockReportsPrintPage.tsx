@@ -11,6 +11,7 @@ import {
 } from "../lib/monthlyStockSeries";
 
 const printHistoryKey = ["reports", "stock-value-history", "print"] as const;
+const EMPTY_POINTS: MonthlyStockSeriesPoint[] = [];
 
 export function StockReportsPrintPage() {
   const historyQuery = useQuery({
@@ -19,7 +20,7 @@ export function StockReportsPrintPage() {
     staleTime: 15_000
   });
 
-  const points = historyQuery.data?.points ?? [];
+  const points = historyQuery.data?.points ?? EMPTY_POINTS;
   const [scope, setScope] = useState<"all" | "period">("all");
   const [startMonth, setStartMonth] = useState<string | null>(null);
   const [endMonth, setEndMonth] = useState<string | null>(null);
@@ -188,7 +189,7 @@ export function StockReportsPrintPage() {
 
       {!historyQuery.isPending && !historyQuery.isError && latest ? (
         <article className="reports-print-sheet mt-6 mx-auto w-full max-w-[210mm] rounded-xl border border-zinc-200 bg-white p-[10mm] shadow-sm">
-          <PrintHeader latest={latest} periodLabel={periodLabel} />
+          <PrintHeader periodLabel={periodLabel} />
           <PrintSummary latest={latest} />
 
           <section className="reports-print-chart mt-7">
@@ -293,13 +294,7 @@ export function StockReportsPrintPage() {
   );
 }
 
-function PrintHeader({
-  latest,
-  periodLabel
-}: {
-  latest: MonthlyStockSeriesPoint;
-  periodLabel: string;
-}) {
+function PrintHeader({ periodLabel }: { periodLabel: string }) {
   return (
     <div className="reports-print-avoid flex items-center gap-5 border-b-2 border-red-700 pb-4">
       <img
