@@ -14,6 +14,7 @@ import { Card } from "../../../shared/components/ui/Card";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
+import { normalizeSearchText } from "../../../shared/lib/searchText";
 import {
   createProduct,
   listActiveProducts,
@@ -137,9 +138,15 @@ export function ProductsPage() {
         values.initialStock,
         "Estoque inicial"
       );
+    } catch (error) {
+      setError("initialStock", { message: getProductErrorMessage(error) });
+      return;
+    }
+
+    try {
       initialPrice = parseOptionalNonNegativeDecimal(values.initialPrice, "Preço inicial");
     } catch (error) {
-      setActionError(getProductErrorMessage(error));
+      setError("initialPrice", { message: getProductErrorMessage(error) });
       return;
     }
 
@@ -166,11 +173,11 @@ export function ProductsPage() {
   );
 
   const filteredProducts = useMemo(() => {
-    const term = normalizeSearch(search);
+    const term = normalizeSearchText(search);
 
     return (productsQuery.data ?? [])
       .filter((product) => !pendingOnly || product.categoryId === null)
-      .filter((product) => !term || normalizeSearch(product.name).includes(term))
+      .filter((product) => !term || normalizeSearchText(product.name).includes(term))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
   }, [pendingOnly, productsQuery.data, search]);
 
@@ -321,10 +328,11 @@ export function ProductsPage() {
                 Cancelar
               </Button>
               <Button
-                disabled={reorderMutation.isPending}
+                isLoading={reorderMutation.isPending}
+                loadingLabel="Salvando…"
                 onClick={() => void saveReordering()}
               >
-                {reorderMutation.isPending ? "Salvando…" : "Salvar ordem"}
+                Salvar ordem
               </Button>
             </div>
           ) : (
@@ -405,12 +413,14 @@ export function ProductsPage() {
                     label="Estoque inicial (opcional)"
                     placeholder="Ex.: 12,5"
                     inputMode="decimal"
+                    error={errors.initialStock?.message}
                     {...register("initialStock")}
                   />
                   <TextField
                     label="Preço inicial (opcional)"
                     placeholder="Ex.: 24,90"
                     inputMode="decimal"
+                    error={errors.initialPrice?.message}
                     {...register("initialPrice")}
                   />
                 </div>
@@ -439,8 +449,12 @@ export function ProductsPage() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Salvando…" : "Salvar produto"}
+                <Button
+                  type="submit"
+                  isLoading={createMutation.isPending}
+                  loadingLabel="Salvando…"
+                >
+                  Salvar produto
                 </Button>
               </div>
             </form>
@@ -583,8 +597,10 @@ export function ProductsPage() {
                         key={product.id}
                         data-product-sort-id={product.id}
                         data-category-id={category.id}
-                        className={`flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center ${
-                          draggingId === product.id ? "bg-red-50" : ""
+                        className={`flex flex-col gap-3 px-4 py-3 transition-[transform,background-color,box-shadow,opacity] duration-200 ease-out sm:flex-row sm:items-center ${
+                          draggingId === product.id
+                            ? "relative z-10 scale-[1.005] bg-red-50 opacity-95 shadow-md"
+                            : "hover:bg-zinc-50/70"
                         }`}
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -592,7 +608,7 @@ export function ProductsPage() {
                             type="button"
                             aria-label={`Arrastar ${product.name}`}
                             aria-pressed={draggingId === product.id}
-                            className="flex h-10 w-10 shrink-0 touch-none select-none items-center justify-center rounded-xl bg-red-50 text-red-700 transition hover:bg-red-100 active:cursor-grabbing"
+                            className="flex h-11 w-11 shrink-0 touch-none select-none items-center justify-center rounded-xl bg-red-50 text-red-700 shadow-sm transition-[transform,background-color,box-shadow] duration-150 hover:bg-red-100 hover:shadow active:scale-95 active:cursor-grabbing sm:cursor-grab"
                             onPointerDown={(event) => beginDrag(event, product.id)}
                             onPointerMove={(event) => drag(event, category.id, product.id)}
                             onPointerUp={endDrag}
@@ -803,9 +819,6 @@ function DragHandleIcon() {
   );
 }
 
-function normalizeSearch(value: string) {
-  return value.trim().toLocaleLowerCase("pt-BR");
-}
 
 function formatQuantity(value: number | null, unit: string) {
   if (value === null) return "Sem dados";
