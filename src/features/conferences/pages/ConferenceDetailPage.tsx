@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -8,6 +8,7 @@ import { formatConferenceDate, formatConferenceTime } from "../lib/conferenceVal
 
 export function ConferenceDetailPage() {
   const { conferenceId } = useParams();
+  const [searchParams] = useSearchParams();
   const conferenceQuery = useQuery({
     queryKey: ["conferences", "detail", conferenceId],
     queryFn: () => {
@@ -20,6 +21,12 @@ export function ConferenceDetailPage() {
   return (
     <AppShell title="Conferência" showBack backTo="/conferencias/historico">
       <section>
+        {searchParams.get("updated") === "1" ? (
+          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Correção da Conferência salva com sucesso.
+          </div>
+        ) : null}
+
         {conferenceQuery.isPending ? (
           <Card className="p-5 text-sm text-zinc-600">Carregando Conferência…</Card>
         ) : null}
