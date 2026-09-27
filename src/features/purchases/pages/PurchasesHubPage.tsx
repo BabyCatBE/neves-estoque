@@ -18,11 +18,12 @@ export function PurchasesHubPage() {
           <Link to="/compras/fornecedor" className="block">
             <InteractiveCard className="h-full p-6">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
-                Disponível nesta etapa
+                Inteligência + histórico
               </p>
               <h3 className="mt-2 text-xl font-semibold">Por fornecedor</h3>
               <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Escolha um fornecedor e prepare uma lista usando o histórico real de compras.
+                Escolha um fornecedor. Quando houver histórico e configuração suficientes,
+                os Produtos recomendados aparecem primeiro com quantidade sugerida.
               </p>
             </InteractiveCard>
           </Link>
@@ -30,11 +31,12 @@ export function PurchasesHubPage() {
           <Link to="/compras/estoque" className="block">
             <InteractiveCard className="h-full p-6">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
-                Modo manual
+                Necessidade de compra
               </p>
               <h3 className="mt-2 text-xl font-semibold">Por estoque</h3>
               <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Selecione manualmente produtos ordenados do menor estoque atual para o maior.
+                Veja primeiro os Produtos com recomendação automática e, quando quiser,
+                abra também o restante do estoque para inclusão manual.
               </p>
             </InteractiveCard>
           </Link>
@@ -42,18 +44,22 @@ export function PurchasesHubPage() {
           <Link to="/compras/categoria" className="block">
             <InteractiveCard className="h-full p-6">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
-                Disponível
+                Categoria + sugestão
               </p>
               <h3 className="mt-2 text-xl font-semibold">Por categoria</h3>
               <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Escolha uma categoria e prepare a lista na ordem manual dos Produtos.
+                Preserve a ordem manual da categoria e veja sugestão e risco quando houver
+                histórico e configuração suficientes.
               </p>
             </InteractiveCard>
           </Link>
         </div>
 
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-          A recomendação automática ainda não foi ativada. O algoritmo exato continua a definir.
+          A recomendação automática só é gerada com histórico confiável suficiente:
+          pelo menos 28 dias e 3 intervalos válidos entre Conferências, além da
+          configuração necessária do fornecedor. Quando isso não existir, a quantidade
+          continua podendo ser informada manualmente.
         </div>
       </section>
     </AppShell>
