@@ -385,6 +385,7 @@ export function NewEntryPage() {
     const parsedName = productNameSchema.safeParse(quickProductName);
     if (!parsedName.success) {
       setQuickProductError(parsedName.error.issues[0]?.message ?? "Informe o nome do produto.");
+      window.setTimeout(() => document.getElementById("quick-product-name")?.focus(), 0);
       return;
     }
 
@@ -417,6 +418,7 @@ export function NewEntryPage() {
     if (!pendingProduct) return;
     if (!pendingProductCategoryId) {
       setPendingProductError("Escolha uma categoria para continuar.");
+      window.setTimeout(() => document.getElementById("pending-product-category")?.focus(), 0);
       return;
     }
 
@@ -1048,6 +1050,7 @@ export function NewEntryPage() {
               </p>
               <div className="mt-4">
                 <SelectField
+                  id="pending-product-category"
                   label="Categoria *"
                   autoFocus
                   value={pendingProductCategoryId}
