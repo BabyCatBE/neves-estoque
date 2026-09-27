@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  useEffect,
   useMemo,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -63,6 +64,14 @@ export function ProductsPage() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("deleted") !== "1") return;
+    setNotice("Produto enviado para a lixeira.");
+    const next = new URLSearchParams(searchParams);
+    next.delete("deleted");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const productsQuery = useQuery({
     queryKey: productsKey,
