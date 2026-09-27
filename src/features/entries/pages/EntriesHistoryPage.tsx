@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -12,13 +12,24 @@ import { listEntryHistory } from "../api/entries";
 import { formatMoney } from "../lib/entryValidation";
 
 export function EntriesHistoryPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
   const [searchFeedback, setSearchFeedback] = useState(false);
   const searchFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyQuery = useQuery({
     queryKey: ["entries", "history"],
     queryFn: listEntryHistory
   });
+
+  useEffect(() => {
+    if (searchParams.get("deleted") === "1") {
+      setNotice("Entrada enviada para a lixeira.");
+      const next = new URLSearchParams(searchParams);
+      next.delete("deleted");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     return () => {
@@ -64,6 +75,12 @@ export function EntriesHistoryPage() {
             </Link>
           </div>
         </div>
+
+        {notice ? (
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {notice}
+          </div>
+        ) : null}
 
         <div className="mt-5 max-w-md">
           <div className="relative">
