@@ -61,6 +61,7 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
   const [date, setDate] = useState(initialDate);
   const [dateError, setDateError] = useState<string | null>(null);
   const [responsible, setResponsible] = useState(details.physicalResponsible);
+  const [responsibleError, setResponsibleError] = useState<string | null>(null);
   const [observation, setObservation] = useState(details.observation ?? "");
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -98,10 +99,17 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
   const buildPayload = () => {
     setQuantityErrors({});
     const cleanResponsible = responsible.trim().replace(/\s+/g, " ");
-    if (!cleanResponsible || cleanResponsible.length > 160) {
-      document.getElementById("conference-edit-responsible")?.focus();
-      throw new Error("Responsável físico inválido.");
+    if (!cleanResponsible) {
+      setResponsibleError("Informe o responsável pela contagem física.");
+      window.setTimeout(() => document.getElementById("conference-edit-responsible")?.focus(), 0);
+      throw new Error("Informe o responsável pela contagem física.");
     }
+    if (cleanResponsible.length > 160) {
+      setResponsibleError("O responsável pode ter no máximo 160 caracteres.");
+      window.setTimeout(() => document.getElementById("conference-edit-responsible")?.focus(), 0);
+      throw new Error("O responsável pode ter no máximo 160 caracteres.");
+    }
+    setResponsibleError(null);
     if (!deviceId) throw new Error("Este dispositivo ainda não está pronto para corrigir Conferências.");
 
     const errors: Record<string, string> = {};
@@ -276,7 +284,11 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
             label="Responsável pela contagem física *"
             value={responsible}
             maxLength={160}
-            onChange={(event) => setResponsible(event.target.value)}
+            error={responsibleError}
+            onChange={(event) => {
+              setResponsible(event.target.value);
+              if (responsibleError) setResponsibleError(null);
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) {
                 event.preventDefault();
@@ -352,10 +364,12 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
       <div className="mt-5 flex justify-end">
         <Button
           id="conference-edit-save"
-          disabled={!dirty || updateMutation.isPending || checkingReview}
+          disabled={!dirty}
+          isLoading={updateMutation.isPending || checkingReview}
+          loadingLabel={updateMutation.isPending ? "Salvando…" : "Verificando…"}
           onClick={() => void requestReview()}
         >
-          {checkingReview ? "Verificando…" : "Salvar correção"}
+          Salvar correção
         </Button>
       </div>
 
@@ -407,8 +421,12 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
               <Button autoFocus variant="ghost" onClick={() => setReviewOpen(false)}>
                 Continuar editando
               </Button>
-              <Button disabled={updateMutation.isPending} onClick={() => void confirmSave()}>
-                {updateMutation.isPending ? "Salvando…" : "Confirmar correção"}
+              <Button
+                isLoading={updateMutation.isPending}
+                loadingLabel="Salvando…"
+                onClick={() => void confirmSave()}
+              >
+                Confirmar correção
               </Button>
             </div>
           </Card>
