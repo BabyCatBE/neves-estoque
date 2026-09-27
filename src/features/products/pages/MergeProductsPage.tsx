@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
@@ -12,7 +12,8 @@ import {
   listActiveProducts,
   listProductCategories,
   mergeProducts,
-  type MergeInitialPriceSource
+  type MergeInitialPriceSource,
+  type ProductDetails
 } from "../api/products";
 import { calculateMergeUnitFactors, determineMergePair } from "../lib/productMerge";
 import {
@@ -33,6 +34,8 @@ export function MergeProductsPage() {
 
   const [search, setSearch] = useState("");
   const [candidateId, setCandidateId] = useState("");
+  const [candidateDetails, setCandidateDetails] = useState<ProductDetails | null>(null);
+  const [candidateLoading, setCandidateLoading] = useState(false);
   const [stage, setStage] = useState<Stage>("setup");
   const [finalName, setFinalName] = useState("");
   const [finalCategoryId, setFinalCategoryId] = useState("");
@@ -62,12 +65,6 @@ export function MergeProductsPage() {
     queryFn: listProductCategories
   });
 
-  const candidateQuery = useQuery({
-    queryKey: ["products", "detail", candidateId],
-    queryFn: () => getProductDetails(candidateId),
-    enabled: Boolean(candidateId)
-  });
-
   const candidates = useMemo(
     () =>
       (productsQuery.data ?? [])
@@ -82,28 +79,9 @@ export function MergeProductsPage() {
   );
 
   const pair = useMemo(() => {
-    if (!sourceQuery.data || !candidateQuery.data) return null;
-    return determineMergePair(sourceQuery.data, candidateQuery.data);
-  }, [candidateQuery.data, sourceQuery.data]);
-
-  useEffect(() => {
-    if (!pair) return;
-
-    setStage("setup");
-    setFinalName(pair.survivor.name);
-    setFinalCategoryId(pair.survivor.categoryId ?? "");
-    setFinalUnit(pair.survivor.unit);
-    setSurvivorEquivalentQuantity("");
-    setAbsorbedEquivalentQuantity("");
-    setInitialPriceSource(
-      pair.survivor.initialPrice !== null
-        ? "survivor"
-        : pair.absorbed.initialPrice !== null
-          ? "absorbed"
-          : "none"
-    );
-    setFormError(null);
-  }, [pair]);
+    if (!sourceQuery.data || !candidateDetails) return null;
+    return determineMergePair(sourceQuery.data, candidateDetails);
+  }, [candidateDetails, sourceQuery.data]);
 
   const finalCategoryName =
     categoriesQuery.data?.find((category) => category.id === finalCategoryId)?.name ?? "";
@@ -146,10 +124,40 @@ export function MergeProductsPage() {
 
   const mergeMutation = useMutation({ mutationFn: mergeProducts });
 
-  const selectCandidate = (id: string) => {
-    setCandidateId(id);
-    setSearch("");
+  const selectCandidate = async (id: string) => {
+    if (!sourceQuery.data) return;
+
+    setCandidateLoading(true);
     setFormError(null);
+
+    try {
+      const candidate = await queryClient.fetchQuery({
+        queryKey: ["products", "detail", id],
+        queryFn: () => getProductDetails(id)
+      });
+      const nextPair = determineMergePair(sourceQuery.data, candidate);
+
+      setCandidateId(id);
+      setCandidateDetails(candidate);
+      setSearch("");
+      setStage("setup");
+      setFinalName(nextPair.survivor.name);
+      setFinalCategoryId(nextPair.survivor.categoryId ?? "");
+      setFinalUnit(nextPair.survivor.unit);
+      setSurvivorEquivalentQuantity("");
+      setAbsorbedEquivalentQuantity("");
+      setInitialPriceSource(
+        nextPair.survivor.initialPrice !== null
+          ? "survivor"
+          : nextPair.absorbed.initialPrice !== null
+            ? "absorbed"
+            : "none"
+      );
+    } catch (error) {
+      setFormError(getProductErrorMessage(error));
+    } finally {
+      setCandidateLoading(false);
+    }
   };
 
   const validateAndPreview = () => {
@@ -317,7 +325,7 @@ export function MergeProductsPage() {
                   <button
                     key={product.id}
                     type="button"
-                    onClick={() => selectCandidate(product.id)}
+                    onClick={() => void selectCandidate(product.id)}
                     className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left transition hover:border-red-200 hover:bg-red-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                   >
                     <span className="block font-semibold text-zinc-950">{product.name}</span>
@@ -333,7 +341,7 @@ export function MergeProductsPage() {
             </Card>
           ) : null}
 
-          {candidateId && candidateQuery.isPending ? (
+          {candidateLoading ? (
             <Card className="p-5 text-sm text-zinc-600">Carregando o Produto duplicado…</Card>
           ) : null}
 
@@ -352,7 +360,17 @@ export function MergeProductsPage() {
                       Escolha como o Produto único ficará depois da mescla.
                     </p>
                   </div>
-                  <Button variant="ghost" onClick={() => setCandidateId("")}>Trocar duplicado</Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setCandidateId("");
+                      setCandidateDetails(null);
+                      setStage("setup");
+                      setFormError(null);
+                    }}
+                  >
+                    Trocar duplicado
+                  </Button>
                 </div>
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-2">
