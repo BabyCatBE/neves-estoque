@@ -4,6 +4,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
+import { createBrowserUuid } from "../../../shared/lib/browserUuid";
+import { normalizeSearchText } from "../../../shared/lib/searchText";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -59,6 +61,7 @@ export function EditEntryPage() {
   const [saveReviewOpen, setSaveReviewOpen] = useState(false);
   const [leaveReviewOpen, setLeaveReviewOpen] = useState(false);
   const [dateError, setDateError] = useState<string | null>(null);
+  const [supplierError, setSupplierError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const entryQuery = useQuery({
@@ -81,10 +84,10 @@ export function EditEntryPage() {
   const dirty = Boolean(draft && original && JSON.stringify(snapshot(draft)) !== JSON.stringify(snapshot(original)));
 
   const productSuggestions = useMemo(() => {
-    const term = normalize(productSearch);
+    const term = normalizeSearchText(productSearch);
     if (!term) return [];
     return (productsQuery.data ?? [])
-      .filter((product) => normalize(product.name).includes(term))
+      .filter((product) => normalizeSearchText(product.name).includes(term))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
       .slice(0, 10);
   }, [productSearch, productsQuery.data]);
@@ -114,7 +117,7 @@ export function EditEntryPage() {
       setDuplicateProduct(product);
       return;
     }
-    const localId = crypto.randomUUID();
+    const localId = createBrowserUuid();
     setDraft({
       ...draft,
       items: [...draft.items, {
@@ -187,9 +190,85 @@ export function EditEntryPage() {
 
   const buildPayload = () => {
     if (!draft || !entryQuery.data || !entryId) throw new Error("Entrada inválida.");
-    if (!deviceId) throw new Error("Este dispositivo ainda não está pronto para editar Entradas.");
-    if (!draft.supplierId) throw new Error("Selecione um fornecedor.");
-    if (!draft.items.length) throw new Error("A Entrada precisa de pelo menos um item.");
+
+    setItemErrors({});
+    setSupplierError(null);
+
+    if (!deviceId) {
+      throw new Error("Este dispositivo ainda não está pronto para editar Entradas.");
+    }
+
+    if (!draft.supplierId) {
+      setSupplierError("Selecione um fornecedor.");
+      window.setTimeout(() => document.getElementById("edit-entry-supplier")?.focus(), 0);
+      throw new Error("Selecione um fornecedor.");
+    }
+
+    const nextDateError = getFutureOperationalDateError(draft.date);
+    if (nextDateError) {
+      setDateError(nextDateError);
+      window.setTimeout(() => document.getElementById("edit-entry-date")?.focus(), 0);
+      throw new Error(nextDateError);
+    }
+
+    if (!draft.items.length) {
+      window.setTimeout(() => document.getElementById("edit-entry-product-search")?.focus(), 0);
+      throw new Error("A Entrada precisa de pelo menos um item.");
+    }
+
+    const errors: ItemFieldErrors = {};
+    let firstInvalidId: string | null = null;
+    let firstInvalidField: "quantity" | "unitPrice" | null = null;
+
+    const parsedItems = draft.items.map((item) => {
+      let quantity: number | null = null;
+      let unitPrice: number | null = null;
+
+      try {
+        quantity = parsePositiveDecimal(
+          item.quantity,
+          `Quantidade de ${item.productName}`
+        );
+      } catch (error) {
+        errors[item.localId] = {
+          ...errors[item.localId],
+          quantity: validationMessage(error, "Quantidade inválida.")
+        };
+        if (!firstInvalidId) {
+          firstInvalidId = item.localId;
+          firstInvalidField = "quantity";
+        }
+      }
+
+      try {
+        unitPrice = parseOptionalPrice(item.unitPrice);
+      } catch (error) {
+        errors[item.localId] = {
+          ...errors[item.localId],
+          unitPrice: validationMessage(error, "Preço unitário inválido.")
+        };
+        if (!firstInvalidId) {
+          firstInvalidId = item.localId;
+          firstInvalidField = "unitPrice";
+        }
+      }
+
+      return {
+        productId: item.productId,
+        quantity,
+        unitPrice
+      };
+    });
+
+    if (firstInvalidId && firstInvalidField) {
+      setItemErrors(errors);
+      const fieldId =
+        firstInvalidField === "quantity"
+          ? `edit-entry-qty-${firstInvalidId}`
+          : `edit-entry-price-${firstInvalidId}`;
+      window.setTimeout(() => document.getElementById(fieldId)?.focus(), 0);
+      throw new Error("Revise os campos destacados antes de salvar a Entrada.");
+    }
 
     return {
       entryId,
@@ -197,10 +276,9 @@ export function EditEntryPage() {
       effectiveAt: buildEffectiveAt(draft.date, new Date(entryQuery.data.effectiveAt)),
       deviceId,
       observation: draft.observation.trim() || null,
-      items: draft.items.map((item) => ({
-        productId: item.productId,
-        quantity: parsePositiveDecimal(item.quantity, `Quantidade de ${item.productName}`),
-        unitPrice: parseOptionalPrice(item.unitPrice)
+      items: parsedItems.map((item) => ({
+        ...item,
+        quantity: item.quantity as number
       }))
     };
   };
@@ -275,14 +353,22 @@ export function EditEntryPage() {
             <label className="block">
               <span className="text-sm font-medium text-zinc-800">Fornecedor *</span>
               <select
+                id="edit-entry-supplier"
                 value={draft.supplierId}
-                onChange={(event) => setDraft({ ...draft, supplierId: event.target.value })}
-                className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                aria-invalid={supplierError ? true : undefined}
+                onChange={(event) => {
+                  setDraft({ ...draft, supplierId: event.target.value });
+                  if (supplierError) setSupplierError(null);
+                }}
+                className={`mt-2 min-h-11 w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 ${supplierError ? "border-red-400" : "border-zinc-300"}`}
               >
                 {(suppliersQuery.data ?? []).map((supplier) => (
                   <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.company ? ` — ${supplier.company}` : " — pendente"}</option>
                 ))}
               </select>
+              {supplierError ? (
+                <span className="mt-1.5 block text-xs font-medium text-red-700">{supplierError}</span>
+              ) : null}
             </label>
             <TextField
               id="edit-entry-date"
@@ -446,7 +532,7 @@ export function EditEntryPage() {
             <div><p className="text-xs text-zinc-500">Total conhecido</p><p className="font-semibold">{formatMoney(totals.totalKnown)}{totals.missingPrices ? " *" : ""}</p></div>
             <div className="flex items-center gap-3">
               <span className="hidden text-xs text-zinc-400 sm:inline">Atalho: Ctrl + Enter</span>
-              <Button disabled={!dirty || updateMutation.isPending} onClick={requestSave}>{updateMutation.isPending ? "Salvando…" : "Salvar alterações"}</Button>
+              <Button disabled={!dirty} isLoading={updateMutation.isPending} loadingLabel="Salvando…" onClick={requestSave}>Salvar alterações</Button>
             </div>
           </div>
         </div>
@@ -578,6 +664,3 @@ function validationMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-function normalize(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
-}
