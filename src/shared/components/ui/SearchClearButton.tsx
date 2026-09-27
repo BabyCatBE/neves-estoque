@@ -18,7 +18,7 @@ export function SearchClearButton({
       aria-label="Limpar pesquisa"
       title="Limpar pesquisa"
       onClick={onClear}
-      className={`absolute ${position} flex h-8 w-8 items-center justify-center rounded-lg text-red-700 transition hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600`}
+      className={`absolute ${position} flex h-8 w-8 items-center justify-center rounded-lg text-red-700 transition-[transform,background-color,color] duration-150 hover:bg-red-50 hover:text-red-800 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600`}
     >
       <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none">
         <path
