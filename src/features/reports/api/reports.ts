@@ -9,6 +9,11 @@ import {
   type MonthlyStockReportFacts,
   type MonthlyStockValueReport
 } from "../lib/monthlyStockReport";
+import {
+  calculateMonthlyStockValueSeries,
+  reportCurrentDateKey,
+  type MonthlyStockValueSeries
+} from "../lib/monthlyStockSeries";
 
 const PAGE_SIZE = 500;
 
@@ -251,4 +256,12 @@ export async function getMonthlyStockValueReport(
 ): Promise<MonthlyStockValueReport> {
   const facts = await loadMonthlyStockReportFacts();
   return calculateMonthlyStockValueReport(referenceDate, facts);
+}
+
+
+export async function getMonthlyStockValueHistory(
+  now = new Date()
+): Promise<MonthlyStockValueSeries> {
+  const facts = await loadMonthlyStockReportFacts();
+  return calculateMonthlyStockValueSeries(reportCurrentDateKey(now), facts);
 }
