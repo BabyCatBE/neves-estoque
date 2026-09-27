@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   isValidSecondaryUsername,
-  normalizeSecondaryUsername
+  normalizeSecondaryUsername,
+  secondaryAuthEmail
 } from "./secondaryAuth";
 
 describe("secondaryAuth", () => {
@@ -19,5 +20,9 @@ describe("secondaryAuth", () => {
     expect(isValidSecondaryUsername("ab")).toBe(false);
     expect(isValidSecondaryUsername("meu usuario")).toBe(false);
     expect(isValidSecondaryUsername("-teste")).toBe(false);
+  });
+
+  it("gera identificador interno sem expor e-mail real", () => {
+    expect(secondaryAuthEmail("  TéstE  ")).toBe("teste@usuarios.neves.invalid");
   });
 });
