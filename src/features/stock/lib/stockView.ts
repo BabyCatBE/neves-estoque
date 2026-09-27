@@ -1,3 +1,4 @@
+import { normalizeSearchText } from "../../../shared/lib/searchText";
 import type {
   CurrentStockItem,
   StockCategory,
@@ -33,11 +34,7 @@ export type StockValueSummary = {
 };
 
 export function normalizeStockSearch(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .trim();
+  return normalizeSearchText(value);
 }
 
 function matchesSearch(item: CurrentStockItem, search: string) {
