@@ -9,6 +9,7 @@ import { Card } from "../../../shared/components/ui/Card";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
 import { TextField } from "../../../shared/components/ui/TextField";
 import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
+import { normalizeSearchText } from "../../../shared/lib/searchText";
 import { createSupplier, listActiveSuppliers } from "../api/suppliers";
 import {
   formatSupplierPhoneDisplay,
@@ -78,12 +79,12 @@ export function SuppliersPage() {
   });
 
   const filteredSuppliers = useMemo(() => {
-    const term = normalizeSearch(search);
+    const term = normalizeSearchText(search);
     return (suppliersQuery.data ?? []).filter((supplier) => {
       if (pendingOnly && !supplier.isPending) return false;
       if (!term) return true;
       return [supplier.name, supplier.company ?? "", supplier.phone ?? ""].some((value) =>
-        normalizeSearch(value).includes(term)
+        normalizeSearchText(value).includes(term)
       );
     });
   }, [pendingOnly, search, suppliersQuery.data]);
@@ -98,19 +99,88 @@ export function SuppliersPage() {
     const observation = supplierObservationSchema.safeParse(values.observation);
 
     if (!name.success) {
-      setError("name", { message: name.error.issues[0]?.message });
+      setError("name", { message: name.error.issues[0]?.message }, { shouldFocus: true });
       return;
     }
     if (!company.success) {
-      setError("company", { message: company.error.issues[0]?.message });
+      setError("company", { message: company.error.issues[0]?.message }, { shouldFocus: true });
       return;
     }
     if (!phone.success) {
-      setError("phone", { message: phone.error.issues[0]?.message });
+      setError("phone", { message: phone.error.issues[0]?.message }, { shouldFocus: true });
       return;
     }
     if (!observation.success) {
-      setError("observation", { message: observation.error.issues[0]?.message });
+      setError("observation", { message: observation.error.issues[0]?.message }, { shouldFocus: true });
+      return;
+    }
+
+    let purchaseFrequencyDays: number | null;
+    let preferredOrderWeekday: number | null;
+    let averageDeliveryDays: number | null;
+    let safetyMarginDays: number | null;
+
+    try {
+      purchaseFrequencyDays = parseOptionalInteger(
+        values.purchaseFrequencyDays,
+        "Frequência de compra",
+        1,
+        3650
+      );
+    } catch (error) {
+      setError(
+        "purchaseFrequencyDays",
+        { message: getSupplierErrorMessage(error) },
+        { shouldFocus: true }
+      );
+      return;
+    }
+
+    try {
+      preferredOrderWeekday = parseOptionalInteger(
+        values.preferredOrderWeekday,
+        "Dia preferencial",
+        1,
+        7
+      );
+    } catch (error) {
+      setError(
+        "preferredOrderWeekday",
+        { message: getSupplierErrorMessage(error) },
+        { shouldFocus: true }
+      );
+      return;
+    }
+
+    try {
+      averageDeliveryDays = parseOptionalInteger(
+        values.averageDeliveryDays,
+        "Prazo de entrega",
+        0,
+        365
+      );
+    } catch (error) {
+      setError(
+        "averageDeliveryDays",
+        { message: getSupplierErrorMessage(error) },
+        { shouldFocus: true }
+      );
+      return;
+    }
+
+    try {
+      safetyMarginDays = parseOptionalInteger(
+        values.safetyMarginDays,
+        "Margem de segurança",
+        0,
+        365
+      );
+    } catch (error) {
+      setError(
+        "safetyMarginDays",
+        { message: getSupplierErrorMessage(error) },
+        { shouldFocus: true }
+      );
       return;
     }
 
@@ -120,10 +190,10 @@ export function SuppliersPage() {
         company: company.data,
         phone: phone.data,
         observation: observation.data.trim() || null,
-        purchaseFrequencyDays: parseOptionalInteger(values.purchaseFrequencyDays, "Frequência de compra", 1, 3650),
-        preferredOrderWeekday: values.preferredOrderWeekday ? Number(values.preferredOrderWeekday) : null,
-        averageDeliveryDays: parseOptionalInteger(values.averageDeliveryDays, "Prazo de entrega", 0, 365),
-        safetyMarginDays: parseOptionalInteger(values.safetyMarginDays, "Margem de segurança", 0, 365)
+        purchaseFrequencyDays,
+        preferredOrderWeekday,
+        averageDeliveryDays,
+        safetyMarginDays
       });
 
       reset(emptyForm);
@@ -196,13 +266,13 @@ export function SuppliersPage() {
               <details className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
                 <summary className="cursor-pointer text-sm font-semibold text-zinc-800">Configuração de compra</summary>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <TextField label="Frequência de compra (dias)" placeholder="Ex.: 7" inputMode="numeric" {...register("purchaseFrequencyDays")} />
-                  <SelectField label="Dia preferencial" {...register("preferredOrderWeekday")}>
+                  <TextField label="Frequência de compra (dias)" placeholder="Ex.: 7" inputMode="numeric" error={errors.purchaseFrequencyDays?.message} {...register("purchaseFrequencyDays")} />
+                  <SelectField label="Dia preferencial" error={errors.preferredOrderWeekday?.message} {...register("preferredOrderWeekday")}>
                     <option value="">Não informado</option>
                     {SUPPLIER_WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
                   </SelectField>
-                  <TextField label="Prazo de entrega (dias)" placeholder="Ex.: 2" inputMode="numeric" {...register("averageDeliveryDays")} />
-                  <TextField label="Margem de segurança (dias)" placeholder="Ex.: 1" inputMode="numeric" {...register("safetyMarginDays")} />
+                  <TextField label="Prazo de entrega (dias)" placeholder="Ex.: 2" inputMode="numeric" error={errors.averageDeliveryDays?.message} {...register("averageDeliveryDays")} />
+                  <TextField label="Margem de segurança (dias)" placeholder="Ex.: 1" inputMode="numeric" error={errors.safetyMarginDays?.message} {...register("safetyMarginDays")} />
                 </div>
 
                 <label className="mt-4 block">
@@ -220,7 +290,7 @@ export function SuppliersPage() {
 
               <div className="mt-5 flex justify-end gap-2">
                 <Button variant="ghost" disabled={createMutation.isPending} onClick={() => { reset(emptyForm); setCreating(false); setActionError(null); }}>Cancelar</Button>
-                <Button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? "Salvando…" : "Salvar fornecedor"}</Button>
+                <Button type="submit" isLoading={createMutation.isPending} loadingLabel="Salvando…">Salvar fornecedor</Button>
               </div>
             </form>
           </Card>
@@ -319,10 +389,23 @@ function InfoLine({ label, value }: { label: string; value: string }) {
   return <div className="flex items-start justify-between gap-3"><span className="text-zinc-500">{label}</span><span className="text-right font-medium text-zinc-800">{value}</span></div>;
 }
 
-function SelectField({ label, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
-  return <label className="block"><span className="text-sm font-medium text-zinc-800">{label}</span><select className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100" {...props}>{children}</select></label>;
-}
-
-function normalizeSearch(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+function SelectField({
+  label,
+  error,
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { label: string; error?: string | null }) {
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-zinc-800">{label}</span>
+      <select
+        aria-invalid={error ? true : props["aria-invalid"]}
+        className={`mt-2 min-h-11 w-full rounded-xl border bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100 ${error ? "border-red-400" : "border-zinc-300"}`}
+        {...props}
+      >
+        {children}
+      </select>
+      {error ? <span className="mt-1.5 block text-xs font-medium text-red-700">{error}</span> : null}
+    </label>
+  );
 }
