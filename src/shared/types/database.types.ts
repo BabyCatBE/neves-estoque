@@ -774,6 +774,16 @@ export type Database = {
         Args: { p_category_id: string; p_name: string; p_product_id: string }
         Returns: undefined
       }
+      convert_product_unit: {
+        Args: {
+          p_device_id: string
+          p_new_quantity: number
+          p_new_unit: string
+          p_old_quantity: number
+          p_product_id: string
+        }
+        Returns: Json
+      }
       update_supplier: {
         Args: {
           p_average_delivery_days?: number

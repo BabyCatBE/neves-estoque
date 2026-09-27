@@ -66,6 +66,14 @@ export type UpdateProductDetailsInput = {
   categoryId: string;
 };
 
+export type ConvertProductUnitInput = {
+  productId: string;
+  newUnit: ProductUnit;
+  oldQuantity: number;
+  newQuantity: number;
+  deviceId: string;
+};
+
 export type ReorderProductCategory = {
   categoryId: string;
   productIds: string[];
@@ -311,6 +319,20 @@ export async function updateProductDetails(input: UpdateProductDetailsInput) {
   });
 
   if (error) throw error;
+}
+
+export async function convertProductUnit(input: ConvertProductUnitInput) {
+  const client = requireClient();
+  const { data, error } = await client.rpc("convert_product_unit", {
+    p_product_id: input.productId,
+    p_new_unit: input.newUnit,
+    p_old_quantity: input.oldQuantity,
+    p_new_quantity: input.newQuantity,
+    p_device_id: input.deviceId
+  });
+
+  if (error) throw error;
+  return data;
 }
 
 

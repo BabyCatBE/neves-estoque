@@ -8,6 +8,7 @@ import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { TextField } from "../../../shared/components/ui/TextField";
+import { ProductUnitConversionDialog } from "../components/ProductUnitConversionDialog";
 import {
   getProductDetails,
   listProductCategories,
@@ -34,6 +35,7 @@ export function ProductDetailPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [exitReview, setExitReview] = useState<ExitReviewMode>(null);
   const [deleteReviewOpen, setDeleteReviewOpen] = useState(false);
+  const [unitConversionOpen, setUnitConversionOpen] = useState(false);
 
   const productQuery = useQuery({
     queryKey: ["products", "detail", productId],
@@ -252,7 +254,8 @@ export function ProductDetailPage() {
       dirty &&
       !updateMutation.isPending &&
       !exitReview &&
-      !deleteReviewOpen
+      !deleteReviewOpen &&
+      !unitConversionOpen
   );
 
   return (
@@ -372,9 +375,25 @@ export function ProductDetailPage() {
                     {productQuery.data.unit}
                   </div>
                   <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-                    A alteração de unidade exige conversão explícita do histórico e terá um fluxo
-                    próprio. Por segurança, não é alterada diretamente aqui.
+                    Alterar a unidade converte retroativamente quantidades e preços deste Produto.
+                    A conversão sempre mostra uma prévia antes da confirmação.
                   </p>
+                  <Button
+                    className="mt-3"
+                    variant="secondary"
+                    onClick={() => {
+                      setActionError(null);
+                      if (dirty) {
+                        setActionError(
+                          "Salve ou descarte as alterações de nome/categoria antes de alterar a unidade."
+                        );
+                        return;
+                      }
+                      setUnitConversionOpen(true);
+                    }}
+                  >
+                    Alterar unidade
+                  </Button>
                 </div>
 
                 {categoryId !== productQuery.data.categoryId ? (
@@ -568,6 +587,20 @@ export function ProductDetailPage() {
               )}
             </details>
           </Card>
+
+          {unitConversionOpen ? (
+            <ProductUnitConversionDialog
+              key={`${productQuery.data.id}-${productQuery.data.unit}`}
+              product={productQuery.data}
+              onClose={() => setUnitConversionOpen(false)}
+              onConverted={() => {
+                setUnitConversionOpen(false);
+                setEditing(false);
+                setExitReview(null);
+                setNotice("Unidade convertida com sucesso. O histórico do produto foi atualizado.");
+              }}
+            />
+          ) : null}
 
           <ConfirmDialog
             open={deleteReviewOpen}
