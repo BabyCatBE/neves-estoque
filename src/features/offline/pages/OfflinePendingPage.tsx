@@ -13,9 +13,10 @@ export function OfflinePendingPage() {
   const [pendingDelete, setPendingDelete] = useState<OfflinePendingOperationRecord | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const saved = searchParams.get("saved") === "entry";
+  const savedKind = searchParams.get("saved");
+  const saved = savedKind === "entry" || savedKind === "conference";
 
-  const entries = useMemo(() => items.filter((item) => item.kind === "entry"), [items]);
+  const visibleItems = useMemo(() => items, [items]);
 
   const clearSavedFlag = () => {
     if (!saved) return;
@@ -53,7 +54,7 @@ export function OfflinePendingPage() {
             onClick={clearSavedFlag}
             className="mt-5 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-sm text-emerald-900"
           >
-            Entrada salva como PENDENTE DE CONFIRMAÇÃO neste aparelho. Toque para dispensar esta mensagem.
+            {savedKind === "conference" ? "Conferência" : "Entrada"} salva como PENDENTE DE CONFIRMAÇÃO neste aparelho. Toque para dispensar esta mensagem.
           </button>
         ) : null}
 
@@ -74,9 +75,9 @@ export function OfflinePendingPage() {
           </Card>
         ) : null}
 
-        {entries.length > 0 ? (
+        {visibleItems.length > 0 ? (
           <div className="mt-6 space-y-3">
-            {entries.map((item) => (
+            {visibleItems.map((item) => (
               <Card key={item.id} className="p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -85,7 +86,7 @@ export function OfflinePendingPage() {
                         PENDENTE DE CONFIRMAÇÃO
                       </span>
                       <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                        Entrada
+                        {item.kind === "conference" ? "Conferência" : "Entrada"}
                       </span>
                     </div>
                     <h3 className="mt-3 text-lg font-semibold text-zinc-950">{item.summaryTitle}</h3>
@@ -114,7 +115,7 @@ export function OfflinePendingPage() {
         ) : null}
 
         <div className="mt-5 rounded-xl border border-zinc-200 bg-zinc-100 px-4 py-3 text-xs leading-5 text-zinc-600">
-          Nesta etapa o aplicativo apenas guarda e mostra a pendência. Editar e confirmar o envio serão adicionados nos próximos incrementos. Nada é enviado automaticamente ao recuperar a internet.
+          Nesta etapa o aplicativo apenas guarda e mostra as pendências de Entrada e Conferência. Editar e confirmar o envio serão adicionados nos próximos incrementos. Nada é enviado automaticamente ao recuperar a internet.
         </div>
 
         <ConfirmDialog

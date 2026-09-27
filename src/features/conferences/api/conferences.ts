@@ -1,4 +1,8 @@
 import { supabase } from "../../../shared/lib/supabase";
+import {
+  OFFLINE_CACHE_KEYS,
+  readThroughOfflineCache
+} from "../../../shared/offline/offlineCache";
 import { listActiveCategories, type CategoryListItem } from "../../categories/api/categories";
 import { listActiveProducts } from "../../products/api/products";
 import { calculateProductUsageInsights } from "../../products/lib/productUsageInsights";
@@ -115,6 +119,13 @@ function requireClient() {
 }
 
 export async function listConferenceCategories(): Promise<ConferenceCategorySummary[]> {
+  return readThroughOfflineCache(
+    OFFLINE_CACHE_KEYS.conferenceCategories,
+    listConferenceCategoriesFromServer
+  );
+}
+
+async function listConferenceCategoriesFromServer(): Promise<ConferenceCategorySummary[]> {
   const client = requireClient();
   const [categories, conferencesResult] = await Promise.all([
     listActiveCategories(),
@@ -152,30 +163,29 @@ export async function listConferenceCategories(): Promise<ConferenceCategorySumm
 export async function getCategoryConferenceSetup(
   categoryId: string
 ): Promise<CategoryConferenceSetup> {
-  const client = requireClient();
-  const [categories, productsResult] = await Promise.all([
+  const [categories, products] = await Promise.all([
     listActiveCategories(),
-    client
-      .from("products")
-      .select("id,name,unit,sort_order")
-      .eq("category_id", categoryId)
-      .is("deleted_at", null)
-      .order("sort_order", { ascending: true, nullsFirst: false })
-      .order("name", { ascending: true })
+    listActiveProducts()
   ]);
 
-  if (productsResult.error) throw productsResult.error;
   const category = categories.find((item) => item.id === categoryId);
   if (!category) throw new Error("Categoria não encontrada.");
 
   return {
     category: { id: category.id, name: category.name },
-    products: (productsResult.data ?? []).map((product) => ({
-      id: product.id,
-      name: product.name,
-      unit: product.unit,
-      sortOrder: product.sort_order
-    }))
+    products: products
+      .filter((product) => product.categoryId === categoryId)
+      .sort((a, b) => {
+        const orderA = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+        const orderB = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+        return orderA - orderB || a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+      })
+      .map((product) => ({
+        id: product.id,
+        name: product.name,
+        unit: product.unit,
+        sortOrder: product.sortOrder
+      }))
   };
 }
 
