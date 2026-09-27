@@ -16,6 +16,10 @@ import {
   inferFriendlyDeviceName,
   setRegisteredDeviceId
 } from "../lib/deviceIdentity";
+import {
+  isValidSecondaryUsername,
+  normalizeSecondaryUsername
+} from "../lib/secondaryAuth";
 
 export type AuthStatus =
   | "loading"
@@ -33,8 +37,12 @@ type AuthContextValue = {
   appUserId: string | null;
   roleName: string | null;
   deviceId: string | null;
+  displayName: string | null;
+  username: string | null;
+  authMethod: string | null;
   errorMessage: string | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithUsername: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -57,6 +65,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [appUserId, setAppUserId] = useState<string | null>(null);
   const [roleName, setRoleName] = useState<string | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
+  const [authMethod, setAuthMethod] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const failureStatus = useRef<FailureStatus | null>(null);
 
@@ -110,6 +121,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setAppUserId(null);
         setRoleName(null);
         setDeviceId(null);
+        setDisplayName(null);
+        setUsername(null);
+        setAuthMethod(null);
         setStatus(failureStatus.current ?? "signed-out");
         return;
       }
@@ -123,7 +137,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const access = accessRows?.[0];
       if (accessError || !access) {
         failureStatus.current = "unauthorized";
-        setErrorMessage("Esta conta Google não está autorizada a acessar o Neves Estoque.");
+        setErrorMessage("Este acesso não está autorizado para o Neves Estoque.");
+        forgetRegisteredDeviceId();
+        await activeClient.auth.signOut({ scope: "local" });
+        if (!cancelled) setStatus("unauthorized");
+        return;
+      }
+
+      const { data: profile, error: profileError } = await activeClient
+        .from("app_users")
+        .select("display_name,username,auth_method")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+
+      if (profileError || !profile) {
+        failureStatus.current = "unauthorized";
+        setErrorMessage("Não foi possível validar o perfil deste acesso.");
         forgetRegisteredDeviceId();
         await activeClient.auth.signOut({ scope: "local" });
         if (!cancelled) setStatus("unauthorized");
@@ -178,6 +207,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setAppUserId(access.app_user_id);
       setRoleName(access.role_name);
       setDeviceId(device.device_id);
+      setDisplayName(profile.display_name);
+      setUsername(profile.username);
+      setAuthMethod(profile.auth_method);
       setStatus("ready");
     }
 
@@ -187,6 +219,46 @@ export function AuthProvider({ children }: PropsWithChildren) {
       cancelled = true;
     };
   }, [initialized, session]);
+
+  const signInWithUsername = useCallback(async (rawUsername: string, password: string) => {
+    const client = supabase;
+    if (!client) {
+      setStatus("config-missing");
+      return;
+    }
+
+    const normalizedUsername = normalizeSecondaryUsername(rawUsername);
+    if (!isValidSecondaryUsername(normalizedUsername) || password.length < 1) {
+      setErrorMessage("Informe um usuário e uma senha válidos.");
+      setStatus("signed-out");
+      return;
+    }
+
+    failureStatus.current = null;
+    setErrorMessage(null);
+    setStatus("loading");
+
+    const { data: loginEmail, error: resolveError } = await client.rpc(
+      "resolve_secondary_login",
+      { p_username: normalizedUsername }
+    );
+
+    if (resolveError || !loginEmail) {
+      setErrorMessage("Usuário ou senha incorretos.");
+      setStatus("signed-out");
+      return;
+    }
+
+    const { error } = await client.auth.signInWithPassword({
+      email: loginEmail,
+      password
+    });
+
+    if (error) {
+      setErrorMessage("Usuário ou senha incorretos.");
+      setStatus("signed-out");
+    }
+  }, []);
 
   const signInWithGoogle = useCallback(async () => {
     const client = supabase;
@@ -236,11 +308,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
       appUserId,
       roleName,
       deviceId,
+      displayName,
+      username,
+      authMethod,
       errorMessage,
       signInWithGoogle,
+      signInWithUsername,
       signOut
     }),
-    [appUserId, deviceId, errorMessage, roleName, session, signInWithGoogle, signOut, status]
+    [
+      appUserId,
+      authMethod,
+      deviceId,
+      displayName,
+      errorMessage,
+      roleName,
+      session,
+      signInWithGoogle,
+      signInWithUsername,
+      signOut,
+      status,
+      username
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
