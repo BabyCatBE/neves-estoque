@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       app_users: {
         Row: {
+          auth_method: string
           auth_user_id: string | null
           created_at: string
           created_by: string | null
@@ -26,8 +27,10 @@ export type Database = {
           role_name: string
           updated_at: string
           updated_by: string | null
+          username: string | null
         }
         Insert: {
+          auth_method?: string
           auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -38,8 +41,10 @@ export type Database = {
           role_name?: string
           updated_at?: string
           updated_by?: string | null
+          username?: string | null
         }
         Update: {
+          auth_method?: string
           auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -50,6 +55,7 @@ export type Database = {
           role_name?: string
           updated_at?: string
           updated_by?: string | null
+          username?: string | null
         }
         Relationships: []
       }
@@ -712,6 +718,7 @@ export type Database = {
         Returns: undefined
       }
       reorder_products: { Args: { p_orders: Json }; Returns: undefined }
+      resolve_secondary_login: { Args: { p_username: string }; Returns: string }
       restore_entry: {
         Args: { p_device_id: string; p_entry_id: string }
         Returns: undefined
