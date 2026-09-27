@@ -183,7 +183,7 @@ export function StockReportsPrintPage() {
 
 function PrintHeader({ latest }: { latest: MonthlyStockSeriesPoint }) {
   return (
-    <header className="reports-print-avoid flex items-center gap-5 border-b-2 border-red-700 pb-4">
+    <div className="reports-print-avoid flex items-center gap-5 border-b-2 border-red-700 pb-4">
       <img
         src={nevesPrintLogo}
         alt="Panificadora Neves"
@@ -200,7 +200,7 @@ function PrintHeader({ latest }: { latest: MonthlyStockSeriesPoint }) {
           Período disponível: {formatMonth(latest.month)} como ponto mais recente
         </p>
       </div>
-    </header>
+    </div>
   );
 }
 
