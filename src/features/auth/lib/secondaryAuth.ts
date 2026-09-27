@@ -1,3 +1,5 @@
+const SECONDARY_EMAIL_DOMAIN = "usuarios.neves.invalid";
+
 export function normalizeSecondaryUsername(value: string) {
   return value
     .normalize("NFD")
@@ -8,4 +10,8 @@ export function normalizeSecondaryUsername(value: string) {
 
 export function isValidSecondaryUsername(value: string) {
   return /^[a-z0-9][a-z0-9._-]{2,31}$/.test(normalizeSecondaryUsername(value));
+}
+
+export function secondaryAuthEmail(value: string) {
+  return `${normalizeSecondaryUsername(value)}@${SECONDARY_EMAIL_DOMAIN}`;
 }
