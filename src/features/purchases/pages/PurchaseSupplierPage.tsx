@@ -20,8 +20,8 @@ export function PurchaseSupplierPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [manualProductIds, setManualProductIds] = useState<string[]>([]);
-  const [pendingManualFocusId, setPendingManualFocusId] = useState<string | null>(null);
   const editorRef = useRef<PurchaseListEditorHandle>(null);
+  const pendingManualFocusRef = useRef<string | null>(null);
   const restorePickerFocusRef = useRef(true);
 
   const supplierQuery = useQuery({
@@ -115,12 +115,13 @@ export function PurchaseSupplierPage() {
   }, [addOpen]);
 
   useEffect(() => {
-    if (!pendingManualFocusId) return;
-    if (!purchaseItems.some((item) => item.productId === pendingManualFocusId)) return;
+    const productId = pendingManualFocusRef.current;
+    if (!productId) return;
+    if (!purchaseItems.some((item) => item.productId === productId)) return;
 
-    editorRef.current?.selectProduct(pendingManualFocusId);
-    setPendingManualFocusId(null);
-  }, [pendingManualFocusId, purchaseItems]);
+    pendingManualFocusRef.current = null;
+    editorRef.current?.selectProduct(productId);
+  }, [purchaseItems]);
 
   const closeProductPicker = () => {
     restorePickerFocusRef.current = true;
@@ -134,8 +135,8 @@ export function PurchaseSupplierPage() {
       current.includes(productId) ? current : [...current, productId]
     );
     setProductSearch("");
+    pendingManualFocusRef.current = productId;
     setAddOpen(false);
-    setPendingManualFocusId(productId);
   };
 
   const configurationReady =
