@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type SelectHTMLAttributes } from "react";
+import { useEffect, useMemo, useState, type SelectHTMLAttributes } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
@@ -55,6 +55,14 @@ export function SuppliersPage() {
   const pendingOnly = searchParams.get("filter") === "pending";
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("deleted") !== "1") return;
+    setNotice("Fornecedor enviado para a lixeira.");
+    const next = new URLSearchParams(searchParams);
+    next.delete("deleted");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const suppliersQuery = useQuery({ queryKey: suppliersKey, queryFn: listActiveSuppliers });
 
