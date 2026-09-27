@@ -7,6 +7,7 @@ import type {
 } from "./monthlyStockReport";
 import {
   calculateMonthlyStockValueSeries,
+  filterMonthlyStockReportFactsAvailableAt,
   firstHistoricalMonth,
   lastDayOfMonth,
   reportCurrentDateKey
@@ -232,6 +233,83 @@ describe("monthlyStockSeries", () => {
       "2026-12",
       "2027-01"
     ]);
+  });
+
+  it("não antecipa fatos futuros no mesmo dia do mês provisório", () => {
+    const available = filterMonthlyStockReportFactsAvailableAt(
+      facts({
+        products: [
+          product({
+            initialStockQuantity: 10,
+            initialStockAt: "2026-11-10T12:00:00-03:00",
+            initialPrice: 2,
+            initialPriceAt: "2026-11-10T12:00:00-03:00"
+          })
+        ],
+        entries: [
+          entry({
+            id: "past",
+            effectiveAt: "2026-11-20T14:00:00-03:00",
+            quantity: 5
+          }),
+          entry({
+            id: "future-same-day",
+            effectiveAt: "2026-11-20T18:00:00-03:00",
+            quantity: 100,
+            unitPrice: 50
+          })
+        ],
+        conferences: []
+      }),
+      new Date("2026-11-20T16:00:00-03:00")
+    );
+
+    expect(available.entries.map((item) => item.id)).toEqual(["past"]);
+
+    const series = calculateMonthlyStockValueSeries("2026-11-20", available);
+    expect(series.points[0]?.report.totalKnown).toBe(45);
+  });
+
+  it("remove também referências iniciais e auditorias que ainda são futuras", () => {
+    const available = filterMonthlyStockReportFactsAvailableAt(
+      facts({
+        products: [
+          product({
+            initialStockQuantity: 10,
+            initialStockAt: "2026-11-20T18:00:00-03:00",
+            initialPrice: 2,
+            initialPriceAt: "2026-11-20T18:00:00-03:00"
+          })
+        ],
+        entries: [],
+        conferences: [],
+        merges: [
+          {
+            id: 10,
+            productId: "p1",
+            createdAt: "2026-11-20T18:00:00-03:00"
+          }
+        ],
+        lifecycle: [
+          {
+            id: 11,
+            productId: "p1",
+            action: "SOFT_DELETE",
+            createdAt: "2026-11-20T18:00:00-03:00"
+          }
+        ]
+      }),
+      new Date("2026-11-20T16:00:00-03:00")
+    );
+
+    expect(available.products[0]).toMatchObject({
+      initialStockQuantity: null,
+      initialStockAt: null,
+      initialPrice: null,
+      initialPriceAt: null
+    });
+    expect(available.merges).toEqual([]);
+    expect(available.lifecycle).toEqual([]);
   });
 
   it("deriva a data corrente usando America/Bahia", () => {

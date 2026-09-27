@@ -97,6 +97,51 @@ export function reportCurrentDateKey(now = new Date()) {
   return historicalDateKey(now.toISOString());
 }
 
+export function filterMonthlyStockReportFactsAvailableAt(
+  facts: MonthlyStockReportFacts,
+  asOf: Date
+): MonthlyStockReportFacts {
+  const asOfTimestamp = asOf.getTime();
+  if (!Number.isFinite(asOfTimestamp)) {
+    throw new Error("Momento de referência inválido.");
+  }
+
+  return {
+    ...facts,
+    products: facts.products.map((product) => {
+      const initialStockIsAvailable =
+        product.initialStockAt !== null &&
+        new Date(product.initialStockAt).getTime() <= asOfTimestamp;
+      const initialPriceIsAvailable =
+        product.initialPriceAt !== null &&
+        new Date(product.initialPriceAt).getTime() <= asOfTimestamp;
+
+      return {
+        ...product,
+        initialStockAt: initialStockIsAvailable ? product.initialStockAt : null,
+        initialStockQuantity: initialStockIsAvailable
+          ? product.initialStockQuantity
+          : null,
+        initialPriceAt: initialPriceIsAvailable ? product.initialPriceAt : null,
+        initialPrice: initialPriceIsAvailable ? product.initialPrice : null
+      };
+    }),
+    entries: facts.entries.filter(
+      (entry) => new Date(entry.effectiveAt).getTime() <= asOfTimestamp
+    ),
+    conferences: facts.conferences.filter(
+      (conference) =>
+        new Date(conference.effectiveAt).getTime() <= asOfTimestamp
+    ),
+    merges: facts.merges.filter(
+      (merge) => new Date(merge.createdAt).getTime() <= asOfTimestamp
+    ),
+    lifecycle: facts.lifecycle.filter(
+      (event) => new Date(event.createdAt).getTime() <= asOfTimestamp
+    )
+  };
+}
+
 export function calculateMonthlyStockValueSeries(
   currentDate: string,
   facts: MonthlyStockReportFacts
