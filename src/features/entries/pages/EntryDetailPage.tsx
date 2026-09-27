@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
@@ -12,6 +12,7 @@ import { formatMoney, getEntryErrorMessage } from "../lib/entryValidation";
 export function EntryDetailPage() {
   const { entryId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { deviceId } = useAuth();
   const [deleteReviewOpen, setDeleteReviewOpen] = useState(false);
@@ -49,7 +50,7 @@ export function EntryDetailPage() {
     try {
       await deleteMutation.mutateAsync({ entryId, deviceId });
       setDeleteReviewOpen(false);
-      navigate("/entradas/historico", { replace: true });
+      navigate("/entradas/historico?deleted=1", { replace: true });
     } catch (error) {
       setActionError(getEntryErrorMessage(error));
     }
@@ -58,6 +59,14 @@ export function EntryDetailPage() {
   return (
     <AppShell title="Entrada" showBack backTo="/entradas/historico">
       <section>
+        {searchParams.get("saved") ? (
+          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {searchParams.get("saved") === "edit"
+              ? "Alterações da Entrada salvas com sucesso."
+              : "Entrada salva com sucesso."}
+          </div>
+        ) : null}
+
         {entryQuery.isPending ? <Card className="p-5 text-sm text-zinc-600">Carregando Entrada…</Card> : null}
 
         {entryQuery.isError ? (
