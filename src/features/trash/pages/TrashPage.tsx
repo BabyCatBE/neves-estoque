@@ -5,6 +5,9 @@ import { AppShell } from "../../../shared/components/AppShell";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
+import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
+import { TextField } from "../../../shared/components/ui/TextField";
+import { matchesAnySearchText } from "../../../shared/lib/searchText";
 import { useAuth } from "../../auth/context/AuthContext";
 import { listRestorableTrashItems, restoreTrashItem, type TrashItem, type TrashItemType } from "../api/trash";
 
@@ -16,6 +19,7 @@ export function TrashPage() {
   const { deviceId } = useAuth();
   const [searchParams] = useSearchParams();
   const [filter, setFilter] = useState<Filter>(() => parseFilter(searchParams.get("filter")));
+  const [search, setSearch] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingRestore, setPendingRestore] = useState<TrashItem | null>(null);
@@ -39,8 +43,15 @@ export function TrashPage() {
 
   const items = useMemo(() => {
     const all = trashQuery.data ?? [];
-    return filter === "all" ? all : all.filter((item) => item.type === filter);
-  }, [filter, trashQuery.data]);
+    return all
+      .filter((item) => filter === "all" || item.type === filter)
+      .filter((item) =>
+        matchesAnySearchText(
+          [item.name, item.detail ?? "", trashTypeLabel(item.type)],
+          search
+        )
+      );
+  }, [filter, search, trashQuery.data]);
 
   const confirmRestore = async () => {
     if (!pendingRestore) return;
@@ -63,7 +74,28 @@ export function TrashPage() {
           <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">Produtos, categorias, fornecedores e Entradas permanecem restauráveis por 7 dias. Depois desse prazo, deixam de aparecer aqui.</p>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-5 max-w-md">
+          <div className="relative">
+            <TextField
+              id="trash-search"
+              label="Pesquisar"
+              placeholder="Nome, detalhe ou tipo"
+              value={search}
+              className={search ? "pr-11" : ""}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            {search ? (
+              <SearchClearButton
+                onClear={() => {
+                  setSearch("");
+                  document.getElementById("trash-search")?.focus();
+                }}
+              />
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
           <FilterButton active={filter === "all"} onClick={() => setFilter("all")}>Todos</FilterButton>
           <FilterButton active={filter === "product"} onClick={() => setFilter("product")}>Produtos</FilterButton>
           <FilterButton active={filter === "category"} onClick={() => setFilter("category")}>Categorias</FilterButton>
@@ -90,8 +122,14 @@ export function TrashPage() {
         {!trashQuery.isPending && !trashQuery.isError && items.length === 0 ? (
           <Card className="mt-5 p-7 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-500"><TrashIcon /></div>
-            <h3 className="mt-4 font-semibold">Nenhum item neste filtro</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">Itens excluídos dentro da janela de 7 dias aparecerão aqui.</p>
+            <h3 className="mt-4 font-semibold">
+              {search ? "Nenhum item encontrado" : "Nenhum item neste filtro"}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              {search
+                ? "Tente outro termo ou altere o filtro."
+                : "Itens excluídos dentro da janela de 7 dias aparecerão aqui."}
+            </p>
           </Card>
         ) : null}
 
