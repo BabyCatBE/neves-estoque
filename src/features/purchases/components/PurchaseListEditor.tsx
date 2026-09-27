@@ -330,11 +330,11 @@ function PurchaseListEditor({
                       <button
                         type="button"
                         disabled={!checked}
-                        onClick={() => stepQuantity(product.productId, 1)}
-                        aria-label={`Aumentar quantidade de ${product.productName}`}
+                        onClick={() => stepQuantity(product.productId, -1)}
+                        aria-label={`Reduzir quantidade de ${product.productName}`}
                         className="min-h-11 rounded-xl border border-red-200 bg-white text-xl font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
                       >
-                        +
+                        −
                       </button>
                       <input
                         id={`purchase-quantity-${product.productId}`}
@@ -372,11 +372,11 @@ function PurchaseListEditor({
                       <button
                         type="button"
                         disabled={!checked}
-                        onClick={() => stepQuantity(product.productId, -1)}
-                        aria-label={`Reduzir quantidade de ${product.productName}`}
+                        onClick={() => stepQuantity(product.productId, 1)}
+                        aria-label={`Aumentar quantidade de ${product.productName}`}
                         className="min-h-11 rounded-xl border border-red-200 bg-white text-xl font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
                       >
-                        −
+                        +
                       </button>
                     </div>
                     {hasInvalidQuantity ? (
