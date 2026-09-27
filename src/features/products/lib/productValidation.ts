@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  getValidationErrorMessage,
+  looksTechnicalErrorMessage
+} from "../../../shared/lib/friendlyError";
 
 export const PRODUCT_UNITS = [
   "UN",
@@ -45,6 +49,9 @@ export function parseOptionalNonNegativeDecimal(value: string, label: string) {
 }
 
 export function getProductErrorMessage(error: unknown) {
+  const validationMessage = getValidationErrorMessage(error);
+  if (validationMessage) return validationMessage;
+
   if (typeof error === "object" && error !== null) {
     const candidate = error as { code?: string; message?: string };
 
@@ -69,6 +76,8 @@ export function getProductErrorMessage(error: unknown) {
     }
   }
 
-  if (error instanceof Error && error.message) return error.message;
+  if (error instanceof Error && error.message && !looksTechnicalErrorMessage(error.message)) {
+    return error.message;
+  }
   return "Não foi possível salvar o produto. Tente novamente.";
 }
