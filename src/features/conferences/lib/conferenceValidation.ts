@@ -1,3 +1,4 @@
+import { looksTechnicalErrorMessage } from "../../../shared/lib/friendlyError";
 import {
   buildEffectiveAt,
   getFutureOperationalDateError,
@@ -78,7 +79,9 @@ export function getConferenceErrorMessage(error: unknown) {
   if (message.includes("Quantidade não pode ser negativa")) {
     return "As quantidades da Conferência não podem ser negativas.";
   }
-  return message;
+  return looksTechnicalErrorMessage(message)
+    ? "Não foi possível concluir a Conferência. Tente novamente."
+    : message;
 }
 
 export function formatConferenceDate(value: string) {
