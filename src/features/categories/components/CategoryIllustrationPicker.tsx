@@ -1,5 +1,5 @@
 import { useState } from "react";
-import nevesLogo from "../../../assets/neves-logo.webp";
+import nevesPrintLogo from "../../../assets/neves-logo-print.webp";
 import { CategoryIllustrationVisual } from "./CategoryIllustrationVisual";
 import {
   CATEGORY_ILLUSTRATION_OPTIONS,
@@ -225,7 +225,7 @@ export function CategoryIllustrationPicker({ value, onChange, categoryName }: Pr
                   Conferência de Estoque
                 </p>
               </div>
-              <img src={nevesLogo} alt="" aria-hidden="true" className="h-7 w-14 object-contain" />
+              <img src={nevesPrintLogo} alt="" aria-hidden="true" className="h-7 w-14 object-contain" />
             </div>
             <div className="space-y-2 p-3">
               <div className="h-3 rounded bg-red-700" />
