@@ -18,7 +18,7 @@ const modules = [
 ] as const;
 
 export function HomePage() {
-  const { session, roleName, deviceId, signOut } = useAuth();
+  const { session, roleName, deviceId, displayName, username, authMethod, signOut } = useAuth();
   const trashAlertsQuery = useQuery({
     queryKey: ["trash", "restorable"],
     queryFn: listRestorableTrashItems,
@@ -80,9 +80,13 @@ export function HomePage() {
           </div>
 
           <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm shadow-sm sm:min-w-64">
-            <p className="font-medium text-zinc-900">{session?.user.email ?? "Conta Google"}</p>
+            <p className="font-medium text-zinc-900">
+              {displayName ?? (username ? `@${username}` : session?.user.email ?? "Conta autorizada")}
+            </p>
+            {username ? <p className="mt-0.5 text-xs font-medium text-red-700">@{username}</p> : null}
             <p className="mt-1 text-xs text-zinc-500">
-              {roleName === "admin" ? "Administrador" : roleName ?? "Usuário autorizado"}
+              {roleName === "admin" ? "Administrador" : "Acesso secundário"}
+              {authMethod === "password" ? " · usuário e senha" : ""}
               {deviceId ? " · dispositivo registrado" : ""}
             </p>
             <button
