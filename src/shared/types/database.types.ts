@@ -734,12 +734,20 @@ export type Database = {
         Returns: undefined
       }
       reorder_products: { Args: { p_orders: Json }; Returns: undefined }
+      restore_conference: {
+        Args: { p_conference_id: string; p_device_id: string }
+        Returns: undefined
+      }
       restore_entry: {
         Args: { p_device_id: string; p_entry_id: string }
         Returns: undefined
       }
       restore_product: { Args: { p_product_id: string }; Returns: undefined }
       restore_supplier: { Args: { p_supplier_id: string }; Returns: undefined }
+      soft_delete_conference: {
+        Args: { p_conference_id: string; p_device_id: string }
+        Returns: undefined
+      }
       soft_delete_entry: {
         Args: { p_device_id: string; p_entry_id: string }
         Returns: undefined

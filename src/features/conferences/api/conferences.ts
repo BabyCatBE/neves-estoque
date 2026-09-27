@@ -103,6 +103,11 @@ export type ConferenceConsumptionReviewInput = {
   excludeConferenceId?: string;
 };
 
+export type ConferenceTrashActionInput = {
+  conferenceId: string;
+  deviceId: string;
+};
+
 function requireClient() {
   if (!supabase) throw new Error("Supabase não está configurado neste ambiente.");
   return supabase;
@@ -512,4 +517,25 @@ export async function listConferencePrintData(): Promise<ConferencePrintData> {
     })),
     pendingProductCount: pendingResult.count ?? 0
   };
+}
+
+
+export async function softDeleteConference(input: ConferenceTrashActionInput) {
+  const client = requireClient();
+  const { error } = await client.rpc("soft_delete_conference", {
+    p_conference_id: input.conferenceId,
+    p_device_id: input.deviceId
+  });
+
+  if (error) throw error;
+}
+
+export async function restoreConference(input: ConferenceTrashActionInput) {
+  const client = requireClient();
+  const { error } = await client.rpc("restore_conference", {
+    p_conference_id: input.conferenceId,
+    p_device_id: input.deviceId
+  });
+
+  if (error) throw error;
 }

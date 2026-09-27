@@ -36,6 +36,8 @@ export function TrashPage() {
         queryClient.invalidateQueries({ queryKey: ["products", "categories"] }),
         queryClient.invalidateQueries({ queryKey: ["suppliers"] }),
         queryClient.invalidateQueries({ queryKey: ["entries"] }),
+        queryClient.invalidateQueries({ queryKey: ["conferences"] }),
+        queryClient.invalidateQueries({ queryKey: ["stock"] }),
         queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
     }
@@ -71,7 +73,7 @@ export function TrashPage() {
       <section>
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Itens excluídos</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">Produtos, categorias, fornecedores e Entradas permanecem restauráveis por 7 dias. Depois desse prazo, deixam de aparecer aqui.</p>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">Produtos, categorias, fornecedores, Entradas e Conferências permanecem restauráveis por 7 dias. Depois desse prazo, deixam de aparecer aqui.</p>
         </div>
 
         <div className="mt-5 max-w-md">
@@ -101,13 +103,14 @@ export function TrashPage() {
           <FilterButton active={filter === "category"} onClick={() => setFilter("category")}>Categorias</FilterButton>
           <FilterButton active={filter === "supplier"} onClick={() => setFilter("supplier")}>Fornecedores</FilterButton>
           <FilterButton active={filter === "entry"} onClick={() => setFilter("entry")}>Entradas</FilterButton>
+          <FilterButton active={filter === "conference"} onClick={() => setFilter("conference")}>Conferências</FilterButton>
         </div>
 
         {notice ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div> : null}
         {actionError ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</div> : null}
 
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-          A Lixeira Universal já restaura Produtos, Categorias, Fornecedores e Entradas. Restaurar uma Entrada recoloca seus efeitos nos cálculos ativos. Exclusão definitiva e “Esvaziar lixeira” continuam reservados para uma etapa posterior com confirmação reforçada.
+          A Lixeira Universal restaura Produtos, Categorias, Fornecedores, Entradas e Conferências. Restaurar uma Entrada ou Conferência recoloca automaticamente seus efeitos nos cálculos ativos. Exclusão definitiva e “Esvaziar lixeira” continuam reservados para uma etapa posterior com confirmação reforçada.
         </div>
 
         {trashQuery.isPending ? <Card className="mt-5 p-5 text-sm text-zinc-600">Carregando lixeira…</Card> : null}
@@ -176,6 +179,7 @@ function trashTypeLabel(type: TrashItemType) {
   if (type === "product") return "Produto";
   if (type === "supplier") return "Fornecedor";
   if (type === "entry") return "Entrada";
+  if (type === "conference") return "Conferência";
   return "Categoria";
 }
 
@@ -183,6 +187,7 @@ function restoreDescription(item: TrashItem) {
   if (item.type === "product") return `Restaurar o produto “${item.name}”? Ele voltará para a posição manual anterior na categoria.`;
   if (item.type === "supplier") return `Restaurar o fornecedor “${item.name}”? Ele voltará ao cadastro ativo e poderá ser usado em novas Entradas.`;
   if (item.type === "entry") return `Restaurar a Entrada de “${item.name}”? Ela voltará ao Histórico ativo e seus efeitos serão recolocados automaticamente nos cálculos atuais de estoque e preço.`;
+  if (item.type === "conference") return `Restaurar a Conferência de “${item.name}”? Ela voltará ao Histórico ativo e seus efeitos serão recolocados automaticamente nos cálculos de estoque, consumo e relatórios.`;
   return `Restaurar a categoria “${item.name}”? Ela voltará para a posição manual anterior.`;
 }
 
@@ -199,7 +204,7 @@ function getTrashErrorMessage(error: unknown) {
     const message = (error as { message?: string }).message;
     if (typeof message === "string") {
       if (message.includes("Prazo de restauração expirado")) return "O prazo de 7 dias para restaurar este item expirou.";
-      if (message.includes("Produto não encontrado na lixeira") || message.includes("Fornecedor não encontrado na lixeira") || message.includes("Entrada não encontrada na lixeira")) return "Este item não está mais disponível para restauração.";
+      if (message.includes("Produto não encontrado na lixeira") || message.includes("Fornecedor não encontrado na lixeira") || message.includes("Entrada não encontrada na lixeira") || message.includes("Conferência não encontrada na lixeira")) return "Este item não está mais disponível para restauração.";
       if (message.includes("Já existe um fornecedor ativo com este contato")) return "Já existe um fornecedor ativo com este mesmo contato. Revise o cadastro antes de restaurar.";
     }
   }
@@ -208,6 +213,6 @@ function getTrashErrorMessage(error: unknown) {
 
 
 function parseFilter(value: string | null): Filter {
-  if (value === "product" || value === "category" || value === "supplier" || value === "entry") return value;
+  if (value === "product" || value === "category" || value === "supplier" || value === "entry" || value === "conference") return value;
   return "all";
 }

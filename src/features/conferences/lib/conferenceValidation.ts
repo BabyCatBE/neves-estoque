@@ -67,6 +67,8 @@ export function getConferenceErrorMessage(error: unknown) {
   const known = [
     "Categoria inválida ou excluída.",
     "Produto inválido ou excluído.",
+    "Conferência não encontrada ou já excluída.",
+    "Conferência não encontrada na lixeira.",
     "Dispositivo não autorizado.",
     "A categoria não possui produtos ativos para conferir.",
     "A Conferência da categoria precisa conter todos os produtos ativos.",

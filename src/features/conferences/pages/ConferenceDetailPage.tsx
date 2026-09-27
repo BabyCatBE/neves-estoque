@@ -1,14 +1,26 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
-import { getConferenceDetails } from "../api/conferences";
-import { formatConferenceDate, formatConferenceTime } from "../lib/conferenceValidation";
+import { useAuth } from "../../auth/context/AuthContext";
+import { getConferenceDetails, softDeleteConference } from "../api/conferences";
+import {
+  formatConferenceDate,
+  formatConferenceTime,
+  getConferenceErrorMessage
+} from "../lib/conferenceValidation";
 
 export function ConferenceDetailPage() {
   const { conferenceId } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { deviceId } = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const conferenceQuery = useQuery({
     queryKey: ["conferences", "detail", conferenceId],
     queryFn: () => {
@@ -18,12 +30,53 @@ export function ConferenceDetailPage() {
     enabled: Boolean(conferenceId)
   });
 
+  const deleteMutation = useMutation({ mutationFn: softDeleteConference });
+
+  const confirmDelete = async () => {
+    const details = conferenceQuery.data;
+    if (!details) return;
+
+    if (!deviceId) {
+      setActionError("Este dispositivo ainda não está pronto para excluir Conferências.");
+      setDeleteOpen(false);
+      return;
+    }
+
+    setActionError(null);
+
+    try {
+      await deleteMutation.mutateAsync({
+        conferenceId: details.id,
+        deviceId
+      });
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["conferences"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["stock"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchases"] }),
+        queryClient.invalidateQueries({ queryKey: ["trash"] })
+      ]);
+
+      navigate(`/conferencias/historico/${details.categoryId}?deleted=1`, { replace: true });
+    } catch (error) {
+      setDeleteOpen(false);
+      setActionError(getConferenceErrorMessage(error));
+    }
+  };
+
   return (
     <AppShell title="Conferência" showBack backTo="/conferencias/historico">
       <section>
         {searchParams.get("updated") === "1" ? (
           <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
             Correção da Conferência salva com sucesso.
+          </div>
+        ) : null}
+
+        {actionError ? (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {actionError}
           </div>
         ) : null}
 
@@ -51,9 +104,22 @@ export function ConferenceDetailPage() {
                   Registrada às {formatConferenceTime(conferenceQuery.data.effectiveAt)}
                 </p>
               </div>
-              <Link to={`/conferencias/${conferenceQuery.data.id}/editar`}>
-                <Button>Corrigir Conferência</Button>
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  className="text-red-700"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => {
+                    setActionError(null);
+                    setDeleteOpen(true);
+                  }}
+                >
+                  Excluir Conferência
+                </Button>
+                <Link to={`/conferencias/${conferenceQuery.data.id}/editar`}>
+                  <Button>Corrigir Conferência</Button>
+                </Link>
+              </div>
             </div>
 
             <div className="mt-5">
@@ -88,6 +154,26 @@ export function ConferenceDetailPage() {
                 ))}
               </div>
             </Card>
+
+            <ConfirmDialog
+              open={deleteOpen}
+              title="Excluir Conferência?"
+              description={
+                <>
+                  Excluir a Conferência de <strong>“{conferenceQuery.data.categoryName}”</strong> de{" "}
+                  <strong>{formatConferenceDate(conferenceQuery.data.effectiveAt)}</strong>?
+                  <br />
+                  Ela sairá do Histórico ativo e poderá alterar estoque, consumo e relatórios.
+                  Ficará restaurável na Lixeira por 7 dias.
+                </>
+              }
+              confirmLabel="Enviar para Lixeira"
+              pendingLabel="Excluindo…"
+              variant="danger"
+              isPending={deleteMutation.isPending}
+              onCancel={() => setDeleteOpen(false)}
+              onConfirm={() => void confirmDelete()}
+            />
           </>
         ) : null}
       </section>

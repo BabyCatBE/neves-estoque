@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Card } from "../../../shared/components/ui/Card";
 import {
@@ -14,6 +14,7 @@ import {
 
 export function CategoryConferenceHistoryPage() {
   const { categoryId } = useParams();
+  const [searchParams] = useSearchParams();
   const categoryQuery = useQuery({
     queryKey: ["conferences", "setup", categoryId],
     queryFn: () => {
@@ -40,6 +41,12 @@ export function CategoryConferenceHistoryPage() {
   return (
     <AppShell title="Histórico da categoria" showBack backTo="/conferencias/historico">
       <section>
+        {searchParams.get("deleted") === "1" ? (
+          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Conferência enviada para a Lixeira. Ela pode ser restaurada por 7 dias.
+          </div>
+        ) : null}
+
         <h2 className="text-xl font-semibold tracking-tight">
           {categoryQuery.data?.category.name ?? "Conferências"}
         </h2>
