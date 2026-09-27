@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useBlocker } from "react-router-dom";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { copyText } from "../../../shared/lib/copyText";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import type { PurchaseProjection } from "../lib/purchaseProjection";
@@ -41,6 +42,7 @@ function PurchaseListEditor({
   const [invalidIds, setInvalidIds] = useState<Set<string>>(() => new Set());
   const [actionError, setActionError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"copy" | "share" | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dirty =
@@ -201,35 +203,48 @@ function PurchaseListEditor({
 
   const copyOrder = async () => {
     const text = buildOrderText();
-    if (!text) return;
+    if (!text || pendingAction) return;
 
+    setPendingAction("copy");
+    setActionError(null);
     try {
-      await navigator.clipboard.writeText(text);
-      showToast("Texto copiado");
+      await copyText(text);
+      showToast("Texto copiado.");
     } catch {
-      setActionError("Não foi possível copiar o pedido neste dispositivo.");
+      setActionError("Não foi possível copiar o texto neste navegador.");
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const shareOrder = async () => {
     const text = buildOrderText();
-    if (!text) return;
+    if (!text || pendingAction) return;
 
-    if (typeof navigator.share !== "function") {
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast("Compartilhamento indisponível · texto copiado");
-      } catch {
-        setActionError("O compartilhamento não está disponível neste navegador.");
-      }
-      return;
-    }
+    setPendingAction("share");
+    setActionError(null);
 
     try {
-      await navigator.share({ title: orderTitle, text });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      setActionError("Não foi possível compartilhar o pedido neste dispositivo.");
+      if (typeof navigator.share === "function") {
+        try {
+          await navigator.share({ title: orderTitle, text });
+          showToast("Lista compartilhada.");
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          // Em contextos HTTP/LAN a API pode existir sem conseguir concluir.
+          // Nesse caso, caímos para a cópia compatível.
+        }
+      }
+
+      await copyText(text);
+      showToast("Compartilhamento indisponível · texto copiado.");
+    } catch {
+      setActionError(
+        "Não foi possível compartilhar nem copiar o texto neste navegador."
+      );
+    } finally {
+      setPendingAction(null);
     }
   };
 
@@ -378,10 +393,21 @@ function PurchaseListEditor({
       )}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <Button onClick={() => void copyOrder()} disabled={items.length === 0}>
+        <Button
+          onClick={() => void copyOrder()}
+          disabled={items.length === 0 || Boolean(pendingAction)}
+          isLoading={pendingAction === "copy"}
+          loadingLabel="Copiando…"
+        >
           Copiar texto
         </Button>
-        <Button variant="secondary" onClick={() => void shareOrder()} disabled={items.length === 0}>
+        <Button
+          variant="secondary"
+          onClick={() => void shareOrder()}
+          disabled={items.length === 0 || Boolean(pendingAction)}
+          isLoading={pendingAction === "share"}
+          loadingLabel="Compartilhando…"
+        >
           Compartilhar texto
         </Button>
         <span className="text-sm text-zinc-500">
