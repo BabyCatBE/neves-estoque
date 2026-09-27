@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Card } from "../../../shared/components/ui/Card";
 import { getMonthlyStockValueHistory } from "../api/reports";
@@ -19,7 +20,8 @@ export function StockReportsPage() {
   return (
     <AppShell title="Relatórios" showBack backTo="/estoque">
       <section>
-        <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
             Estoque
           </p>
@@ -31,6 +33,15 @@ export function StockReportsPage() {
             Quando não existe Conferência exatamente no fechamento, o sistema usa os
             registros disponíveis sem inventar consumo ou saída.
           </p>
+          </div>
+
+          <Link
+            to="/estoque/relatorios/imprimir"
+            className="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-red-50 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+          >
+            <PrintIcon />
+            Imprimir / PDF
+          </Link>
         </div>
 
         {historyQuery.isPending ? (
@@ -457,4 +468,21 @@ function formatDate(date: string) {
     year: "numeric",
     timeZone: "UTC"
   }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+
+function PrintIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none">
+      <path
+        d="M7 8V4h10v4M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M7 14h10v6H7z" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="17.5" cy="12" r=".8" fill="currentColor" />
+    </svg>
+  );
 }

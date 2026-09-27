@@ -30,6 +30,7 @@ import { ConferenceDetailPage } from "../../features/conferences/pages/Conferenc
 import { EditConferencePage } from "../../features/conferences/pages/EditConferencePage";
 import { StockCurrentPage } from "../../features/stock/pages/StockCurrentPage";
 import { StockReportsPage } from "../../features/reports/pages/StockReportsPage";
+import { StockReportsPrintPage } from "../../features/reports/pages/StockReportsPrintPage";
 import { PurchasesHubPage } from "../../features/purchases/pages/PurchasesHubPage";
 import { PurchaseSupplierSelectPage } from "../../features/purchases/pages/PurchaseSupplierSelectPage";
 import { PurchaseSupplierPage } from "../../features/purchases/pages/PurchaseSupplierPage";
@@ -61,6 +62,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <StockReportsPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/estoque/relatorios/imprimir",
+    element: (
+      <ProtectedRoute>
+        <StockReportsPrintPage />
       </ProtectedRoute>
     )
   },
