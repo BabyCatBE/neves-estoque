@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
+import { useNetworkStatus } from "../../../shared/offline/NetworkContext";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -10,6 +11,7 @@ import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
 import { createBrowserUuid } from "../../../shared/lib/browserUuid";
 import { useAuth } from "../../auth/context/AuthContext";
+import { savePendingConference } from "../../offline/lib/pendingOperations";
 import {
   createCategoryConference,
   getCategoryConferenceSetup,
@@ -60,7 +62,8 @@ export function NewCategoryConferencePage() {
 function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { deviceId } = useAuth();
+  const { session, appUserId, deviceId, displayName, username } = useAuth();
+  const { isOnline } = useNetworkStatus();
   const [initialDate] = useState(() => localDateInputValue());
   const [date, setDate] = useState(initialDate);
   const [dateError, setDateError] = useState<string | null>(null);
@@ -155,6 +158,24 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const persist = async (payload: CategoryConferenceWriteInput) => {
     setActionError(null);
     try {
+      if (!isOnline) {
+        if (!session?.user.id || !deviceId) {
+          throw new Error("Este acesso ainda não está pronto para guardar uma Conferência offline.");
+        }
+
+        await savePendingConference(payload, {
+          authUserId: session.user.id,
+          appUserId,
+          deviceId,
+          actorLabel: displayName ?? (username ? `@${username}` : "Usuário autorizado"),
+          categoryLabel: setup.category.name
+        });
+
+        allowNavigationRef.current = true;
+        navigate("/alertas/pendencias-locais?saved=conference", { replace: true });
+        return;
+      }
+
       await saveMutation.mutateAsync(payload);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["conferences"] }),
@@ -185,6 +206,11 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
       payload = validateAndBuild();
     } catch (error) {
       setActionError(getConferenceErrorMessage(error));
+      return;
+    }
+
+    if (!isOnline) {
+      await persist(payload);
       return;
     }
 
@@ -247,6 +273,11 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
 
   return (
     <section className="pb-28">
+      {!isOnline ? (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+          Você está offline. Ao salvar, esta Conferência ficará somente neste aparelho como <strong>PENDENTE DE CONFIRMAÇÃO</strong>. Consumo atípico e possíveis Conferências do mesmo dia serão verificados quando você confirmar o envio online.
+        </div>
+      ) : null}
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
           Conferência por categoria
@@ -389,7 +420,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
             loadingLabel={saveMutation.isPending ? "Salvando…" : "Verificando…"}
             onClick={() => void requestSave()}
           >
-            Salvar Conferência
+            {isOnline ? "Salvar Conferência" : "Salvar pendência"}
           </Button>
         </div>
       </div>

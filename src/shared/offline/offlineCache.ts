@@ -7,7 +7,8 @@ export const OFFLINE_CACHE_KEYS = {
   productCategories: "products.categories",
   products: "products.active",
   suppliers: "suppliers.active",
-  stockCurrent: "stock.current"
+  stockCurrent: "stock.current",
+  conferenceCategories: "conferences.categories"
 } as const;
 
 export class OfflineDataUnavailableError extends Error {
