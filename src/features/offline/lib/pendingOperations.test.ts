@@ -5,8 +5,8 @@ import {
   buildPendingEntryRecord
 } from "./pendingOperations";
 
-describe("pending offline entry", () => {
-  it("preserva o payload oficial e marca como pendente de confirmação", () => {
+describe("pending offline operations", () => {
+  it("preserva o payload oficial da Entrada e marca como pendente de confirmação", () => {
     const payload: CreateEntryInput = {
       supplierId: "supplier-1",
       newSupplier: null,
@@ -37,7 +37,9 @@ describe("pending offline entry", () => {
     expect(record.summaryTitle).toBe("Fornecedor Teste");
     expect(record.itemCount).toBe(1);
     expect(record.payload).toEqual(payload);
-    it("guarda Conferência offline sem transformá-la em registro oficial", () => {
+  });
+
+  it("guarda Conferência offline sem transformá-la em registro oficial", () => {
     const record = buildPendingConferenceRecord(
       {
         categoryId: "category-1",
@@ -65,5 +67,4 @@ describe("pending offline entry", () => {
     expect(record.itemCount).toBe(1);
     expect(record.payload.items[0]?.quantity).toBe(0);
   });
-});
 });
