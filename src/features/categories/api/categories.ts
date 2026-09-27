@@ -2,7 +2,10 @@ import { createBrowserUuid } from "../../../shared/lib/browserUuid";
 import { supabase } from "../../../shared/lib/supabase";
 import {
   OFFLINE_CACHE_KEYS,
-  readThroughOfflineCache
+  ensureOfflineIllustration,
+  readOfflineIllustrationUrl,
+  readThroughOfflineCache,
+  removeOfflineIllustration
 } from "../../../shared/offline/offlineCache";
 import type { Tables } from "../../../shared/types/database.types";
 
@@ -53,9 +56,23 @@ function normalizeIllustrationSource(value: string | null): CategoryIllustration
 }
 
 export async function listActiveCategories(): Promise<CategoryListItem[]> {
-  return readThroughOfflineCache(
+  const categories = await readThroughOfflineCache(
     OFFLINE_CACHE_KEYS.categories,
     listActiveCategoriesFromServer
+  );
+
+  return Promise.all(
+    categories.map(async (category) => {
+      if (category.illustration_source !== "upload" || !category.illustration_key) {
+        return category;
+      }
+
+      const localUrl = await readOfflineIllustrationUrl(category.illustration_key);
+      return {
+        ...category,
+        illustrationUrl: localUrl ?? category.illustrationUrl
+      };
+    })
   );
 }
 
@@ -106,6 +123,12 @@ async function listActiveCategoriesFromServer(): Promise<CategoryListItem[]> {
       for (const item of signedResult.data ?? []) {
         if (item.path && item.signedUrl) signedUrls.set(item.path, item.signedUrl);
       }
+
+      await Promise.allSettled(
+        [...signedUrls.entries()].map(([path, url]) =>
+          ensureOfflineIllustration(path, url)
+        )
+      );
     }
   }
 
@@ -197,6 +220,7 @@ export async function removeCategoryIllustration(path: string) {
   const client = requireClient();
   const { error } = await client.storage.from(CATEGORY_ILLUSTRATIONS_BUCKET).remove([path]);
   if (error) throw error;
+  await removeOfflineIllustration(path);
 }
 
 export async function softDeleteCategory(id: string) {

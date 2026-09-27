@@ -130,3 +130,57 @@ export async function saveVerifiedOfflineAccess(
     // O acesso online continua válido mesmo se o IndexedDB estiver indisponível.
   }
 }
+
+
+const illustrationObjectUrls = new Map<string, string>();
+
+export async function ensureOfflineIllustration(path: string, remoteUrl: string) {
+  try {
+    const existing = await offlineDb.illustrationBlobs.get(path);
+    if (existing) return;
+
+    const response = await fetch(remoteUrl);
+    if (!response.ok) return;
+
+    const blob = await response.blob();
+    await offlineDb.illustrationBlobs.put({
+      path,
+      blob,
+      updatedAt: new Date().toISOString()
+    });
+  } catch {
+    // Falha no cache visual não deve impedir o uso online da Categoria.
+  }
+}
+
+export async function readOfflineIllustrationUrl(path: string) {
+  try {
+    const cachedUrl = illustrationObjectUrls.get(path);
+    if (cachedUrl) return cachedUrl;
+
+    const record = await offlineDb.illustrationBlobs.get(path);
+    if (!record || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+      return null;
+    }
+
+    const objectUrl = URL.createObjectURL(record.blob);
+    illustrationObjectUrls.set(path, objectUrl);
+    return objectUrl;
+  } catch {
+    return null;
+  }
+}
+
+export async function removeOfflineIllustration(path: string) {
+  try {
+    await offlineDb.illustrationBlobs.delete(path);
+  } catch {
+    // A remoção no servidor continua sendo a autoridade.
+  }
+
+  const objectUrl = illustrationObjectUrls.get(path);
+  if (objectUrl && typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
+    URL.revokeObjectURL(objectUrl);
+  }
+  illustrationObjectUrls.delete(path);
+}

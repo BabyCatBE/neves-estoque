@@ -6,6 +6,12 @@ export type OfflineSnapshotRecord = {
   updatedAt: string;
 };
 
+export type OfflineIllustrationRecord = {
+  path: string;
+  blob: Blob;
+  updatedAt: string;
+};
+
 export type VerifiedOfflineAccessRecord = {
   authUserId: string;
   appUserId: string;
@@ -20,6 +26,7 @@ export type VerifiedOfflineAccessRecord = {
 
 class NevesOfflineDatabase extends Dexie {
   snapshots!: Table<OfflineSnapshotRecord, string>;
+  illustrationBlobs!: Table<OfflineIllustrationRecord, string>;
   verifiedAccess!: Table<VerifiedOfflineAccessRecord, string>;
 
   constructor() {
@@ -27,6 +34,12 @@ class NevesOfflineDatabase extends Dexie {
 
     this.version(1).stores({
       snapshots: "&key,updatedAt",
+      verifiedAccess: "&authUserId,verifiedAt,deviceId"
+    });
+
+    this.version(2).stores({
+      snapshots: "&key,updatedAt",
+      illustrationBlobs: "&path,updatedAt",
       verifiedAccess: "&authUserId,verifiedAt,deviceId"
     });
   }

@@ -1,5 +1,6 @@
 import { supabase } from "../../../shared/lib/supabase";
 import { listActiveCategories, type CategoryListItem } from "../../categories/api/categories";
+import { listActiveProducts } from "../../products/api/products";
 import { calculateProductUsageInsights } from "../../products/lib/productUsageInsights";
 import {
   evaluateConferenceConsumption,
@@ -483,39 +484,29 @@ export async function getConferenceDetails(conferenceId: string): Promise<Confer
 }
 
 export async function listConferencePrintData(): Promise<ConferencePrintData> {
-  const client = requireClient();
-  const [categories, productsResult, pendingResult] = await Promise.all([
+  const [categories, products] = await Promise.all([
     listActiveCategories(),
-    client
-      .from("products")
-      .select("id,name,unit,sort_order,category_id")
-      .not("category_id", "is", null)
-      .is("deleted_at", null)
-      .order("sort_order", { ascending: true, nullsFirst: false })
-      .order("name", { ascending: true }),
-    client
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .is("category_id", null)
-      .is("deleted_at", null)
+    listActiveProducts()
   ]);
-
-  if (productsResult.error) throw productsResult.error;
-  if (pendingResult.error) throw pendingResult.error;
 
   return {
     categories: categories.map((category) => ({
       ...category,
-      products: (productsResult.data ?? [])
-        .filter((product) => product.category_id === category.id)
+      products: products
+        .filter((product) => product.categoryId === category.id)
+        .sort((a, b) => {
+          const orderA = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+          const orderB = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+          return orderA - orderB || a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+        })
         .map((product) => ({
           id: product.id,
           name: product.name,
           unit: product.unit,
-          sortOrder: product.sort_order
+          sortOrder: product.sortOrder
         }))
     })),
-    pendingProductCount: pendingResult.count ?? 0
+    pendingProductCount: products.filter((product) => product.categoryId === null).length
   };
 }
 
