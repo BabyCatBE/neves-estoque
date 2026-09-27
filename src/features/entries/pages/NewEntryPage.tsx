@@ -4,6 +4,8 @@ import { useBlocker, useNavigate } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { useCtrlEnter } from "../../../shared/hooks/useCtrlEnter";
 import { handleDialogButtonArrowNavigation } from "../../../shared/lib/dialogKeyboard";
+import { createBrowserUuid } from "../../../shared/lib/browserUuid";
+import { normalizeSearchText } from "../../../shared/lib/searchText";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
@@ -67,6 +69,7 @@ export function NewEntryPage() {
   const [supplierSearch, setSupplierSearch] = useState("");
   const [supplierActiveIndex, setSupplierActiveIndex] = useState(0);
   const [quickSupplierName, setQuickSupplierName] = useState("");
+  const [quickSupplierError, setQuickSupplierError] = useState<string | null>(null);
   const [showQuickSupplier, setShowQuickSupplier] = useState(false);
   const [draftSupplier, setDraftSupplier] = useState<DraftSupplier | null>(null);
   const [initialDate] = useState(() => localDateInputValue());
@@ -89,7 +92,7 @@ export function NewEntryPage() {
   const [duplicateProduct, setDuplicateProduct] = useState<ProductListItem | null>(null);
   const [missingPriceReview, setMissingPriceReview] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey] = useState(() => createBrowserUuid());
   const allowNavigationRef = useRef(false);
 
   const dirty = useMemo(
@@ -140,10 +143,10 @@ export function NewEntryPage() {
     : (suppliersQuery.data ?? []).find((supplier) => supplier.id === supplierId) ?? null;
 
   const supplierSuggestions = useMemo(() => {
-    const term = normalize(supplierSearch);
+    const term = normalizeSearchText(supplierSearch);
     if (!term || selectedSupplier) return [];
     return (suppliersQuery.data ?? [])
-      .filter((supplier) => normalize([supplier.name, supplier.company ?? "", supplier.phone ?? ""].join(" ")).includes(term))
+      .filter((supplier) => normalizeSearchText([supplier.name, supplier.company ?? "", supplier.phone ?? ""].join(" ")).includes(term))
       .slice(0, 8);
   }, [selectedSupplier, supplierSearch, suppliersQuery.data]);
 
@@ -161,6 +164,7 @@ export function NewEntryPage() {
 
   const openQuickSupplier = () => {
     setQuickSupplierName(supplierSearch.trim());
+    setQuickSupplierError(null);
     setShowQuickSupplier(true);
   };
 
@@ -197,7 +201,7 @@ export function NewEntryPage() {
   };
 
   const productSuggestions = useMemo(() => {
-    const term = normalize(productSearch);
+    const term = normalizeSearchText(productSearch);
     if (!term) return [];
 
     const localDraftProducts = Array.from(
@@ -209,7 +213,7 @@ export function NewEntryPage() {
     );
 
     return [...(productsQuery.data ?? []), ...localDraftProducts]
-      .filter((product) => normalize(product.name).includes(term))
+      .filter((product) => normalizeSearchText(product.name).includes(term))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
       .slice(0, 10);
   }, [items, productSearch, productsQuery.data]);
@@ -334,7 +338,7 @@ export function NewEntryPage() {
       return;
     }
 
-    const localId = crypto.randomUUID();
+    const localId = createBrowserUuid();
     const resolvedDraftProduct =
       draftProduct ?? items.find((item) => item.product.id === product.id)?.draftProduct;
     setItems((current) => [
@@ -359,10 +363,12 @@ export function NewEntryPage() {
   const addQuickSupplier = () => {
     const name = quickSupplierName.trim().replace(/\s+/g, " ");
     if (!name) {
-      setActionError("Informe o nome do fornecedor.");
+      setQuickSupplierError("Informe o nome do fornecedor.");
+      window.setTimeout(() => document.getElementById("quick-supplier-name")?.focus(), 0);
       return;
     }
 
+    setQuickSupplierError(null);
     setActionError(null);
     setDraftSupplier({ name });
     setSupplierId("");
@@ -383,7 +389,7 @@ export function NewEntryPage() {
     }
 
     const categoryId = quickProductCategoryId || null;
-    const clientId = crypto.randomUUID();
+    const clientId = createBrowserUuid();
     const draftProduct: DraftProduct = {
       clientId,
       name: parsedName.data,
@@ -438,9 +444,84 @@ export function NewEntryPage() {
   };
 
   const validateAndBuild = () => {
-    if (!supplierId && !draftSupplier) throw new Error("Selecione um fornecedor.");
-    if (!deviceId) throw new Error("Este dispositivo ainda não está pronto para registrar Entradas.");
-    if (!items.length) throw new Error("Adicione pelo menos um produto.");
+    setItemErrors({});
+
+    if (!supplierId && !draftSupplier) {
+      window.setTimeout(() => document.getElementById("entry-supplier-search")?.focus(), 0);
+      throw new Error("Selecione um fornecedor.");
+    }
+
+    const nextDateError = getFutureOperationalDateError(date);
+    if (nextDateError) {
+      setDateError(nextDateError);
+      window.setTimeout(() => document.getElementById("entry-date")?.focus(), 0);
+      throw new Error(nextDateError);
+    }
+
+    if (!deviceId) {
+      throw new Error("Este dispositivo ainda não está pronto para registrar Entradas.");
+    }
+
+    if (!items.length) {
+      window.setTimeout(() => document.getElementById("entry-product-search")?.focus(), 0);
+      throw new Error("Adicione pelo menos um produto.");
+    }
+
+    const errors: ItemFieldErrors = {};
+    let firstInvalidId: string | null = null;
+    let firstInvalidField: "quantity" | "unitPrice" | null = null;
+
+    const parsedItems = items.map((item) => {
+      let quantity: number | null = null;
+      let unitPrice: number | null = null;
+
+      try {
+        quantity = parsePositiveDecimal(
+          item.quantity,
+          `Quantidade de ${item.product.name}`
+        );
+      } catch (error) {
+        errors[item.localId] = {
+          ...errors[item.localId],
+          quantity: validationMessage(error, "Quantidade inválida.")
+        };
+        if (!firstInvalidId) {
+          firstInvalidId = item.localId;
+          firstInvalidField = "quantity";
+        }
+      }
+
+      try {
+        unitPrice = parseOptionalPrice(item.unitPrice);
+      } catch (error) {
+        errors[item.localId] = {
+          ...errors[item.localId],
+          unitPrice: validationMessage(error, "Preço unitário inválido.")
+        };
+        if (!firstInvalidId) {
+          firstInvalidId = item.localId;
+          firstInvalidField = "unitPrice";
+        }
+      }
+
+      return {
+        ...(item.draftProduct
+          ? { newProduct: item.draftProduct }
+          : { productId: item.product.id }),
+        quantity,
+        unitPrice
+      };
+    });
+
+    if (firstInvalidId && firstInvalidField) {
+      setItemErrors(errors);
+      const fieldId =
+        firstInvalidField === "quantity"
+          ? `entry-qty-${firstInvalidId}`
+          : `entry-price-${firstInvalidId}`;
+      window.setTimeout(() => document.getElementById(fieldId)?.focus(), 0);
+      throw new Error("Revise os campos destacados antes de salvar a Entrada.");
+    }
 
     return {
       supplierId: draftSupplier ? null : supplierId,
@@ -449,12 +530,9 @@ export function NewEntryPage() {
       deviceId,
       idempotencyKey,
       observation: observation.trim() || null,
-      items: items.map((item) => ({
-        ...(item.draftProduct
-          ? { newProduct: item.draftProduct }
-          : { productId: item.product.id }),
-        quantity: parsePositiveDecimal(item.quantity, `Quantidade de ${item.product.name}`),
-        unitPrice: parseOptionalPrice(item.unitPrice)
+      items: parsedItems.map((item) => ({
+        ...item,
+        quantity: item.quantity as number
       }))
     };
   };
@@ -811,8 +889,12 @@ export function NewEntryPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="hidden text-xs text-zinc-400 sm:inline">Atalho: Ctrl + Enter</span>
-              <Button disabled={saveMutation.isPending} onClick={requestSave}>
-                {saveMutation.isPending ? "Salvando…" : "Salvar Entrada"}
+              <Button
+                isLoading={saveMutation.isPending}
+                loadingLabel="Salvando…"
+                onClick={requestSave}
+              >
+                Salvar Entrada
               </Button>
             </div>
           </div>
@@ -844,7 +926,11 @@ export function NewEntryPage() {
                   label="Nome *"
                   autoFocus
                   value={quickSupplierName}
-                  onChange={(event) => setQuickSupplierName(event.target.value)}
+                  error={quickSupplierError}
+                  onChange={(event) => {
+                    setQuickSupplierName(event.target.value);
+                    if (quickSupplierError) setQuickSupplierError(null);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -854,7 +940,15 @@ export function NewEntryPage() {
                 />
               </div>
               <div className="mt-5 flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setShowQuickSupplier(false)}>Cancelar</Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setShowQuickSupplier(false);
+                    setQuickSupplierError(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
                 <Button id="quick-supplier-submit" onClick={addQuickSupplier}>
                   Cadastrar e selecionar
                 </Button>
@@ -986,10 +1080,11 @@ export function NewEntryPage() {
                   Cancelar
                 </Button>
                 <Button
-                  disabled={completePendingProductMutation.isPending}
+                  isLoading={completePendingProductMutation.isPending}
+                  loadingLabel="Salvando…"
                   onClick={() => void completePendingProduct()}
                 >
-                  {completePendingProductMutation.isPending ? "Salvando…" : "Concluir e adicionar"}
+                  Concluir e adicionar
                 </Button>
               </div>
             </Card>
@@ -1078,6 +1173,3 @@ function validationMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-function normalize(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
-}
