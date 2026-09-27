@@ -109,16 +109,26 @@ export function StockCurrentPage() {
             </p>
           </div>
 
-          <Button
-            variant={showValues ? "primary" : "secondary"}
-            onClick={() => setShowValues((current) => !current)}
-            aria-pressed={showValues}
-            title={showValues ? "Ocultar valores" : "Mostrar valores"}
-            className="gap-2 self-start"
-          >
-            <EyeMoneyIcon />
-            {showValues ? "Ocultar valores" : "Mostrar valores"}
-          </Button>
+          <div className="flex flex-wrap gap-2 self-start">
+            <Link
+              to="/estoque/relatorios"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:bg-red-50 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+            >
+              <ChartIcon />
+              Relatórios
+            </Link>
+
+            <Button
+              variant={showValues ? "primary" : "secondary"}
+              onClick={() => setShowValues((current) => !current)}
+              aria-pressed={showValues}
+              title={showValues ? "Ocultar valores" : "Mostrar valores"}
+              className="gap-2"
+            >
+              <EyeMoneyIcon />
+              {showValues ? "Ocultar valores" : "Mostrar valores"}
+            </Button>
+          </div>
         </div>
 
         <div className="mt-5 max-w-2xl">
@@ -500,6 +510,23 @@ function ChevronIcon() {
     >
       <path
         d="m7 10 5 5 5-5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+
+function ChartIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none">
+      <path d="M4 19V5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M4 19h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="m7 15 3-4 3 2 4-6"
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"

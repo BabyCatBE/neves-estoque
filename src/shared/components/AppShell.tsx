@@ -203,6 +203,12 @@ function buildBreadcrumbs(pathname: string): Breadcrumb[] {
   }
 
   if (pathname === "/fornecedores") return [{ label: "Fornecedores" }];
+  if (pathname === "/estoque/relatorios") {
+    return [
+      { label: "Estoque Atual", to: "/estoque" },
+      { label: "Relatórios" }
+    ];
+  }
   if (pathname === "/estoque") return [{ label: "Estoque Atual" }];
 
   if (pathname === "/conferencias/imprimir") {

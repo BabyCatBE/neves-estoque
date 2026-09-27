@@ -29,6 +29,7 @@ import { CategoryConferenceHistoryPage } from "../../features/conferences/pages/
 import { ConferenceDetailPage } from "../../features/conferences/pages/ConferenceDetailPage";
 import { EditConferencePage } from "../../features/conferences/pages/EditConferencePage";
 import { StockCurrentPage } from "../../features/stock/pages/StockCurrentPage";
+import { StockReportsPage } from "../../features/reports/pages/StockReportsPage";
 import { PurchasesHubPage } from "../../features/purchases/pages/PurchasesHubPage";
 import { PurchaseSupplierSelectPage } from "../../features/purchases/pages/PurchaseSupplierSelectPage";
 import { PurchaseSupplierPage } from "../../features/purchases/pages/PurchaseSupplierPage";
@@ -52,6 +53,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <StockCurrentPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/estoque/relatorios",
+    element: (
+      <ProtectedRoute>
+        <StockReportsPage />
       </ProtectedRoute>
     )
   },

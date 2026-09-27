@@ -263,5 +263,49 @@ export async function getMonthlyStockValueHistory(
   now = new Date()
 ): Promise<MonthlyStockValueSeries> {
   const facts = await loadMonthlyStockReportFacts();
-  return calculateMonthlyStockValueSeries(reportCurrentDateKey(now), facts);
+  const nowTimestamp = now.getTime();
+
+  const factsAvailableNow: MonthlyStockReportFacts = {
+    ...facts,
+    products: facts.products.map((product) => ({
+      ...product,
+      initialStockAt:
+        product.initialStockAt &&
+        new Date(product.initialStockAt).getTime() <= nowTimestamp
+          ? product.initialStockAt
+          : null,
+      initialStockQuantity:
+        product.initialStockAt &&
+        new Date(product.initialStockAt).getTime() <= nowTimestamp
+          ? product.initialStockQuantity
+          : null,
+      initialPriceAt:
+        product.initialPriceAt &&
+        new Date(product.initialPriceAt).getTime() <= nowTimestamp
+          ? product.initialPriceAt
+          : null,
+      initialPrice:
+        product.initialPriceAt &&
+        new Date(product.initialPriceAt).getTime() <= nowTimestamp
+          ? product.initialPrice
+          : null
+    })),
+    entries: facts.entries.filter(
+      (entry) => new Date(entry.effectiveAt).getTime() <= nowTimestamp
+    ),
+    conferences: facts.conferences.filter(
+      (conference) => new Date(conference.effectiveAt).getTime() <= nowTimestamp
+    ),
+    merges: facts.merges.filter(
+      (merge) => new Date(merge.createdAt).getTime() <= nowTimestamp
+    ),
+    lifecycle: facts.lifecycle.filter(
+      (event) => new Date(event.createdAt).getTime() <= nowTimestamp
+    )
+  };
+
+  return calculateMonthlyStockValueSeries(
+    reportCurrentDateKey(now),
+    factsAvailableNow
+  );
 }
