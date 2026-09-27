@@ -16,6 +16,15 @@ export type TrashItem = {
   restoreUntil: string;
 };
 
+export type EmptyTrashResult = {
+  products: number;
+  categories: number;
+  suppliers: number;
+  entries: number;
+  conferences: number;
+  total: number;
+};
+
 function requireClient() {
   if (!supabase) throw new Error("Supabase não está configurado neste ambiente.");
   return supabase;
@@ -26,10 +35,10 @@ export async function listRestorableTrashItems(): Promise<TrashItem[]> {
   const now = new Date().toISOString();
 
   const [productsResult, categoriesResult, suppliersResult, entriesResult, conferencesResult] = await Promise.all([
-    client.from("products").select("id,name,unit,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now),
-    client.from("categories").select("id,name,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now),
-    client.from("suppliers").select("id,name,company,phone,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now),
-    client.from("entries").select("id,supplier_id,effective_at,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now),
+    client.from("products").select("id,name,unit,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now).is("permanently_deleted_at", null),
+    client.from("categories").select("id,name,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now).is("permanently_deleted_at", null),
+    client.from("suppliers").select("id,name,company,phone,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now).is("permanently_deleted_at", null),
+    client.from("entries").select("id,supplier_id,effective_at,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now).is("permanently_deleted_at", null),
     client
       .from("conferences")
       .select("id,scope_type,category_id,scope_product_id,effective_at,physical_responsible,deleted_at,restore_until")
@@ -153,6 +162,43 @@ export async function listRestorableTrashItems(): Promise<TrashItem[]> {
   return [...products, ...categories, ...suppliers, ...entries, ...conferences].sort(
     (a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()
   );
+}
+
+export async function permanentlyDeleteTrashItem(
+  item: Pick<TrashItem, "id" | "type">,
+  deviceId: string | null
+) {
+  if (!deviceId) throw new Error("Dispositivo não autorizado.");
+
+  const client = requireClient();
+  const { error } = await client.rpc("permanently_delete_trash_item", {
+    p_item_type: item.type,
+    p_item_id: item.id,
+    p_device_id: deviceId
+  });
+
+  if (error) throw error;
+}
+
+export async function emptyTrash(deviceId: string | null): Promise<EmptyTrashResult> {
+  if (!deviceId) throw new Error("Dispositivo não autorizado.");
+
+  const client = requireClient();
+  const { data, error } = await client.rpc("empty_trash", {
+    p_device_id: deviceId
+  });
+
+  if (error) throw error;
+
+  const result = data as Record<string, unknown> | null;
+  return {
+    products: Number(result?.products ?? 0),
+    categories: Number(result?.categories ?? 0),
+    suppliers: Number(result?.suppliers ?? 0),
+    entries: Number(result?.entries ?? 0),
+    conferences: Number(result?.conferences ?? 0),
+    total: Number(result?.total ?? 0)
+  };
 }
 
 export async function restoreTrashItem(

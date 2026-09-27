@@ -112,6 +112,8 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
+          permanently_deleted_at: string | null
+          permanently_deleted_by: string | null
           id: string
           illustration_key: string | null
           illustration_position_x: number
@@ -128,6 +130,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           id?: string
           illustration_key?: string | null
           illustration_position_x?: number
@@ -144,6 +148,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           id?: string
           illustration_key?: string | null
           illustration_position_x?: number
@@ -216,6 +222,8 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
+          permanently_deleted_at: string | null
+          permanently_deleted_by: string | null
           device_id: string
           effective_at: string
           id: string
@@ -235,6 +243,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           device_id: string
           effective_at: string
           id?: string
@@ -254,6 +264,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           device_id?: string
           effective_at?: string
           id?: string
@@ -346,6 +358,8 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
+          permanently_deleted_at: string | null
+          permanently_deleted_by: string | null
           device_id: string
           effective_at: string
           id: string
@@ -362,6 +376,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           device_id: string
           effective_at: string
           id?: string
@@ -378,6 +394,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           device_id?: string
           effective_at?: string
           id?: string
@@ -468,6 +486,8 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
+          permanently_deleted_at: string | null
+          permanently_deleted_by: string | null
           id: string
           initial_price: number | null
           initial_price_at: string | null
@@ -488,6 +508,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           id?: string
           initial_price?: number | null
           initial_price_at?: string | null
@@ -508,6 +530,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           id?: string
           initial_price?: number | null
           initial_price_at?: string | null
@@ -540,6 +564,8 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
+          permanently_deleted_at: string | null
+          permanently_deleted_by: string | null
           id: string
           name: string
           observation: string | null
@@ -558,6 +584,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           id?: string
           name: string
           observation?: string | null
@@ -576,6 +604,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          permanently_deleted_at?: string | null
+          permanently_deleted_by?: string | null
           id?: string
           name?: string
           observation?: string | null
@@ -734,6 +764,14 @@ export type Database = {
         Returns: undefined
       }
       reorder_products: { Args: { p_orders: Json }; Returns: undefined }
+      empty_trash: {
+        Args: { p_device_id: string }
+        Returns: Json
+      }
+      permanently_delete_trash_item: {
+        Args: { p_device_id: string; p_item_id: string; p_item_type: string }
+        Returns: undefined
+      }
       restore_conference: {
         Args: { p_conference_id: string; p_device_id: string }
         Returns: undefined
