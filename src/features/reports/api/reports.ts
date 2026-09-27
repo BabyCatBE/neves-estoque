@@ -3,6 +3,7 @@ import {
   calculateMonthlyStockValueReport,
   type HistoricalProductConferenceFact,
   type HistoricalProductEntryFact,
+  type HistoricalProductLifecycleFact,
   type HistoricalProductMergeFact,
   type HistoricalReportProduct,
   type MonthlyStockReportFacts,
@@ -55,9 +56,10 @@ type ConferenceItemRow = {
   quantity: number;
 };
 
-type MergeAuditRow = {
+type ProductAuditRow = {
   id: number;
   entity_id: string | null;
+  action: string;
   created_at: string;
 };
 
@@ -93,7 +95,7 @@ export async function loadMonthlyStockReportFacts(): Promise<MonthlyStockReportF
     entryItems,
     conferences,
     conferenceItems,
-    mergeAudits
+    productAudits
   ] = await Promise.all([
     collectPages<ProductRow>(async (from, to) =>
       await client
@@ -136,12 +138,12 @@ export async function loadMonthlyStockReportFacts(): Promise<MonthlyStockReportF
         .order("product_id", { ascending: true })
         .range(from, to)
     ),
-    collectPages<MergeAuditRow>(async (from, to) =>
+    collectPages<ProductAuditRow>(async (from, to) =>
       await client
         .from("audit_log")
-        .select("id,entity_id,created_at")
-        .eq("action", "PRODUCT_MERGE")
+        .select("id,entity_id,action,created_at")
         .eq("entity_type", "products")
+        .in("action", ["PRODUCT_MERGE", "SOFT_DELETE", "RESTORE"])
         .order("id", { ascending: true })
         .range(from, to)
     )
@@ -203,9 +205,9 @@ export async function loadMonthlyStockReportFacts(): Promise<MonthlyStockReportF
       ];
     });
 
-  const mappedMerges: HistoricalProductMergeFact[] = mergeAudits.flatMap(
+  const mappedMerges: HistoricalProductMergeFact[] = productAudits.flatMap(
     (audit) =>
-      audit.entity_id
+      audit.entity_id && audit.action === "PRODUCT_MERGE"
         ? [
             {
               id: audit.id,
@@ -216,11 +218,31 @@ export async function loadMonthlyStockReportFacts(): Promise<MonthlyStockReportF
         : []
   );
 
+  const mappedLifecycle: HistoricalProductLifecycleFact[] =
+    productAudits.flatMap((audit) => {
+      if (
+        !audit.entity_id ||
+        (audit.action !== "SOFT_DELETE" && audit.action !== "RESTORE")
+      ) {
+        return [];
+      }
+
+      return [
+        {
+          id: audit.id,
+          productId: audit.entity_id,
+          action: audit.action,
+          createdAt: audit.created_at
+        }
+      ];
+    });
+
   return {
     products: mappedProducts,
     entries: mappedEntries,
     conferences: mappedConferences,
-    merges: mappedMerges
+    merges: mappedMerges,
+    lifecycle: mappedLifecycle
   };
 }
 

@@ -5,6 +5,7 @@ import {
   requiresMergeReconfirmationAtReference,
   type HistoricalProductConferenceFact,
   type HistoricalProductEntryFact,
+  type HistoricalProductLifecycleFact,
   type HistoricalReportProduct,
   type MonthlyStockReportFacts
 } from "./monthlyStockReport";
@@ -55,6 +56,7 @@ const facts = (
   entries: [entry()],
   conferences: [conference()],
   merges: [],
+  lifecycle: [],
   ...overrides
 });
 
@@ -72,10 +74,68 @@ describe("monthlyStockReport", () => {
     ).toBe(false);
   });
 
-  it("considera Produto restaurado como válido novamente quando deletedAt está limpo", () => {
+  it("reconstrói corretamente o intervalo entre exclusão e restauração", () => {
     const restored = product({ deletedAt: null });
+    const lifecycle: HistoricalProductLifecycleFact[] = [
+      {
+        id: 10,
+        productId: "p1",
+        action: "SOFT_DELETE",
+        createdAt: "2026-09-10T12:00:00-03:00"
+      },
+      {
+        id: 11,
+        productId: "p1",
+        action: "RESTORE",
+        createdAt: "2026-10-05T12:00:00-03:00"
+      }
+    ];
+
     expect(
-      isProductIncludedAtReference(restored, [], [], "2026-09-30")
+      isProductIncludedAtReference(
+        restored,
+        [],
+        [],
+        "2026-09-30",
+        lifecycle
+      )
+    ).toBe(false);
+    expect(
+      isProductIncludedAtReference(
+        restored,
+        [],
+        [],
+        "2026-10-31",
+        lifecycle
+      )
+    ).toBe(true);
+  });
+
+  it("usa o último evento quando exclusão e restauração acontecem no mesmo dia", () => {
+    const restored = product({ deletedAt: null });
+    const lifecycle: HistoricalProductLifecycleFact[] = [
+      {
+        id: 20,
+        productId: "p1",
+        action: "SOFT_DELETE",
+        createdAt: "2026-09-27T10:00:00-03:00"
+      },
+      {
+        id: 21,
+        productId: "p1",
+        action: "RESTORE",
+        createdAt: "2026-09-27T10:05:00-03:00"
+      }
+    ];
+
+    expect(
+      isProductIncludedAtReference(
+        restored,
+        [],
+        [],
+        "2026-09-27",
+        lifecycle
+      )
     ).toBe(true);
   });
 

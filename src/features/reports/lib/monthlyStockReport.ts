@@ -29,11 +29,19 @@ export type HistoricalProductMergeFact = {
   createdAt: string;
 };
 
+export type HistoricalProductLifecycleFact = {
+  id: number;
+  productId: string;
+  action: "SOFT_DELETE" | "RESTORE";
+  createdAt: string;
+};
+
 export type MonthlyStockReportFacts = {
   products: HistoricalReportProduct[];
   conferences: HistoricalProductConferenceFact[];
   entries: HistoricalProductEntryFact[];
   merges: HistoricalProductMergeFact[];
+  lifecycle: HistoricalProductLifecycleFact[];
 };
 
 export type MonthlyStockProductItem = {
@@ -91,10 +99,26 @@ export function isProductIncludedAtReference(
   product: HistoricalReportProduct,
   entries: HistoricalProductEntryFact[],
   conferences: HistoricalProductConferenceFact[],
-  referenceDate: string
+  referenceDate: string,
+  lifecycle: HistoricalProductLifecycleFact[] = []
 ) {
   if (!productHasHistoricalPresence(product, entries, conferences, referenceDate)) {
     return false;
+  }
+
+  const latestLifecycle = lifecycle
+    .filter(
+      (event) =>
+        event.productId === product.id &&
+        hasReachedReference(event.createdAt, referenceDate)
+    )
+    .sort(
+      (a, b) =>
+        timestamp(b.createdAt) - timestamp(a.createdAt) || b.id - a.id
+    )[0];
+
+  if (latestLifecycle) {
+    return latestLifecycle.action === "RESTORE";
   }
 
   if (product.deletedAt && hasReachedReference(product.deletedAt, referenceDate)) {
@@ -170,7 +194,8 @@ export function calculateMonthlyStockValueReport(
         product,
         productEntries,
         productConferences,
-        referenceDate
+        referenceDate,
+        facts.lifecycle
       )
     ) {
       continue;
