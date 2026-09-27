@@ -1,4 +1,8 @@
 import { supabase } from "../../../shared/lib/supabase";
+import {
+  OFFLINE_CACHE_KEYS,
+  readThroughOfflineCache
+} from "../../../shared/offline/offlineCache";
 import type { Tables } from "../../../shared/types/database.types";
 import { isSupplierPhoneComplete } from "../lib/supplierValidation";
 
@@ -54,6 +58,13 @@ function mapSupplier(row: SupplierRow): SupplierDetails {
 }
 
 export async function listActiveSuppliers(): Promise<SupplierListItem[]> {
+  return readThroughOfflineCache(
+    OFFLINE_CACHE_KEYS.suppliers,
+    listActiveSuppliersFromServer
+  );
+}
+
+async function listActiveSuppliersFromServer(): Promise<SupplierListItem[]> {
   const client = requireClient();
   const { data, error } = await client
     .from("suppliers")

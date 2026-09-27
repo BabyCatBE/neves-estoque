@@ -1,4 +1,8 @@
 import { supabase } from "../../../shared/lib/supabase";
+import {
+  OFFLINE_CACHE_KEYS,
+  readThroughOfflineCache
+} from "../../../shared/offline/offlineCache";
 import type { Tables } from "../../../shared/types/database.types";
 import type { ProductUnit } from "../lib/productValidation";
 import {
@@ -111,6 +115,13 @@ function requireClient() {
 }
 
 export async function listProductCategories(): Promise<ProductCategoryOption[]> {
+  return readThroughOfflineCache(
+    OFFLINE_CACHE_KEYS.productCategories,
+    listProductCategoriesFromServer
+  );
+}
+
+async function listProductCategoriesFromServer(): Promise<ProductCategoryOption[]> {
   const client = requireClient();
   const { data, error } = await client
     .from("categories")
@@ -124,6 +135,13 @@ export async function listProductCategories(): Promise<ProductCategoryOption[]> 
 }
 
 export async function listActiveProducts(): Promise<ProductListItem[]> {
+  return readThroughOfflineCache(
+    OFFLINE_CACHE_KEYS.products,
+    listActiveProductsFromServer
+  );
+}
+
+async function listActiveProductsFromServer(): Promise<ProductListItem[]> {
   const client = requireClient();
 
   const [productsResult, stockResult] = await Promise.all([

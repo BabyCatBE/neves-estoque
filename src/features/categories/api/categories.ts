@@ -1,5 +1,9 @@
 import { createBrowserUuid } from "../../../shared/lib/browserUuid";
 import { supabase } from "../../../shared/lib/supabase";
+import {
+  OFFLINE_CACHE_KEYS,
+  readThroughOfflineCache
+} from "../../../shared/offline/offlineCache";
 import type { Tables } from "../../../shared/types/database.types";
 
 const CATEGORY_ILLUSTRATIONS_BUCKET = "category-illustrations";
@@ -49,6 +53,13 @@ function normalizeIllustrationSource(value: string | null): CategoryIllustration
 }
 
 export async function listActiveCategories(): Promise<CategoryListItem[]> {
+  return readThroughOfflineCache(
+    OFFLINE_CACHE_KEYS.categories,
+    listActiveCategoriesFromServer
+  );
+}
+
+async function listActiveCategoriesFromServer(): Promise<CategoryListItem[]> {
   const client = requireClient();
 
   const [categoriesResult, productsResult] = await Promise.all([

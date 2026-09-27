@@ -1,4 +1,8 @@
 import { supabase } from "../../../shared/lib/supabase";
+import {
+  OFFLINE_CACHE_KEYS,
+  readThroughOfflineCache
+} from "../../../shared/offline/offlineCache";
 
 export type StockCategory = {
   id: string;
@@ -36,6 +40,13 @@ function requireClient() {
 }
 
 export async function listCurrentStock(): Promise<CurrentStockData> {
+  return readThroughOfflineCache(
+    OFFLINE_CACHE_KEYS.stockCurrent,
+    listCurrentStockFromServer
+  );
+}
+
+async function listCurrentStockFromServer(): Promise<CurrentStockData> {
   const client = requireClient();
 
   const [categoriesResult, suppliersResult, stockResult] = await Promise.all([
