@@ -11,6 +11,13 @@ import {
 } from "react";
 import { supabase } from "../../../shared/lib/supabase";
 import {
+  canUseVerifiedOfflineAccess,
+  isLikelyNetworkError,
+  readVerifiedOfflineAccess,
+  saveVerifiedOfflineAccess
+} from "../../../shared/offline/offlineCache";
+import { useNetworkStatus } from "../../../shared/offline/NetworkContext";
+import {
   clearRegisteredDeviceId,
   getOrCreateDeviceKey,
   inferFriendlyDeviceName,
@@ -28,6 +35,7 @@ export type AuthStatus =
   | "ready"
   | "unauthorized"
   | "device-blocked"
+  | "offline-unavailable"
   | "config-missing";
 
 type FailureStatus = Extract<AuthStatus, "unauthorized" | "device-blocked">;
@@ -58,6 +66,7 @@ function forgetRegisteredDeviceId() {
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const { isOnline } = useNetworkStatus();
   const [session, setSession] = useState<Session | null>(null);
   const [initialized, setInitialized] = useState(() => !supabase);
   const [status, setStatus] = useState<AuthStatus>(() =>
@@ -132,10 +141,63 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setStatus("loading");
       setErrorMessage(null);
 
+      let deviceKey: string;
+      try {
+        deviceKey = getOrCreateDeviceKey(window.localStorage);
+      } catch {
+        failureStatus.current = "device-blocked";
+        setErrorMessage("Não foi possível identificar este dispositivo com segurança.");
+        forgetRegisteredDeviceId();
+        await activeClient.auth.signOut({ scope: "local" });
+        if (!cancelled) setStatus("device-blocked");
+        return;
+      }
+
+      const restoreVerifiedOfflineAccess = async () => {
+        const cachedAccess = await readVerifiedOfflineAccess(session.user.id);
+        if (
+          !cachedAccess ||
+          !canUseVerifiedOfflineAccess(cachedAccess, session.user.id, deviceKey)
+        ) {
+          return false;
+        }
+
+        if (cancelled) return true;
+
+        failureStatus.current = null;
+        setAppUserId(cachedAccess.appUserId);
+        setRoleName(cachedAccess.roleName);
+        setDeviceId(cachedAccess.deviceId);
+        setDisplayName(cachedAccess.displayName);
+        setUsername(cachedAccess.username);
+        setAuthMethod(cachedAccess.authMethod);
+        setErrorMessage(null);
+        setStatus("ready");
+        return true;
+      };
+
+      if (!isOnline) {
+        if (await restoreVerifiedOfflineAccess()) return;
+
+        setErrorMessage(
+          "Este aparelho ainda não possui um acesso validado salvo para uso offline. Conecte-se à internet uma vez."
+        );
+        setStatus("offline-unavailable");
+        return;
+      }
+
       const { data: accessRows, error: accessError } = await activeClient.rpc("claim_app_access");
       if (cancelled) return;
 
       const access = accessRows?.[0];
+      if (accessError && isLikelyNetworkError(accessError)) {
+        if (await restoreVerifiedOfflineAccess()) return;
+
+        setErrorMessage("Não foi possível validar o acesso sem conexão com o servidor.");
+        setStatus("offline-unavailable");
+        return;
+      }
+
       if (accessError || !access) {
         failureStatus.current = "unauthorized";
         setErrorMessage("Este acesso não está autorizado para o Neves Estoque.");
@@ -151,24 +213,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
 
+      if (profileError && isLikelyNetworkError(profileError)) {
+        if (await restoreVerifiedOfflineAccess()) return;
+
+        setErrorMessage("Não foi possível validar o perfil sem conexão com o servidor.");
+        setStatus("offline-unavailable");
+        return;
+      }
+
       if (profileError || !profile) {
         failureStatus.current = "unauthorized";
         setErrorMessage("Não foi possível validar o perfil deste acesso.");
         forgetRegisteredDeviceId();
         await activeClient.auth.signOut({ scope: "local" });
         if (!cancelled) setStatus("unauthorized");
-        return;
-      }
-
-      let deviceKey: string;
-      try {
-        deviceKey = getOrCreateDeviceKey(window.localStorage);
-      } catch {
-        failureStatus.current = "device-blocked";
-        setErrorMessage("Não foi possível identificar este dispositivo com segurança.");
-        forgetRegisteredDeviceId();
-        await activeClient.auth.signOut({ scope: "local" });
-        if (!cancelled) setStatus("device-blocked");
         return;
       }
 
@@ -180,6 +238,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (cancelled) return;
 
       const device = deviceRows?.[0];
+      if (deviceError && isLikelyNetworkError(deviceError)) {
+        if (await restoreVerifiedOfflineAccess()) return;
+
+        setErrorMessage("Não foi possível validar este dispositivo sem conexão com o servidor.");
+        setStatus("offline-unavailable");
+        return;
+      }
+
       if (deviceError || !device || !device.is_allowed) {
         failureStatus.current = "device-blocked";
         setErrorMessage(
@@ -204,6 +270,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      await saveVerifiedOfflineAccess({
+        authUserId: session.user.id,
+        appUserId: access.app_user_id,
+        roleName: access.role_name,
+        deviceId: device.device_id,
+        deviceKey,
+        displayName: profile.display_name,
+        username: profile.username,
+        authMethod: profile.auth_method
+      });
+
       failureStatus.current = null;
       setAppUserId(access.app_user_id);
       setRoleName(access.role_name);
@@ -219,7 +296,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [initialized, session]);
+  }, [initialized, isOnline, session]);
 
   const signInWithUsername = useCallback(async (rawUsername: string, password: string) => {
     const client = supabase;

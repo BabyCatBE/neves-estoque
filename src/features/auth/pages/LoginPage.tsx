@@ -33,7 +33,9 @@ export function LoginPage() {
   if (status === "ready") return <Navigate to="/" replace />;
 
   const isBusy = status === "loading";
-  const isUnavailable = status === "config-missing" || !hasSupabaseConfig;
+  const isOfflineUnavailable = status === "offline-unavailable";
+  const isUnavailable =
+    status === "config-missing" || isOfflineUnavailable || !hasSupabaseConfig;
 
   const submitSecondaryAccess = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -91,13 +93,23 @@ export function LoginPage() {
             </div>
           ) : null}
 
-          {isUnavailable ? (
+          {isOfflineUnavailable ? (
+            <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+              {errorMessage ??
+                "Sem internet. Este aparelho ainda precisa ser validado online antes do primeiro uso offline."}
+            </div>
+          ) : null}
+
+          {status === "config-missing" || !hasSupabaseConfig ? (
             <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
               O ambiente ainda não possui as variáveis públicas necessárias do Supabase.
             </div>
           ) : null}
 
-          {errorMessage && status !== "unauthorized" && status !== "device-blocked" ? (
+          {errorMessage &&
+          status !== "unauthorized" &&
+          status !== "device-blocked" &&
+          status !== "offline-unavailable" ? (
             <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
               {errorMessage}
             </div>

@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import nevesLogo from "../../assets/neves-logo.webp";
+import { useNetworkStatus } from "../offline/NetworkContext";
 
 type Props = PropsWithChildren<{
   title?: string;
@@ -23,6 +24,7 @@ export function AppShell({
 }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isOnline, lastCacheUpdatedAt } = useNetworkStatus();
   const isHome = location.pathname === "/";
   const breadcrumbs = buildBreadcrumbs(location.pathname);
 
@@ -113,6 +115,16 @@ export function AppShell({
           <div className="absolute inset-y-0 left-0 w-24 bg-[repeating-linear-gradient(135deg,#b91c1c_0px,#b91c1c_10px,#f59e0b_10px,#f59e0b_16px,#ffffff_16px,#ffffff_20px)] sm:w-36" />
         </div>
       </header>
+
+      {!isOnline ? (
+        <div className="border-b border-amber-200 bg-amber-50 text-amber-950">
+          <div className="mx-auto max-w-6xl px-4 py-2 text-xs leading-5 sm:px-6">
+            <strong>Sem internet.</strong> Consulta usando os últimos dados salvos neste aparelho
+            {lastCacheUpdatedAt ? ` · atualizados em ${formatOfflineTimestamp(lastCacheUpdatedAt)}` : ""}.
+            Alterações continuam exigindo conexão.
+          </div>
+        </div>
+      ) : null}
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">{children}</main>
     </div>
@@ -295,4 +307,15 @@ function HomeIcon() {
       <path d="M9 20v-6h6v6" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
     </svg>
   );
+}
+
+
+function formatOfflineTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "horário indisponível";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(date);
 }
