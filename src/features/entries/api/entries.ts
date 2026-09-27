@@ -1,4 +1,5 @@
 import { supabase } from "../../../shared/lib/supabase";
+import { localDateKey, localDayRange } from "../../conferences/lib/conferenceValidation";
 
 export type EntryDraftSupplier = {
   name: string;
@@ -65,6 +66,22 @@ export type EntryDetailItem = {
   position: number;
 };
 
+export type EntryConferenceConflictItem = {
+  productId: string;
+  productName: string;
+  entryQuantity: number;
+  conferenceQuantity: number;
+};
+
+export type EntryConferenceConflict = {
+  conferenceId: string;
+  effectiveAt: string;
+  physicalResponsible: string;
+  registeredByLabel: string;
+  deviceLabel: string;
+  items: EntryConferenceConflictItem[];
+};
+
 export type EntryDetails = {
   id: string;
   effectiveAt: string;
@@ -121,6 +138,110 @@ export async function createEntry(input: CreateEntryInput) {
 
   if (result.error) throw result.error;
   return result.data;
+}
+
+
+
+export async function findEntryConferenceConflicts(
+  input: CreateEntryInput
+): Promise<EntryConferenceConflict[]> {
+  const client = requireClient();
+  const entryQuantityByProduct = new Map(
+    input.items.flatMap((item) =>
+      item.productId ? [[item.productId, item.quantity] as const] : []
+    )
+  );
+  const productIds = [...entryQuantityByProduct.keys()];
+  if (!productIds.length) return [];
+
+  const dateKey = localDateKey(input.effectiveAt);
+  const { start, end } = localDayRange(dateKey);
+
+  const [conferenceItemsResult, conferencesResult, productsResult] = await Promise.all([
+    client
+      .from("conference_items")
+      .select("conference_id,product_id,quantity")
+      .in("product_id", productIds),
+    client
+      .from("conferences")
+      .select("id,effective_at,physical_responsible,registered_by,device_id")
+      .gte("effective_at", start)
+      .lt("effective_at", end)
+      .is("deleted_at", null)
+      .order("effective_at", { ascending: true })
+      .order("created_at", { ascending: true }),
+    client.from("products").select("id,name").in("id", productIds)
+  ]);
+
+  if (conferenceItemsResult.error) throw conferenceItemsResult.error;
+  if (conferencesResult.error) throw conferencesResult.error;
+  if (productsResult.error) throw productsResult.error;
+
+  const conflictItems = conferenceItemsResult.data ?? [];
+  const relevantConferenceIds = new Set(conflictItems.map((item) => item.conference_id));
+  const relevantConferences = (conferencesResult.data ?? []).filter((conference) =>
+    relevantConferenceIds.has(conference.id)
+  );
+  if (!relevantConferences.length) return [];
+
+  const userIds = [...new Set(relevantConferences.map((conference) => conference.registered_by))];
+  const deviceIds = [...new Set(relevantConferences.map((conference) => conference.device_id))];
+
+  const [usersResult, devicesResult] = await Promise.all([
+    userIds.length
+      ? client
+          .from("app_users")
+          .select("auth_user_id,display_name,username,email")
+          .in("auth_user_id", userIds)
+      : Promise.resolve({ data: [], error: null }),
+    deviceIds.length
+      ? client
+          .from("devices")
+          .select("id,friendly_name")
+          .in("id", deviceIds)
+      : Promise.resolve({ data: [], error: null })
+  ]);
+
+  if (usersResult.error) throw usersResult.error;
+  if (devicesResult.error) throw devicesResult.error;
+
+  const productById = new Map(
+    (productsResult.data ?? []).map((product) => [product.id, product.name] as const)
+  );
+  const userById = new Map(
+    (usersResult.data ?? []).flatMap((user) =>
+      user.auth_user_id
+        ? [[
+            user.auth_user_id,
+            user.display_name ??
+              (user.username ? `@${user.username}` : user.email ?? "Usuário autorizado")
+          ] as const]
+        : []
+    )
+  );
+  const deviceById = new Map(
+    (devicesResult.data ?? []).map((device) => [device.id, device.friendly_name] as const)
+  );
+
+  return relevantConferences.map((conference) => ({
+    conferenceId: conference.id,
+    effectiveAt: conference.effective_at,
+    physicalResponsible: conference.physical_responsible,
+    registeredByLabel: userById.get(conference.registered_by) ?? "Usuário autorizado",
+    deviceLabel: deviceById.get(conference.device_id) ?? "Dispositivo registrado",
+    items: conflictItems
+      .filter((item) => item.conference_id === conference.id)
+      .flatMap((item) => {
+        const entryQuantity = entryQuantityByProduct.get(item.product_id);
+        if (entryQuantity === undefined) return [];
+        return [{
+          productId: item.product_id,
+          productName: productById.get(item.product_id) ?? "Produto",
+          entryQuantity,
+          conferenceQuantity: Number(item.quantity)
+        }];
+      })
+  }));
 }
 
 export async function updateEntry(input: UpdateEntryInput) {
