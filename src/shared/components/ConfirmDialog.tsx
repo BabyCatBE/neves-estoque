@@ -133,10 +133,11 @@ export function ConfirmDialog({
           </Button>
           <Button
             variant={variant === "danger" ? "danger" : "primary"}
-            disabled={isPending}
+            isLoading={isPending}
+            loadingLabel={pendingLabel}
             onClick={onConfirm}
           >
-            {isPending ? pendingLabel : confirmLabel}
+            {confirmLabel}
           </Button>
         </div>
       </Card>
