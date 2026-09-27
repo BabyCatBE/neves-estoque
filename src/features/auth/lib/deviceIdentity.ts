@@ -1,3 +1,6 @@
+import { createBrowserUuid } from "../../../shared/lib/browserUuid";
+
+export { createBrowserUuid } from "../../../shared/lib/browserUuid";
 const DEVICE_KEY_STORAGE = "neves-estoque.device-key.v1";
 const REGISTERED_DEVICE_ID_STORAGE = "neves-estoque.registered-device-id.v1";
 
@@ -5,37 +8,11 @@ type StorageReadWrite = Pick<Storage, "getItem" | "setItem">;
 type StorageRead = Pick<Storage, "getItem">;
 type StorageWrite = Pick<Storage, "setItem">;
 type StorageRemove = Pick<Storage, "removeItem">;
-type BrowserCrypto = {
-  getRandomValues<T extends ArrayBufferView | null>(array: T): T;
-  randomUUID?: () => string;
-};
-
 export function isUuid(value: string | null): value is string {
   return Boolean(
     value &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
   );
-}
-
-export function createBrowserUuid(cryptoObject: BrowserCrypto = crypto as BrowserCrypto) {
-  if (typeof cryptoObject.randomUUID === "function") {
-    return cryptoObject.randomUUID();
-  }
-
-  const bytes = new Uint8Array(16);
-  cryptoObject.getRandomValues(bytes);
-
-  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
-  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
-
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
-  return [
-    hex.slice(0, 4).join(""),
-    hex.slice(4, 6).join(""),
-    hex.slice(6, 8).join(""),
-    hex.slice(8, 10).join(""),
-    hex.slice(10, 16).join("")
-  ].join("-");
 }
 
 export function getOrCreateDeviceKey(
