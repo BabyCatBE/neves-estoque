@@ -33,7 +33,6 @@ export function MergeProductsPage() {
   const { deviceId } = useAuth();
 
   const [search, setSearch] = useState("");
-  const [candidateId, setCandidateId] = useState("");
   const [candidateDetails, setCandidateDetails] = useState<ProductDetails | null>(null);
   const [candidateLoading, setCandidateLoading] = useState(false);
   const [stage, setStage] = useState<Stage>("setup");
@@ -137,7 +136,6 @@ export function MergeProductsPage() {
       });
       const nextPair = determineMergePair(sourceQuery.data, candidate);
 
-      setCandidateId(id);
       setCandidateDetails(candidate);
       setSearch("");
       setStage("setup");
@@ -363,7 +361,6 @@ export function MergeProductsPage() {
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      setCandidateId("");
                       setCandidateDetails(null);
                       setStage("setup");
                       setFormError(null);
