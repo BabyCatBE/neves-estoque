@@ -1,3 +1,4 @@
+import { createBrowserUuid } from "../../../shared/lib/browserUuid";
 import { supabase } from "../../../shared/lib/supabase";
 import type { Tables } from "../../../shared/types/database.types";
 
@@ -170,7 +171,7 @@ export async function uploadCategoryIllustration(categoryId: string, file: File)
     throw new Error("A imagem pode ter no máximo 5 MB.");
   }
 
-  const path = `${categoryId}/${crypto.randomUUID()}.${extension}`;
+  const path = `${categoryId}/${createBrowserUuid()}.${extension}`;
   const { error } = await client.storage.from(CATEGORY_ILLUSTRATIONS_BUCKET).upload(path, file, {
     cacheControl: "3600",
     contentType: file.type,
