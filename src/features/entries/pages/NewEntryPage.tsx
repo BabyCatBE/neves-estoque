@@ -562,7 +562,7 @@ export function NewEntryPage() {
         queryClient.invalidateQueries({ queryKey: ["purchases"] })
       ]);
       allowNavigationRef.current = true;
-      navigate(`/entradas/${entryId}`, { replace: true });
+      navigate(`/entradas/${entryId}?saved=1`, { replace: true });
     } catch (error) {
       setMissingPriceReview(false);
       setActionError(getEntryErrorMessage(error));
