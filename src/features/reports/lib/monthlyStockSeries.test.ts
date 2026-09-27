@@ -8,6 +8,7 @@ import type {
 import {
   calculateMonthlyStockValueSeries,
   filterMonthlyStockReportFactsAvailableAt,
+  filterMonthlyStockSeriesPoints,
   firstHistoricalMonth,
   lastDayOfMonth,
   reportCurrentDateKey
@@ -208,6 +209,39 @@ describe("monthlyStockSeries", () => {
         })
       )
     ).toBe("2026-09");
+  });
+
+  it("filtra um período mensal inclusivo para impressão", () => {
+    const series = calculateMonthlyStockValueSeries(
+      "2027-02-15",
+      facts()
+    );
+
+    const selected = filterMonthlyStockSeriesPoints(
+      series.points,
+      "2026-12",
+      "2027-01"
+    );
+
+    expect(selected.map((point) => point.month)).toEqual([
+      "2026-12",
+      "2027-01"
+    ]);
+  });
+
+  it("rejeita período mensal invertido", () => {
+    const series = calculateMonthlyStockValueSeries(
+      "2027-02-15",
+      facts()
+    );
+
+    expect(() =>
+      filterMonthlyStockSeriesPoints(
+        series.points,
+        "2027-01",
+        "2026-12"
+      )
+    ).toThrow("Período mensal inválido.");
   });
 
   it("trata corretamente fevereiro bissexto e virada de ano", () => {

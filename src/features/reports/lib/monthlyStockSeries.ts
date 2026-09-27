@@ -70,6 +70,23 @@ export function lastDayOfMonth(monthKey: string) {
   return `${monthKey}-${String(lastDay).padStart(2, "0")}`;
 }
 
+export function filterMonthlyStockSeriesPoints(
+  points: MonthlyStockSeriesPoint[],
+  startMonth: string,
+  endMonth: string
+) {
+  parseMonth(startMonth);
+  parseMonth(endMonth);
+
+  if (startMonth > endMonth) {
+    throw new Error("Período mensal inválido.");
+  }
+
+  return points.filter(
+    (point) => point.month >= startMonth && point.month <= endMonth
+  );
+}
+
 function historicalPresenceDates(facts: MonthlyStockReportFacts) {
   return [
     ...facts.products.flatMap((product) => [

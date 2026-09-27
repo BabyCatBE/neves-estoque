@@ -1,10 +1,14 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../../shared/components/AppShell";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import nevesPrintLogo from "../../../assets/neves-logo-print.webp";
 import { getMonthlyStockValueHistory } from "../api/reports";
-import type { MonthlyStockSeriesPoint } from "../lib/monthlyStockSeries";
+import {
+  filterMonthlyStockSeriesPoints,
+  type MonthlyStockSeriesPoint
+} from "../lib/monthlyStockSeries";
 
 const printHistoryKey = ["reports", "stock-value-history", "print"] as const;
 
@@ -16,7 +20,28 @@ export function StockReportsPrintPage() {
   });
 
   const points = historyQuery.data?.points ?? [];
-  const latest = points.at(-1) ?? null;
+  const [scope, setScope] = useState<"all" | "period">("all");
+  const [startMonth, setStartMonth] = useState<string | null>(null);
+  const [endMonth, setEndMonth] = useState<string | null>(null);
+
+  const firstAvailableMonth = points[0]?.month ?? null;
+  const lastAvailableMonth = points.at(-1)?.month ?? null;
+  const effectiveStartMonth = startMonth ?? firstAvailableMonth;
+  const effectiveEndMonth = endMonth ?? lastAvailableMonth;
+
+  const selectedPoints = useMemo(() => {
+    if (scope === "all") return points;
+    if (!effectiveStartMonth || !effectiveEndMonth) return [];
+
+    return filterMonthlyStockSeriesPoints(
+      points,
+      effectiveStartMonth,
+      effectiveEndMonth
+    );
+  }, [effectiveEndMonth, effectiveStartMonth, points, scope]);
+
+  const latest = selectedPoints.at(-1) ?? null;
+  const periodLabel = buildPeriodLabel(selectedPoints);
 
   return (
     <AppShell title="Imprimir Relatório" showBack backTo="/estoque/relatorios">
@@ -55,12 +80,98 @@ export function StockReportsPrintPage() {
             </p>
           </div>
           <Button
-            disabled={historyQuery.isPending || points.length === 0}
+            disabled={historyQuery.isPending || selectedPoints.length === 0}
             onClick={() => window.print()}
           >
             Imprimir / Salvar PDF
           </Button>
         </div>
+
+        {!historyQuery.isPending && points.length > 0 ? (
+          <Card className="mt-5 p-4">
+            <fieldset>
+              <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Período do relatório
+              </legend>
+
+              <div className="mt-3 flex flex-wrap gap-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800">
+                  <input
+                    type="radio"
+                    name="report-scope"
+                    value="all"
+                    checked={scope === "all"}
+                    onChange={() => setScope("all")}
+                    className="accent-red-700"
+                  />
+                  Todo o histórico
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800">
+                  <input
+                    type="radio"
+                    name="report-scope"
+                    value="period"
+                    checked={scope === "period"}
+                    onChange={() => setScope("period")}
+                    className="accent-red-700"
+                  />
+                  Período selecionado
+                </label>
+              </div>
+
+              {scope === "period" && effectiveStartMonth && effectiveEndMonth ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm font-medium text-zinc-700">
+                    De
+                    <select
+                      value={effectiveStartMonth}
+                      onChange={(event) => {
+                        const nextStart = event.target.value;
+                        setStartMonth(nextStart);
+                        if (nextStart > effectiveEndMonth) {
+                          setEndMonth(nextStart);
+                        }
+                      }}
+                      className="mt-1 block min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100"
+                    >
+                      {points.map((point) => (
+                        <option key={point.month} value={point.month}>
+                          {formatMonth(point.month)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="text-sm font-medium text-zinc-700">
+                    Até
+                    <select
+                      value={effectiveEndMonth}
+                      onChange={(event) => {
+                        const nextEnd = event.target.value;
+                        setEndMonth(nextEnd);
+                        if (nextEnd < effectiveStartMonth) {
+                          setStartMonth(nextEnd);
+                        }
+                      }}
+                      className="mt-1 block min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100"
+                    >
+                      {points.map((point) => (
+                        <option key={point.month} value={point.month}>
+                          {formatMonth(point.month)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              ) : null}
+
+              <p className="mt-3 text-xs text-zinc-500">
+                Pré-visualização atual: {periodLabel || "nenhum mês selecionado"}.
+              </p>
+            </fieldset>
+          </Card>
+        ) : null}
       </section>
 
       {historyQuery.isPending ? (
@@ -77,7 +188,7 @@ export function StockReportsPrintPage() {
 
       {!historyQuery.isPending && !historyQuery.isError && latest ? (
         <article className="reports-print-sheet mt-6 mx-auto w-full max-w-[210mm] rounded-xl border border-zinc-200 bg-white p-[10mm] shadow-sm">
-          <PrintHeader latest={latest} />
+          <PrintHeader latest={latest} periodLabel={periodLabel} />
           <PrintSummary latest={latest} />
 
           <section className="reports-print-chart mt-7">
@@ -90,7 +201,7 @@ export function StockReportsPrintPage() {
               </h2>
             </div>
             <div className="mt-3">
-              <PrintLineChart points={points} />
+              <PrintLineChart points={selectedPoints} />
             </div>
           </section>
 
@@ -117,7 +228,7 @@ export function StockReportsPrintPage() {
                 </tr>
               </thead>
               <tbody>
-                {[...points].reverse().map((point, index) => (
+                {[...selectedPoints].reverse().map((point, index) => (
                   <tr key={point.month} className={index % 2 ? "bg-zinc-50" : "bg-white"}>
                     <td className="border border-zinc-300 px-2 py-2 font-semibold">
                       {formatMonth(point.month)}
@@ -146,7 +257,7 @@ export function StockReportsPrintPage() {
               </tbody>
             </table>
 
-            {points.some(hasIncompleteData) ? (
+            {selectedPoints.some(hasIncompleteData) ? (
               <p className="mt-2 text-[10px] leading-4 text-zinc-600">
                 * O valor conhecido não inclui Produtos com quantidade positiva sem preço
                 histórico válido, estoque aguardando Conferência pós-mescla ou Produtos sem
@@ -182,7 +293,13 @@ export function StockReportsPrintPage() {
   );
 }
 
-function PrintHeader({ latest }: { latest: MonthlyStockSeriesPoint }) {
+function PrintHeader({
+  latest,
+  periodLabel
+}: {
+  latest: MonthlyStockSeriesPoint;
+  periodLabel: string;
+}) {
   return (
     <div className="reports-print-avoid flex items-center gap-5 border-b-2 border-red-700 pb-4">
       <img
@@ -198,7 +315,7 @@ function PrintHeader({ latest }: { latest: MonthlyStockSeriesPoint }) {
           Relatório de Valor do Estoque
         </h1>
         <p className="mt-1 text-xs text-zinc-500">
-          Período disponível: {formatMonth(latest.month)} como ponto mais recente
+          Período do relatório: {periodLabel}
         </p>
       </div>
     </div>
@@ -356,6 +473,14 @@ function PrintLineChart({ points }: { points: MonthlyStockSeriesPoint[] }) {
       ))}
     </svg>
   );
+}
+
+function buildPeriodLabel(points: MonthlyStockSeriesPoint[]) {
+  const first = points[0];
+  const last = points.at(-1);
+  if (!first || !last) return "";
+  if (first.month === last.month) return formatMonth(first.month);
+  return `${formatMonth(first.month)} a ${formatMonth(last.month)}`;
 }
 
 function hasIncompleteData(point: MonthlyStockSeriesPoint) {
