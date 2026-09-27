@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   clearRegisteredDeviceId,
+  createBrowserUuid,
   getOrCreateDeviceKey,
   getRegisteredDeviceId,
   inferFriendlyDeviceName,
@@ -39,6 +40,30 @@ describe("deviceIdentity", () => {
 
     expect(getOrCreateDeviceKey(storage, () => created)).toBe(created);
     expect(isUuid(storage.getItem("neves-estoque.device-key.v1"))).toBe(true);
+  });
+
+  it("usa randomUUID quando disponível", () => {
+    const cryptoObject = {
+      randomUUID: () => "33333333-3333-4333-8333-333333333333",
+      getRandomValues: <T extends ArrayBufferView | null>(array: T) => array
+    };
+
+    expect(createBrowserUuid(cryptoObject)).toBe("33333333-3333-4333-8333-333333333333");
+  });
+
+  it("gera UUID v4 com getRandomValues quando randomUUID não existe", () => {
+    const cryptoObject = {
+      getRandomValues<T extends ArrayBufferView | null>(array: T) {
+        const bytes = array as Uint8Array;
+        bytes.fill(0xab);
+        return array;
+      }
+    };
+
+    const uuid = createBrowserUuid(cryptoObject);
+
+    expect(uuid).toBe("abababab-abab-4bab-abab-abababababab");
+    expect(isUuid(uuid)).toBe(true);
   });
 
   it("salva, recupera e remove o id registrado do dispositivo", () => {
