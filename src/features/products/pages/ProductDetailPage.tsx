@@ -158,7 +158,7 @@ export function ProductDetailPage() {
       return;
     }
 
-    navigate("/produtos/lista?deleted=1");
+    navigate("/produtos/lista");
   };
 
   const leaveProduct = () => {
@@ -199,7 +199,7 @@ export function ProductDetailPage() {
     try {
       await deleteMutation.mutateAsync(productQuery.data.id);
       setDeleteReviewOpen(false);
-      navigate("/produtos/lista");
+      navigate("/produtos/lista?deleted=1");
     } catch (error) {
       setActionError(getProductErrorMessage(error));
     }
