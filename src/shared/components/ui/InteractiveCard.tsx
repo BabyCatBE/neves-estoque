@@ -13,7 +13,7 @@ export function InteractiveCard({
 }: Props) {
   return (
     <Card
-      className={`relative overflow-hidden transition hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md ${className}`}
+      className={`relative overflow-hidden transition-[transform,border-color,box-shadow,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md active:translate-y-0 active:shadow-sm ${className}`}
       {...props}
     >
       <span
