@@ -141,7 +141,12 @@ function ProductConferenceForm({ product }: { product: ProductDetails }) {
     try {
       payload = validateAndBuild();
     } catch (error) {
-      setActionError(getConferenceErrorMessage(error));
+      const message = error instanceof Error ? error.message : "";
+      const fieldValidationError =
+        message === "Informe o responsável pela contagem física." ||
+        message === "O responsável pode ter no máximo 160 caracteres." ||
+        message.startsWith("Nova quantidade");
+      setActionError(fieldValidationError ? null : getConferenceErrorMessage(error));
       return;
     }
 
@@ -241,6 +246,11 @@ function ProductConferenceForm({ product }: { product: ProductDetails }) {
               rows={3}
               value={observation}
               onChange={(event) => setObservation(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.metaKey) return;
+                event.preventDefault();
+                document.getElementById("product-conference-save")?.focus();
+              }}
               className="mt-2 w-full scroll-mt-24 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
             />
           </label>
@@ -265,6 +275,7 @@ function ProductConferenceForm({ product }: { product: ProductDetails }) {
             Cancelar
           </Button>
           <Button
+            id="product-conference-save"
             isLoading={saveMutation.isPending || checkingSave}
             loadingLabel={saveMutation.isPending ? "Salvando…" : "Verificando…"}
             onClick={() => void requestSave()}

@@ -724,7 +724,16 @@ export function NewEntryPage() {
                     document.getElementById("entry-date")?.focus();
                     return;
                   }
-                  document.getElementById("entry-product-search")?.focus();
+
+                  const preselectedItem = preselectedProductId
+                    ? items.find((item) => item.product.id === preselectedProductId)
+                    : null;
+
+                  if (preselectedItem) {
+                    document.getElementById(`entry-qty-${preselectedItem.localId}`)?.focus();
+                  } else {
+                    document.getElementById("entry-product-search")?.focus();
+                  }
                 }
               }}
             />
@@ -737,10 +746,24 @@ export function NewEntryPage() {
               <label className="block">
                 <span className="text-sm font-medium text-zinc-800">Observação</span>
                 <textarea
+                  id="entry-observation"
                   rows={3}
                   maxLength={2000}
                   value={observation}
                   onChange={(event) => setObservation(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key !== "Enter" ||
+                      event.shiftKey ||
+                      event.ctrlKey ||
+                      event.metaKey ||
+                      controlKeyPressed.current
+                    ) {
+                      return;
+                    }
+                    event.preventDefault();
+                    document.getElementById("entry-save")?.focus();
+                  }}
                   className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
                   placeholder="Observação única para esta Entrada."
                 />
@@ -898,7 +921,18 @@ export function NewEntryPage() {
                       if (event.key === "Enter") {
                         event.preventDefault();
                         if (validatePriceNow(item)) {
-                          document.getElementById("entry-product-search")?.focus();
+                          const isSinglePreselectedProduct =
+                            Boolean(preselectedProductId) &&
+                            item.product.id === preselectedProductId &&
+                            items.length === 1;
+
+                          if (isSinglePreselectedProduct) {
+                            document
+                              .getElementById(observationOpen ? "entry-observation" : "entry-save")
+                              ?.focus();
+                          } else {
+                            document.getElementById("entry-product-search")?.focus();
+                          }
                         }
                       }
                     }}
@@ -931,6 +965,7 @@ export function NewEntryPage() {
             <div className="flex items-center gap-3">
               <span className="hidden text-xs text-zinc-400 sm:inline">Atalho: Ctrl + Enter</span>
               <Button
+                id="entry-save"
                 isLoading={saveMutation.isPending}
                 loadingLabel="Salvando…"
                 onClick={requestSave}
