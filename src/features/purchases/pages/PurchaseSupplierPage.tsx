@@ -6,6 +6,7 @@ import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { SearchClearButton } from "../../../shared/components/ui/SearchClearButton";
 import { TextField } from "../../../shared/components/ui/TextField";
+import { normalizeSearchText } from "../../../shared/lib/searchText";
 import { listActiveProducts } from "../../products/api/products";
 import { getSupplierDetails } from "../../suppliers/api/suppliers";
 import {
@@ -70,12 +71,12 @@ export function PurchaseSupplierPage() {
   );
 
   const availableProducts = useMemo(() => {
-    const term = normalize(productSearch);
+    const term = normalizeSearchText(productSearch);
     const manualIds = new Set(manualProductIds);
 
     return (allProductsQuery.data ?? [])
       .filter((product) => !historicalProductIds.has(product.id) && !manualIds.has(product.id))
-      .filter((product) => !term || normalize(product.name).includes(term))
+      .filter((product) => !term || normalizeSearchText(product.name).includes(term))
       .sort((a, b) =>
         a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })
       )
@@ -199,14 +200,6 @@ export function PurchaseSupplierPage() {
       </section>
     </AppShell>
   );
-}
-
-function normalize(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .trim();
 }
 
 function formatStock(value: number | null, unit: string) {
