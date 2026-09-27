@@ -1,3 +1,5 @@
+import { looksTechnicalErrorMessage } from "../../../shared/lib/friendlyError";
+
 export function parsePositiveDecimal(value: string, label: string) {
   const normalized = value.trim().replace(",", ".");
   if (!normalized) throw new Error(`${label} é obrigatória.`);
@@ -103,5 +105,7 @@ export function getEntryErrorMessage(error: unknown) {
   if (known) return known;
   if (message.includes("Quantidade deve ser maior que zero")) return "Todas as quantidades devem ser maiores que zero.";
   if (message.includes("Preço não pode ser negativo")) return "Preço unitário não pode ser negativo.";
-  return message;
+  return looksTechnicalErrorMessage(message)
+    ? "Não foi possível concluir a Entrada. Tente novamente."
+    : message;
 }
