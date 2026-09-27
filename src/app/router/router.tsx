@@ -8,6 +8,7 @@ import { HomePage } from "../../features/home/pages/HomePage";
 import { AlertsHubPage } from "../../features/alerts/pages/AlertsHubPage";
 import { ProductsHubPage } from "../../features/products/pages/ProductsHubPage";
 import { ProductDetailPage } from "../../features/products/pages/ProductDetailPage";
+import { MergeProductsPage } from "../../features/products/pages/MergeProductsPage";
 import { ProductStockUpdatePage } from "../../features/products/pages/ProductStockUpdatePage";
 import { ProductsPage } from "../../features/products/pages/ProductsPage";
 import { TrashPage } from "../../features/trash/pages/TrashPage";
@@ -171,6 +172,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ProductsPage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/produtos/:productId/mesclar",
+    element: (
+      <ProtectedRoute>
+        <MergeProductsPage />
       </ProtectedRoute>
     )
   },

@@ -477,6 +477,7 @@ export type Database = {
           quick_entry_idempotency_key: string | null
           restore_until: string | null
           sort_order: number | null
+          stock_reconfirmation_required_at: string | null
           unit: string
           updated_at: string
           updated_by: string | null
@@ -496,6 +497,7 @@ export type Database = {
           quick_entry_idempotency_key?: string | null
           restore_until?: string | null
           sort_order?: number | null
+          stock_reconfirmation_required_at?: string | null
           unit: string
           updated_at?: string
           updated_by?: string | null
@@ -515,6 +517,7 @@ export type Database = {
           quick_entry_idempotency_key?: string | null
           restore_until?: string | null
           sort_order?: number | null
+          stock_reconfirmation_required_at?: string | null
           unit?: string
           updated_at?: string
           updated_by?: string | null
@@ -601,6 +604,7 @@ export type Database = {
           product_id: string | null
           product_name: string | null
           sort_order: number | null
+          stock_requires_conference: boolean | null
           unit: string | null
         }
         Relationships: [
@@ -781,6 +785,20 @@ export type Database = {
           p_new_unit: string
           p_old_quantity: number
           p_product_id: string
+        }
+        Returns: Json
+      }
+      merge_products: {
+        Args: {
+          p_absorbed_equivalent_quantity: number | null
+          p_device_id: string
+          p_final_category_id: string
+          p_final_name: string
+          p_final_unit: string
+          p_initial_price_source: string
+          p_product_a_id: string
+          p_product_b_id: string
+          p_survivor_equivalent_quantity: number | null
         }
         Returns: Json
       }

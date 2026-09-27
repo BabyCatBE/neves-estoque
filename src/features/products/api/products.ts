@@ -14,8 +14,10 @@ export type ProductListItem = {
   categoryId: string | null;
   unit: string;
   sortOrder: number | null;
+  createdAt: string;
   currentQuantity: number | null;
   currentPrice: number | null;
+  stockRequiresConference: boolean;
 };
 
 export type CreateQuickEntryProductInput = {
@@ -49,6 +51,7 @@ export type ProductDetails = {
   categoryId: string | null;
   unit: string;
   sortOrder: number | null;
+  createdAt: string;
   initialStockQuantity: number | null;
   initialStockAt: string | null;
   initialPrice: number | null;
@@ -56,6 +59,7 @@ export type ProductDetails = {
   currentQuantity: number | null;
   currentPrice: number | null;
   currentValue: number | null;
+  stockRequiresConference: boolean;
   priceHistory: ProductPriceHistoryItem[];
   usageInsights: ProductUsageInsights;
 };
@@ -72,6 +76,28 @@ export type ConvertProductUnitInput = {
   oldQuantity: number;
   newQuantity: number;
   deviceId: string;
+};
+
+export type MergeInitialPriceSource = "survivor" | "absorbed" | "none";
+
+export type MergeProductsInput = {
+  productAId: string;
+  productBId: string;
+  finalName: string;
+  finalCategoryId: string;
+  finalUnit: ProductUnit;
+  survivorEquivalentQuantity: number | null;
+  absorbedEquivalentQuantity: number | null;
+  initialPriceSource: MergeInitialPriceSource;
+  deviceId: string;
+};
+
+export type MergeProductsResult = {
+  survivorProductId: string;
+  absorbedProductId: string;
+  entryItemsCount: number;
+  conferenceItemsCount: number;
+  overlapConferenceCount: number;
 };
 
 export type ReorderProductCategory = {
@@ -103,11 +129,11 @@ export async function listActiveProducts(): Promise<ProductListItem[]> {
   const [productsResult, stockResult] = await Promise.all([
     client
       .from("products")
-      .select("id,name,category_id,unit,sort_order")
+      .select("id,name,category_id,unit,sort_order,created_at")
       .is("deleted_at", null),
     client
       .from("stock_current")
-      .select("product_id,current_quantity,current_price")
+      .select("product_id,current_quantity,current_price,stock_requires_conference")
   ]);
 
   if (productsResult.error) throw productsResult.error;
@@ -126,8 +152,10 @@ export async function listActiveProducts(): Promise<ProductListItem[]> {
       categoryId: product.category_id,
       unit: product.unit,
       sortOrder: product.sort_order,
+      createdAt: product.created_at,
       currentQuantity: stock?.current_quantity ?? null,
-      currentPrice: stock?.current_price ?? null
+      currentPrice: stock?.current_price ?? null,
+      stockRequiresConference: stock?.stock_requires_conference ?? false
     };
   });
 }
@@ -169,14 +197,14 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
     client
       .from("products")
       .select(
-        "id,name,category_id,unit,sort_order,initial_stock_quantity,initial_stock_at,initial_price,initial_price_at"
+        "id,name,category_id,unit,sort_order,created_at,initial_stock_quantity,initial_stock_at,initial_price,initial_price_at"
       )
       .eq("id", productId)
       .is("deleted_at", null)
       .maybeSingle(),
     client
       .from("stock_current")
-      .select("current_quantity,current_price,current_value")
+      .select("current_quantity,current_price,current_value,stock_requires_conference")
       .eq("product_id", productId)
       .maybeSingle()
   ]);
@@ -298,6 +326,7 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
     categoryId: productResult.data.category_id,
     unit: productResult.data.unit,
     sortOrder: productResult.data.sort_order,
+    createdAt: productResult.data.created_at,
     initialStockQuantity: productResult.data.initial_stock_quantity,
     initialStockAt: productResult.data.initial_stock_at,
     initialPrice: productResult.data.initial_price,
@@ -305,6 +334,7 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
     currentQuantity: stockResult.data?.current_quantity ?? null,
     currentPrice: stockResult.data?.current_price ?? null,
     currentValue: stockResult.data?.current_value ?? null,
+    stockRequiresConference: stockResult.data?.stock_requires_conference ?? false,
     priceHistory,
     usageInsights
   };
@@ -333,6 +363,41 @@ export async function convertProductUnit(input: ConvertProductUnitInput) {
 
   if (error) throw error;
   return data;
+}
+
+export async function mergeProducts(input: MergeProductsInput): Promise<MergeProductsResult> {
+  const client = requireClient();
+  const { data, error } = await client.rpc("merge_products", {
+    p_product_a_id: input.productAId,
+    p_product_b_id: input.productBId,
+    p_final_name: input.finalName,
+    p_final_category_id: input.finalCategoryId,
+    p_final_unit: input.finalUnit,
+    p_survivor_equivalent_quantity: input.survivorEquivalentQuantity,
+    p_absorbed_equivalent_quantity: input.absorbedEquivalentQuantity,
+    p_initial_price_source: input.initialPriceSource,
+    p_device_id: input.deviceId
+  });
+
+  if (error) throw error;
+
+  const result = data as Record<string, unknown> | null;
+  const survivorProductId =
+    typeof result?.survivor_product_id === "string" ? result.survivor_product_id : "";
+  const absorbedProductId =
+    typeof result?.absorbed_product_id === "string" ? result.absorbed_product_id : "";
+
+  if (!survivorProductId || !absorbedProductId) {
+    throw new Error("A mescla foi concluída, mas o resultado retornado é inválido.");
+  }
+
+  return {
+    survivorProductId,
+    absorbedProductId,
+    entryItemsCount: Number(result?.entry_items_count ?? 0),
+    conferenceItemsCount: Number(result?.conference_items_count ?? 0),
+    overlapConferenceCount: Number(result?.overlap_conference_count ?? 0)
+  };
 }
 
 

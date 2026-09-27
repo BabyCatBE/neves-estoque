@@ -68,7 +68,20 @@ export function getProductErrorMessage(error: unknown) {
         "Estoque inicial não pode ser negativo.",
         "Preço inicial não pode ser negativo.",
         "Estoque inicial inválido.",
-        "Preço inicial inválido."
+        "Preço inicial inválido.",
+        "Escolha dois produtos diferentes para mesclar.",
+        "O primeiro produto não está ativo.",
+        "O segundo produto não está ativo.",
+        "Produtos com cadastro pendente não podem ser mesclados.",
+        "Nome final do produto inválido.",
+        "Categoria final inválida ou excluída.",
+        "Já existe outro produto ativo com esse nome.",
+        "Unidade final inválida.",
+        "A unidade final deve ser uma das unidades atuais dos produtos.",
+        "Informe a equivalência entre as duas unidades.",
+        "Referência inicial de preço inválida.",
+        "O produto mais antigo não possui preço inicial para manter.",
+        "O produto absorvido não possui preço inicial para manter."
       ];
 
       const known = knownMessages.find((message) => candidate.message?.includes(message));

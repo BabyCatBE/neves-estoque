@@ -314,6 +314,13 @@ export function ProductDetailPage() {
                 <Button
                   variant="secondary"
                   disabled={deleteMutation.isPending}
+                  onClick={() => navigate(`/produtos/${productQuery.data.id}/mesclar`)}
+                >
+                  Mesclar produto
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={deleteMutation.isPending}
                   className="text-red-700"
                   onClick={() => void deleteProduct()}
                 >
@@ -328,6 +335,23 @@ export function ProductDetailPage() {
             <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
               {notice}
             </div>
+          ) : null}
+
+          {productQuery.data.stockRequiresConference ? (
+            <Card className="mt-4 border-amber-200 bg-amber-50 p-4">
+              <p className="font-semibold text-amber-950">Conferência física necessária</p>
+              <p className="mt-1 text-sm leading-6 text-amber-900">
+                Este Produto foi mesclado. O histórico já está unificado, mas o estoque atual só
+                volta a ser considerado confiável depois de uma nova Conferência física.
+              </p>
+              <Button
+                className="mt-3"
+                variant="secondary"
+                onClick={() => navigate(`/produtos/${productQuery.data.id}/estoque/conferencia`)}
+              >
+                Fazer Conferência agora
+              </Button>
+            </Card>
           ) : null}
 
           {actionError ? (
@@ -425,9 +449,11 @@ export function ProductDetailPage() {
               label="Estoque atual"
               value={formatQuantity(productQuery.data.currentQuantity, productQuery.data.unit)}
               helper={
-                productQuery.data.currentQuantity === null
-                  ? "Ainda não existe checkpoint ou entrada que estabeleça o estoque."
-                  : "Posição atual calculada pelas regras do estoque."
+                productQuery.data.stockRequiresConference
+                  ? "Aguardando nova Conferência física após a mescla."
+                  : productQuery.data.currentQuantity === null
+                    ? "Ainda não existe checkpoint ou entrada que estabeleça o estoque."
+                    : "Posição atual calculada pelas regras do estoque."
               }
             />
             <MetricCard

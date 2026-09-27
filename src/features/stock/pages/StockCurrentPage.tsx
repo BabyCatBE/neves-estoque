@@ -73,6 +73,10 @@ export function StockCurrentPage() {
     () => calculateStockValueSummary(stockQuery.data?.items ?? []),
     [stockQuery.data]
   );
+  const pendingConferenceCount = useMemo(
+    () => (stockQuery.data?.items ?? []).filter((item) => item.stockRequiresConference).length,
+    [stockQuery.data]
+  );
 
   const searching = search.trim().length > 0;
   const categoryVisibleCount =
@@ -196,6 +200,11 @@ export function StockCurrentPage() {
             {valueSummary.hasMissingPrice ? (
               <p className="mt-2 text-xs text-amber-700">
                 * Existem produtos com estoque positivo e sem preço informado.
+              </p>
+            ) : null}
+            {pendingConferenceCount > 0 ? (
+              <p className="mt-2 text-xs text-amber-700">
+                {pendingConferenceCount} {pendingConferenceCount === 1 ? "produto aguarda" : "produtos aguardam"} Conferência física após mescla e não {pendingConferenceCount === 1 ? "entra" : "entram"} no valor conhecido.
               </p>
             ) : null}
           </Card>
@@ -385,7 +394,11 @@ function StockRow({
           <>
             <StockMetric
               label="Quantidade"
-              value={formatQuantity(item.currentQuantity, item.unit)}
+              value={
+                item.stockRequiresConference
+                  ? "Conferência necessária"
+                  : formatQuantity(item.currentQuantity, item.unit)
+              }
             />
             <StockMetric
               label="Preço unitário"
@@ -398,7 +411,9 @@ function StockRow({
           </>
         ) : (
           <span className="text-right font-semibold text-zinc-950">
-            {formatQuantity(item.currentQuantity, item.unit)}
+            {item.stockRequiresConference
+              ? "Conferência necessária"
+              : formatQuantity(item.currentQuantity, item.unit)}
           </span>
         )}
       </div>
@@ -432,6 +447,7 @@ function formatPrice(value: number | null) {
 }
 
 function formatItemValue(item: CurrentStockItem) {
+  if (item.stockRequiresConference) return "Conferência necessária";
   if (item.currentQuantity === null) return "Sem dados";
   if (Number(item.currentQuantity) === 0) return formatMoney(0);
   if (item.currentValue === null) return "Sem preço";

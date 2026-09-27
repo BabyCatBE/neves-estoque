@@ -21,6 +21,7 @@ export type CurrentStockItem = {
   currentPrice: number | null;
   currentValue: number | null;
   sortOrder: number | null;
+  stockRequiresConference: boolean;
 };
 
 export type CurrentStockData = {
@@ -51,7 +52,7 @@ export async function listCurrentStock(): Promise<CurrentStockData> {
     client
       .from("stock_current")
       .select(
-        "product_id,product_name,category_id,unit,current_quantity,current_supplier_id,current_price,current_value,sort_order"
+        "product_id,product_name,category_id,unit,current_quantity,current_supplier_id,current_price,current_value,sort_order,stock_requires_conference"
       )
   ]);
 
@@ -86,7 +87,8 @@ export async function listCurrentStock(): Promise<CurrentStockData> {
         currentQuantity: row.current_quantity,
         currentPrice: row.current_price,
         currentValue: row.current_value,
-        sortOrder: row.sort_order
+        sortOrder: row.sort_order,
+        stockRequiresConference: row.stock_requires_conference ?? false
       }))
   };
 }
