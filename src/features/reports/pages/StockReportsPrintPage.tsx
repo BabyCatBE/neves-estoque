@@ -31,6 +31,7 @@ export function StockReportsPrintPage() {
             width: auto !important;
             max-width: none !important;
             margin: 0 !important;
+            padding: 0 !important;
             border: 0 !important;
             border-radius: 0 !important;
             box-shadow: none !important;
