@@ -12,6 +12,24 @@ export type OfflineIllustrationRecord = {
   updatedAt: string;
 };
 
+export type OfflinePendingOperationRecord = {
+  id: string;
+  kind: "entry" | "conference";
+  status: "pending_confirmation";
+  createdAt: string;
+  updatedAt: string;
+  effectiveAt: string;
+  authUserId: string;
+  appUserId: string | null;
+  deviceId: string;
+  actorLabel: string;
+  idempotencyKey: string;
+  summaryTitle: string;
+  summarySubtitle: string | null;
+  itemCount: number;
+  payload: unknown;
+};
+
 export type VerifiedOfflineAccessRecord = {
   authUserId: string;
   appUserId: string;
@@ -27,6 +45,7 @@ export type VerifiedOfflineAccessRecord = {
 class NevesOfflineDatabase extends Dexie {
   snapshots!: Table<OfflineSnapshotRecord, string>;
   illustrationBlobs!: Table<OfflineIllustrationRecord, string>;
+  pendingOperations!: Table<OfflinePendingOperationRecord, string>;
   verifiedAccess!: Table<VerifiedOfflineAccessRecord, string>;
 
   constructor() {
@@ -40,6 +59,13 @@ class NevesOfflineDatabase extends Dexie {
     this.version(2).stores({
       snapshots: "&key,updatedAt",
       illustrationBlobs: "&path,updatedAt",
+      verifiedAccess: "&authUserId,verifiedAt,deviceId"
+    });
+
+    this.version(3).stores({
+      snapshots: "&key,updatedAt",
+      illustrationBlobs: "&path,updatedAt",
+      pendingOperations: "&id,kind,status,createdAt,effectiveAt,authUserId",
       verifiedAccess: "&authUserId,verifiedAt,deviceId"
     });
   }
