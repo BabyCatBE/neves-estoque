@@ -31,7 +31,8 @@ const items: CurrentStockItem[] = [
     currentQuantity: 3,
     currentPrice: 5,
     currentValue: 15,
-    sortOrder: 2
+    sortOrder: 2,
+    stockRequiresConference: false
   },
   {
     productId: "p1",
@@ -42,7 +43,8 @@ const items: CurrentStockItem[] = [
     currentQuantity: 1,
     currentPrice: 4,
     currentValue: 4,
-    sortOrder: 1
+    sortOrder: 1,
+    stockRequiresConference: false
   },
   {
     productId: "p3",
@@ -53,7 +55,8 @@ const items: CurrentStockItem[] = [
     currentQuantity: 2,
     currentPrice: null,
     currentValue: null,
-    sortOrder: null
+    sortOrder: null,
+    stockRequiresConference: false
   }
 ];
 

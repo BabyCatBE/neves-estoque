@@ -13,8 +13,10 @@ function product(id: string, categoryId: string, sortOrder: number): ProductList
     categoryId,
     unit: "UN",
     sortOrder,
+    createdAt: "2026-09-01T00:00:00Z",
     currentQuantity: null,
-    currentPrice: null
+    currentPrice: null,
+    stockRequiresConference: false
   };
 }
 

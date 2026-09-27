@@ -442,8 +442,10 @@ export function NewEntryPage() {
       categoryId,
       unit: quickProductUnit,
       sortOrder: null,
+      createdAt: new Date().toISOString(),
       currentQuantity: null,
-      currentPrice: null
+      currentPrice: null,
+      stockRequiresConference: false
     };
 
     setShowQuickProduct(false);
