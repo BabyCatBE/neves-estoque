@@ -158,7 +158,7 @@ export function ProductDetailPage() {
       return;
     }
 
-    navigate("/produtos/lista");
+    navigate("/produtos/lista?deleted=1");
   };
 
   const leaveProduct = () => {
