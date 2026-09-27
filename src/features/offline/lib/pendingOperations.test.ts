@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { CreateEntryInput } from "../../entries/api/entries";
 import {
   buildPendingConferenceRecord,
-  buildPendingEntryRecord
+  buildPendingEntryRecord,
+  buildPendingProductConferenceRecord
 } from "./pendingOperations";
 
 describe("pending offline operations", () => {
@@ -66,5 +67,34 @@ describe("pending offline operations", () => {
     expect(record.summaryTitle).toBe("Farinhas");
     expect(record.itemCount).toBe(1);
     expect(record.payload.items[0]?.quantity).toBe(0);
+  });
+
+  it("guarda Conferência unitária como pendência local", () => {
+    const record = buildPendingProductConferenceRecord(
+      {
+        productId: "product-1",
+        effectiveAt: "2026-09-27T12:00:00.000-03:00",
+        physicalResponsible: "Responsável",
+        deviceId: "device-1",
+        idempotencyKey: "product-conference-idem-1",
+        quantity: 7,
+        observation: "contagem unitária"
+      },
+      {
+        authUserId: "auth-1",
+        appUserId: "app-1",
+        deviceId: "device-1",
+        actorLabel: "Elias",
+        productLabel: "Farinha"
+      },
+      "local-product-conference-1",
+      "2026-09-27T15:00:00.000Z"
+    );
+
+    expect(record.kind).toBe("conference");
+    expect(record.status).toBe("pending_confirmation");
+    expect(record.summaryTitle).toBe("Farinha");
+    expect(record.itemCount).toBe(1);
+    expect(record.payload.quantity).toBe(7);
   });
 });
