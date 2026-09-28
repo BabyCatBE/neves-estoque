@@ -8,9 +8,13 @@ import com.babycatbe.nevesestoque.feature.entries.EntryCreateInput
 import com.babycatbe.nevesestoque.feature.entries.EntryCreateItem
 import com.babycatbe.nevesestoque.feature.entries.EntryDraftProduct
 import com.babycatbe.nevesestoque.feature.entries.EntryDraftSupplier
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.io.File
 import java.time.OffsetDateTime
@@ -279,46 +283,118 @@ fun PendingOperation.toProductConferenceInput(deviceIdNow: String): ProductConfe
 
 // ---------- Armazenamento ----------
 
+data class PendingFileProblem(
+    val fileName: String,
+    val userMessage: String = "Existe uma pendência local com problema de leitura. O arquivo foi preservado neste aparelho.",
+)
+
+sealed interface PendingMutationResult {
+    data object Success : PendingMutationResult
+    data class Failure(val userMessage: String) : PendingMutationResult
+}
+
+sealed interface PendingLoadResult {
+    data object Success : PendingLoadResult
+    data class Failure(val userMessage: String) : PendingLoadResult
+}
+
 object PendingStore {
     private val _pending = MutableStateFlow<List<PendingOperation>>(emptyList())
+    private val _problems = MutableStateFlow<List<PendingFileProblem>>(emptyList())
+    private val _loaded = MutableStateFlow(false)
 
     /** Pendências atuais, da mais recente para a mais antiga. */
     val pending: StateFlow<List<PendingOperation>> = _pending.asStateFlow()
+    val problems: StateFlow<List<PendingFileProblem>> = _problems.asStateFlow()
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
 
     private fun file(localId: String): File =
         File(OfflineStore.pendingDir(), localId.replace(Regex("[^A-Za-z0-9-]"), "_") + ".json")
 
-    fun reload() {
-        _pending.value = runCatching {
-            OfflineStore.pendingDir().listFiles { f -> f.isFile && f.name.endsWith(".json") }
-                .orEmpty()
-                .mapNotNull { file ->
-                    runCatching {
-                        OfflineStore.json.decodeFromString(PendingOperation.serializer(), file.readText(Charsets.UTF_8))
-                    }.getOrNull()
-                }
-                .sortedByDescending { it.createdAt }
-        }.getOrDefault(emptyList())
+    suspend fun reload(): PendingLoadResult {
+        return try {
+            val (operations, problems) = withContext(Dispatchers.IO) {
+                val valid = mutableListOf<PendingOperation>()
+                val invalid = mutableListOf<PendingFileProblem>()
+                OfflineStore.pendingDir().mkdirs()
+                OfflineStore.pendingDir().listFiles { f -> f.isFile && f.name.endsWith(".json") }
+                    .orEmpty()
+                    .forEach { pendingFile ->
+                        try {
+                            valid += OfflineStore.json.decodeFromString(
+                                PendingOperation.serializer(),
+                                OfflineStore.readTextFile(pendingFile)
+                                    ?: throw IllegalStateException("Arquivo local indisponível."),
+                            )
+                        } catch (error: Throwable) {
+                            if (error is CancellationException) throw error
+                            invalid += PendingFileProblem(pendingFile.name)
+                        }
+                    }
+                valid.sortedByDescending { it.createdAt } to invalid.sortedBy { it.fileName }
+            }
+            _pending.value = operations
+            _problems.value = problems
+            _loaded.value = true
+            PendingLoadResult.Success
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            _problems.value = listOf(
+                PendingFileProblem(
+                    fileName = "",
+                    userMessage = "Não foi possível carregar as pendências locais agora. Tente novamente.",
+                )
+            )
+            _loaded.value = true
+            PendingLoadResult.Failure("Não foi possível carregar as pendências locais agora. Tente novamente.")
+        }
     }
 
-    fun save(operation: PendingOperation) {
-        OfflineStore.writeAtomic(
-            file(operation.localId),
-            OfflineStore.json.encodeToString(PendingOperation.serializer(), operation).toByteArray(Charsets.UTF_8),
-        )
-        reload()
+    suspend fun save(
+        operation: PendingOperation,
+        write: suspend (File, ByteArray) -> Unit = { target, bytes -> OfflineStore.writeAtomic(target, bytes) },
+    ): PendingMutationResult {
+        val target = file(operation.localId)
+        return try {
+            val bytes = withContext(Dispatchers.IO) {
+                OfflineStore.json.encodeToString(PendingOperation.serializer(), operation).toByteArray(Charsets.UTF_8)
+            }
+            write(target, bytes)
+            _pending.update { current ->
+                (current.filterNot { it.localId == operation.localId } + operation)
+                    .sortedByDescending { it.createdAt }
+            }
+            _problems.update { current -> current.filterNot { it.fileName == target.name } }
+            _loaded.value = true
+            PendingMutationResult.Success
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            PendingMutationResult.Failure("Não foi possível guardar a pendência neste aparelho. Tente novamente.")
+        }
     }
 
+    /** Consulta somente o estado já carregado; nunca acessa arquivo durante a composição da UI. */
     fun find(localId: String): PendingOperation? = _pending.value.firstOrNull { it.localId == localId }
-        ?: runCatching {
-            file(localId).takeIf { it.isFile }?.readText(Charsets.UTF_8)
-                ?.let { OfflineStore.json.decodeFromString(PendingOperation.serializer(), it) }
-        }.getOrNull()
 
     /** Remove somente o rascunho local. Nunca existe registro oficial correspondente a apagar. */
-    fun delete(localId: String) {
-        runCatching { file(localId).delete() }
-        reload()
+    suspend fun delete(
+        localId: String,
+        remove: suspend (File) -> Boolean = { target -> OfflineStore.deleteFile(target) },
+    ): PendingMutationResult {
+        val target = file(localId)
+        return try {
+            if (!remove(target)) {
+                PendingMutationResult.Failure("Não foi possível excluir a pendência deste aparelho. Tente novamente.")
+            } else {
+                _pending.update { current -> current.filterNot { it.localId == localId } }
+                _problems.update { current -> current.filterNot { it.fileName == target.name } }
+                _loaded.value = true
+                PendingMutationResult.Success
+            }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            PendingMutationResult.Failure("Não foi possível excluir a pendência deste aparelho. Tente novamente.")
+        }
     }
 }
 
@@ -328,7 +404,7 @@ const val PENDING_SAVED_MESSAGE =
         "Confirme o envio em Alertas → Pendências locais quando a conexão voltar."
 
 /** Metadados do usuário/aparelho validados, para identificar quem preparou a pendência. */
-fun currentPendingMetadata(): PendingMetadata? {
+suspend fun currentPendingMetadata(): PendingMetadata? {
     val deviceId = com.babycatbe.nevesestoque.data.device.DeviceIdentityStore.registeredDeviceId() ?: return null
     val access = com.babycatbe.nevesestoque.feature.auth.OfflineAccessStore.load()
     return PendingMetadata(

@@ -207,35 +207,35 @@ class NewEntryViewModel : ViewModel() {
 
     /** Sem internet: guarda a Entrada validada como pendência local, sem chamar o servidor. */
     private fun saveAsPending(input: EntryCreateInput) {
-        val metadata = com.babycatbe.nevesestoque.feature.offline.currentPendingMetadata()
-        if (metadata == null) {
-            _uiState.value = _uiState.value.copy(
-                saving = false,
-                errorMessage = "Este dispositivo ainda não está pronto para registrar Entradas.",
-            )
-            return
-        }
-        val options = _uiState.value.options
-        val supplierLabel = input.newSupplier?.name
-            ?: options?.suppliers?.firstOrNull { it.id == input.supplierId }?.name
-            ?: "Fornecedor não identificado"
-        val operation = com.babycatbe.nevesestoque.feature.offline.buildPendingEntry(
-            input = input,
-            supplierLabel = supplierLabel,
-            productLabel = { item ->
-                val product = options?.products?.firstOrNull { it.id == item.productId }
-                (product?.name ?: "Produto") to (product?.unit ?: "")
-            },
-            metadata = metadata,
-        )
-        runCatching { com.babycatbe.nevesestoque.feature.offline.PendingStore.save(operation) }
-            .onSuccess { _uiState.value = _uiState.value.copy(saving = false, savedPendingId = operation.localId) }
-            .onFailure {
+        viewModelScope.launch {
+            val metadata = com.babycatbe.nevesestoque.feature.offline.currentPendingMetadata()
+            if (metadata == null) {
                 _uiState.value = _uiState.value.copy(
                     saving = false,
-                    errorMessage = "Não foi possível guardar a pendência neste aparelho.",
+                    errorMessage = "Este dispositivo ainda não está pronto para registrar Entradas.",
                 )
+                return@launch
             }
+            val options = _uiState.value.options
+            val supplierLabel = input.newSupplier?.name
+                ?: options?.suppliers?.firstOrNull { it.id == input.supplierId }?.name
+                ?: "Fornecedor não identificado"
+            val operation = com.babycatbe.nevesestoque.feature.offline.buildPendingEntry(
+                input = input,
+                supplierLabel = supplierLabel,
+                productLabel = { item ->
+                    val product = options?.products?.firstOrNull { it.id == item.productId }
+                    (product?.name ?: "Produto") to (product?.unit ?: "")
+                },
+                metadata = metadata,
+            )
+            when (val result = com.babycatbe.nevesestoque.feature.offline.PendingStore.save(operation)) {
+                com.babycatbe.nevesestoque.feature.offline.PendingMutationResult.Success ->
+                    _uiState.value = _uiState.value.copy(saving = false, savedPendingId = operation.localId)
+                is com.babycatbe.nevesestoque.feature.offline.PendingMutationResult.Failure ->
+                    _uiState.value = _uiState.value.copy(saving = false, errorMessage = result.userMessage)
+            }
+        }
     }
 
     suspend fun completePendingProduct(

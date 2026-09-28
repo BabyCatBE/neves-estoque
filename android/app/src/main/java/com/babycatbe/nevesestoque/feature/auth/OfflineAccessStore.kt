@@ -1,6 +1,8 @@
 package com.babycatbe.nevesestoque.feature.auth
 
 import com.babycatbe.nevesestoque.data.offline.OfflineStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -11,21 +13,19 @@ import java.io.File
 object OfflineAccessStore {
     private fun file(): File = File(OfflineStore.accessDir(), "offline-access.json")
 
-    fun save(record: OfflineAccessRecord) {
-        runCatching {
-            OfflineStore.writeAtomic(
-                file(),
-                OfflineStore.json.encodeToString(OfflineAccessRecord.serializer(), record).toByteArray(Charsets.UTF_8),
-            )
+    suspend fun save(record: OfflineAccessRecord) {
+        val bytes = withContext(Dispatchers.IO) {
+            OfflineStore.json.encodeToString(OfflineAccessRecord.serializer(), record).toByteArray(Charsets.UTF_8)
         }
+        OfflineStore.writeAtomic(file(), bytes)
     }
 
-    fun load(): OfflineAccessRecord? = runCatching {
-        file().takeIf { it.isFile }?.readText(Charsets.UTF_8)
-            ?.let { OfflineStore.json.decodeFromString(OfflineAccessRecord.serializer(), it) }
-    }.getOrNull()
-
-    fun clear() {
-        runCatching { file().delete() }
+    suspend fun load(): OfflineAccessRecord? = withContext(Dispatchers.IO) {
+        runCatching {
+            OfflineStore.readTextFile(file())
+                ?.let { OfflineStore.json.decodeFromString(OfflineAccessRecord.serializer(), it) }
+        }.getOrNull()
     }
+
+    suspend fun clear(): Boolean = OfflineStore.deleteFile(file())
 }

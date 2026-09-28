@@ -7,12 +7,22 @@ import android.net.NetworkCapabilities
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Armazenamento local do Offline Android (decisão aprovada por Elias em 28/09/2026: arquivos JSON internos).
@@ -28,6 +38,7 @@ import java.security.MessageDigest
  */
 object OfflineStore {
     private lateinit var root: File
+    private val fileMutexes = ConcurrentHashMap<String, Mutex>()
     private val _lastSnapshotAt = MutableStateFlow<Long?>(null)
 
     /** Momento da última cópia de leitura salva com sucesso (para a faixa "Sem internet"). */
@@ -40,6 +51,16 @@ object OfflineStore {
 
     fun initialize(context: Context) {
         root = File(context.applicationContext.filesDir, "offline")
+    }
+
+    internal fun initializeForTests(filesDir: File) {
+        root = File(filesDir, "offline")
+        _lastSnapshotAt.value = null
+        fileMutexes.clear()
+    }
+
+    /** Cria as pastas e carrega metadados locais fora da thread da interface. */
+    suspend fun prepare() = withContext(Dispatchers.IO) {
         cacheDir().mkdirs()
         pendingDir().mkdirs()
         accessDir().mkdirs()
@@ -52,37 +73,81 @@ object OfflineStore {
 
     private fun safeName(key: String): String = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
 
-    fun writeCache(key: String, text: String) {
+    suspend fun writeCache(key: String, text: String) {
         writeAtomic(File(cacheDir(), safeName(key) + ".json"), text.toByteArray(Charsets.UTF_8))
         _lastSnapshotAt.value = System.currentTimeMillis()
     }
 
-    fun readCache(key: String): String? =
-        File(cacheDir(), safeName(key) + ".json").takeIf { it.isFile }?.readText(Charsets.UTF_8)
+    suspend fun readCache(key: String): String? =
+        readTextFile(File(cacheDir(), safeName(key) + ".json"))
 
-    fun writeCacheBytes(key: String, bytes: ByteArray) {
+    suspend fun writeCacheBytes(key: String, bytes: ByteArray) {
         writeAtomic(File(cacheDir(), "bin-" + sha256(key)), bytes)
     }
 
-    fun readCacheBytes(key: String): ByteArray? =
-        File(cacheDir(), "bin-" + sha256(key)).takeIf { it.isFile }?.readBytes()
+    suspend fun readCacheBytes(key: String): ByteArray? =
+        readBytesFile(File(cacheDir(), "bin-" + sha256(key)))
 
     /** Apaga somente o cache reconstruível. Pendências locais são preservadas. */
-    fun clearCache() {
-        cacheDir().listFiles()?.forEach { it.delete() }
+    suspend fun clearCache() = withContext(Dispatchers.IO) {
+        cacheDir().listFiles()?.forEach { file -> fileMutex(file).withLock { file.delete() } }
         _lastSnapshotAt.value = null
     }
 
-    fun writeAtomic(target: File, bytes: ByteArray) {
-        target.parentFile?.mkdirs()
-        val temp = File(target.parentFile, target.name + ".tmp")
-        temp.outputStream().use { stream ->
-            stream.write(bytes)
-            stream.fd.sync()
+    /**
+     * Sincroniza um temporário único antes de substituir o destino, sem apagar previamente a
+     * versão válida. O substituidor configurável serve somente a testes determinísticos.
+     */
+    suspend fun writeAtomic(
+        target: File,
+        bytes: ByteArray,
+        replace: (File, File) -> Unit = ::replaceTempFile,
+    ) = withContext(Dispatchers.IO) {
+        fileMutex(target).withLock {
+            target.parentFile?.mkdirs()
+            val parent = target.parentFile ?: throw IOException("Pasta local indisponível.")
+            val temp = File.createTempFile("offline-${target.name}-", ".tmp", parent)
+            try {
+                temp.outputStream().use { stream ->
+                    stream.write(bytes)
+                    stream.fd.sync()
+                }
+                currentCoroutineContext().ensureActive()
+                replace(temp, target)
+            } finally {
+                if (temp.exists()) temp.delete()
+            }
         }
-        if (!temp.renameTo(target)) {
-            target.delete()
-            if (!temp.renameTo(target)) throw IOException("Não foi possível gravar ${target.name}.")
+    }
+
+    suspend fun deleteFile(
+        target: File,
+        delete: (File) -> Boolean = { it.delete() },
+    ): Boolean = withContext(Dispatchers.IO) {
+        fileMutex(target).withLock { !target.exists() || delete(target) }
+    }
+
+    suspend fun readTextFile(target: File): String? = withContext(Dispatchers.IO) {
+        fileMutex(target).withLock { target.takeIf { it.isFile }?.readText(Charsets.UTF_8) }
+    }
+
+    suspend fun readBytesFile(target: File): ByteArray? = withContext(Dispatchers.IO) {
+        fileMutex(target).withLock { target.takeIf { it.isFile }?.readBytes() }
+    }
+
+    private fun fileMutex(file: File): Mutex =
+        fileMutexes.computeIfAbsent(file.absoluteFile.toPath().normalize().toString()) { Mutex() }
+
+    private fun replaceTempFile(temp: File, target: File) {
+        try {
+            Files.move(
+                temp.toPath(),
+                target.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
     }
 
@@ -150,12 +215,15 @@ fun isNetworkFailure(error: Throwable): Boolean {
 suspend inline fun <reified T> offlineCachedList(key: String, crossinline fetch: suspend () -> List<T>): List<T> {
     return try {
         val rows = fetch()
-        runCatching { OfflineStore.writeCache(key, OfflineStore.json.encodeToString(rows)) }
+        runCatching {
+            val encoded = withContext(Dispatchers.IO) { OfflineStore.json.encodeToString(rows) }
+            OfflineStore.writeCache(key, encoded)
+        }
         rows
     } catch (error: Throwable) {
         if (error is kotlinx.coroutines.CancellationException) throw error
         if (!isNetworkFailure(error)) throw error
         val cached = OfflineStore.readCache(key) ?: throw OfflineUnavailableException()
-        OfflineStore.json.decodeFromString<List<T>>(cached)
+        withContext(Dispatchers.IO) { OfflineStore.json.decodeFromString<List<T>>(cached) }
     }
 }

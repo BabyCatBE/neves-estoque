@@ -148,25 +148,33 @@ class ProductConferenceViewModel(
 
         if (!com.babycatbe.nevesestoque.data.offline.ConnectivityMonitor.isOnline) {
             // Sem internet: guarda como pendência; a revisão de consumo acontece na confirmação online.
-            val product = _uiState.value.product
-            val metadata = com.babycatbe.nevesestoque.feature.offline.currentPendingMetadata()
-            val operation = metadata?.let {
-                com.babycatbe.nevesestoque.feature.offline.buildPendingProductConference(
-                    input = input,
-                    productLabel = product?.name ?: "Produto",
-                    unit = product?.unit.orEmpty(),
-                    metadata = it,
-                )
-            }
-            val saved = operation != null &&
-                runCatching { com.babycatbe.nevesestoque.feature.offline.PendingStore.save(operation) }.isSuccess
-            _uiState.value = if (saved) {
-                _uiState.value.copy(
-                    fieldErrors = ProductConferenceFormErrors(),
-                    savedMessage = com.babycatbe.nevesestoque.feature.offline.PENDING_SAVED_MESSAGE,
-                )
-            } else {
-                _uiState.value.copy(errorMessage = "Não foi possível guardar a pendência neste aparelho.")
+            _uiState.value = _uiState.value.copy(saving = true, errorMessage = null)
+            viewModelScope.launch {
+                val product = _uiState.value.product
+                val metadata = com.babycatbe.nevesestoque.feature.offline.currentPendingMetadata()
+                val operation = metadata?.let {
+                    com.babycatbe.nevesestoque.feature.offline.buildPendingProductConference(
+                        input = input,
+                        productLabel = product?.name ?: "Produto",
+                        unit = product?.unit.orEmpty(),
+                        metadata = it,
+                    )
+                }
+                val result = operation?.let { com.babycatbe.nevesestoque.feature.offline.PendingStore.save(it) }
+                _uiState.value = when (result) {
+                    com.babycatbe.nevesestoque.feature.offline.PendingMutationResult.Success ->
+                        _uiState.value.copy(
+                            saving = false,
+                            fieldErrors = ProductConferenceFormErrors(),
+                            savedMessage = com.babycatbe.nevesestoque.feature.offline.PENDING_SAVED_MESSAGE,
+                        )
+                    is com.babycatbe.nevesestoque.feature.offline.PendingMutationResult.Failure ->
+                        _uiState.value.copy(saving = false, errorMessage = result.userMessage)
+                    null -> _uiState.value.copy(
+                        saving = false,
+                        errorMessage = "Este dispositivo ainda não está pronto para registrar Conferências.",
+                    )
+                }
             }
             return
         }

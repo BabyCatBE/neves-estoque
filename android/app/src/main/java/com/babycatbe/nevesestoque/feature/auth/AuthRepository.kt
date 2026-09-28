@@ -169,7 +169,7 @@ class AuthRepository(private val client: SupabaseClient?) {
         }
     }
 
-    private fun enterOfflineIfKnown(authUserId: String): Boolean {
+    private suspend fun enterOfflineIfKnown(authUserId: String): Boolean {
         val record = OfflineAccessStore.load() ?: return false
         if (record.authUserId != authUserId) return false
         if (record.deviceKey != DeviceIdentityStore.getOrCreateDeviceKey()) return false

@@ -222,8 +222,7 @@ class PendingSyncRepository {
                 PendingKind.CategoryConference -> conferences.createCategoryConference(operation.toCategoryConferenceInput(deviceId))
                 PendingKind.ProductConference -> productConferences.createProductConference(operation.toProductConferenceInput(deviceId))
             }
-            PendingStore.delete(operation.localId)
-            PendingSendResult.Sent(sentMessage(operation))
+            sentResultAfterLocalDelete(operation)
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
             val alreadySaved = runCatching {
@@ -234,8 +233,7 @@ class PendingSyncRepository {
                 }
             }.getOrDefault(false)
             if (alreadySaved) {
-                PendingStore.delete(operation.localId)
-                PendingSendResult.Sent(sentMessage(operation))
+                sentResultAfterLocalDelete(operation)
             } else {
                 val reason = if (operation.kind == PendingKind.Entry) entryErrorMessage(error) else conferenceModuleErrorMessage(error)
                 PendingSendResult.Failed("$reason A pendência continua guardada neste aparelho.")
@@ -245,4 +243,13 @@ class PendingSyncRepository {
 
     private fun sentMessage(operation: PendingOperation): String =
         "${operation.kindLabel} “${operation.summaryTitle}” enviada ao estoque oficial. A pendência local foi removida."
+
+    private suspend fun sentResultAfterLocalDelete(operation: PendingOperation): PendingSendResult =
+        when (PendingStore.delete(operation.localId)) {
+            PendingMutationResult.Success -> PendingSendResult.Sent(sentMessage(operation))
+            is PendingMutationResult.Failure -> PendingSendResult.Sent(
+                "${operation.kindLabel} “${operation.summaryTitle}” foi enviada ao estoque oficial, " +
+                    "mas a cópia local não pôde ser removida. Tente excluí-la novamente em Pendências locais."
+            )
+        }
 }

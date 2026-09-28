@@ -59,10 +59,18 @@ fun PendingListRoute(
     onDismissNotice: () -> Unit = {},
 ) {
     val pending by PendingStore.pending.collectAsState()
+    val problems by PendingStore.problems.collectAsState()
+    val loaded by PendingStore.loaded.collectAsState()
     val online by ConnectivityMonitor.online.collectAsState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     var toDelete by remember { mutableStateOf<PendingOperation?>(null) }
     var toConfirm by remember { mutableStateOf<PendingOperation?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
+    var deleting by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(loaded) {
+        if (!loaded) PendingStore.reload()
+    }
 
     PendingScaffold(title = "Pendências locais", onBack = onBack) {
         item {
@@ -85,7 +93,17 @@ fun PendingListRoute(
         if (!online) {
             item { Warning("Sem internet: o envio fica disponível quando a conexão voltar. Editar e excluir funcionam normalmente.") }
         }
-        if (pending.isEmpty()) {
+        if (problems.isNotEmpty()) {
+            item {
+                Warning(
+                    if (problems.size == 1) problems.first().userMessage
+                    else "Existem ${problems.size} pendências locais com problema de leitura. Os arquivos foram preservados neste aparelho."
+                )
+            }
+        }
+        if (!loaded) {
+            item { Text("Carregando pendências locais…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else if (pending.isEmpty() && problems.isEmpty()) {
             item {
                 Card {
                     Text(
@@ -130,13 +148,24 @@ fun PendingListRoute(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    PendingStore.delete(operation.localId)
-                    toDelete = null
-                    notice = "Pendência excluída deste aparelho."
-                }) { Text("Excluir pendência", color = MaterialTheme.colorScheme.error) }
+                TextButton(
+                    onClick = {
+                        deleting = true
+                        scope.launch {
+                            when (val result = PendingStore.delete(operation.localId)) {
+                                PendingMutationResult.Success -> {
+                                    toDelete = null
+                                    notice = "Pendência excluída deste aparelho."
+                                }
+                                is PendingMutationResult.Failure -> notice = result.userMessage
+                            }
+                            deleting = false
+                        }
+                    },
+                    enabled = !deleting,
+                ) { Text(if (deleting) "Excluindo…" else "Excluir pendência", color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Manter pendente") } },
+            dismissButton = { TextButton(onClick = { toDelete = null }, enabled = !deleting) { Text("Manter pendente") } },
         )
     }
 
@@ -150,7 +179,21 @@ fun PendingListRoute(
 
 @Composable
 fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> Unit) {
-    val operation = remember(localId) { PendingStore.find(localId) }
+    val pending by PendingStore.pending.collectAsState()
+    val loaded by PendingStore.loaded.collectAsState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val operation = pending.firstOrNull { it.localId == localId }
+
+    androidx.compose.runtime.LaunchedEffect(localId, loaded) {
+        if (!loaded) PendingStore.reload()
+    }
+
+    if (!loaded) {
+        PendingScaffold(title = "Editar pendência", onBack = onBack) {
+            item { Text("Carregando pendência…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        return
+    }
     if (operation == null) {
         PendingScaffold(title = "Editar pendência", onBack = onBack) {
             item { Warning("Esta pendência não existe mais neste aparelho.") }
@@ -158,8 +201,9 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
         return
     }
 
-    var draft by remember(localId) { mutableStateOf(initialEditDraft(operation)) }
+    var draft by remember(localId, operation.updatedAt) { mutableStateOf(initialEditDraft(operation)) }
     var errors by remember { mutableStateOf<List<String>>(emptyList()) }
+    var saving by remember { mutableStateOf(false) }
 
     PendingScaffold(title = "Editar pendência", onBack = onBack) {
         item {
@@ -193,14 +237,20 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
                     val updated = result.operation
                     if (updated == null) {
                         errors = result.errors
-                    } else if (runCatching { PendingStore.save(updated) }.isSuccess) {
-                        onSaved("Pendência atualizada neste aparelho.")
                     } else {
-                        errors = listOf("Não foi possível salvar a edição neste aparelho.")
+                        saving = true
+                        scope.launch {
+                            when (val saveResult = PendingStore.save(updated)) {
+                                PendingMutationResult.Success -> onSaved("Pendência atualizada neste aparelho.")
+                                is PendingMutationResult.Failure -> errors = listOf(saveResult.userMessage)
+                            }
+                            saving = false
+                        }
                     }
                 },
+                enabled = !saving,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Salvar edição") }
+            ) { Text(if (saving) "Salvando…" else "Salvar edição") }
         }
     }
 }
