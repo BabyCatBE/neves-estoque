@@ -106,3 +106,14 @@ O mini-checkpoint 11.3 registrou que a integração poderia ser fast-forward enq
 - trabalho funcional posterior em branch isolada ainda não integrado.
 
 **Regra:** não forçar nem reescrever histórico para recuperar um fast-forward. Preservar as duas linhas de trabalho e definir o método de integração somente quando Elias autorizar a integração.
+
+
+## Divergência intencional com o sistema legado — regra do Estoque Atual
+
+O Contexto Mestre e a planilha legados registram como regra do sistema antigo: **a última Conferência física, sozinha, é a autoridade do Estoque Atual**, e Entradas não devem simplesmente somar ao saldo exibido.
+
+O aplicativo novo possui uma decisão posterior e aprovada no Contexto Mestre atual: **última Conferência Física válida + Entradas posteriores = Estoque Atual do sistema**.
+
+**Interpretação correta:** não é inconsistência a ser “corrigida” automaticamente. A planilha legado continua sendo autoridade para o comportamento do sistema antigo e para dados/migração; o Contexto Mestre atual é autoridade para a regra funcional vigente do aplicativo novo.
+
+**Regra:** não alterar o legado para fazê-lo combinar com o aplicativo e não ressuscitar a regra antiga dentro do app sem nova decisão explícita.
