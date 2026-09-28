@@ -42,4 +42,33 @@ jobs:
           gradle-version: "9.5.0"
 
       - name: Lint, unit tests and debug APK build
-        run: gradle -p android --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle -p android --no-daemon --continue :app:lintDebug :app:testDebugUnitTest :app:assembleDebug 2>&1 | tee android-build.log
+
+      # Publica os erros como anotações da execução, legíveis pela API do GitHub
+      # mesmo quando o log completo não está acessível.
+      - name: Publish build failure details
+        if: failure()
+        shell: bash
+        run: |
+          grep -E '^e: |error:|FAILED|AssertionError|ComparisonFailure|expected:<|Lint found|What went wrong' android-build.log \
+            | grep -v '^> Task' | head -40 | while IFS= read -r line; do
+              echo "::error title=Android build::${line//$'\r'/}"
+            done
+          for report in android/app/build/test-results/testDebugUnitTest/*.xml; do
+            [ -f "$report" ] || continue
+            python3 - "$report" <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          for case in ET.parse(sys.argv[1]).getroot().iter("testcase"):
+              for failure in list(case.findall("failure")) + list(case.findall("error")):
+                  message = (failure.get("message") or failure.text or "").strip().splitlines()[0][:400]
+                  print(f"::error title=Test {case.get('classname')}.{case.get('name')}::{message}")
+          PY
+          done
+          if [ -f android/app/build/reports/lint-results-debug.txt ]; then
+            grep -E 'Error:' android/app/build/reports/lint-results-debug.txt | head -20 | while IFS= read -r line; do
+              echo "::error title=Android lint::$line"
+            done
+          fi
