@@ -54,6 +54,7 @@ import com.babycatbe.nevesestoque.feature.purchases.PurchaseListRoute
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseMode
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseSupplierSelectRoute
 import com.babycatbe.nevesestoque.feature.purchases.PurchasesHubScreen
+import com.babycatbe.nevesestoque.feature.purchases.PurchasesViewModel
 import com.babycatbe.nevesestoque.feature.reports.ReportsRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SuppliersRoute
 import com.babycatbe.nevesestoque.feature.trash.TrashScreen
@@ -640,7 +641,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 mode = PurchaseMode.Supplier,
                 targetId = entry.arguments?.getString("supplierId"),
                 onBack = { navController.popBackStack() },
-                vm = if (selectionEntry != null) viewModel(selectionEntry) else viewModel(),
+                vm = if (selectionEntry != null) viewModel<PurchasesViewModel>(selectionEntry) else viewModel<PurchasesViewModel>(),
             )
         }
 
@@ -668,7 +669,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 mode = PurchaseMode.Category,
                 targetId = entry.arguments?.getString("categoryId"),
                 onBack = { navController.popBackStack() },
-                vm = if (selectionEntry != null) viewModel(selectionEntry) else viewModel(),
+                vm = if (selectionEntry != null) viewModel<PurchasesViewModel>(selectionEntry) else viewModel<PurchasesViewModel>(),
             )
         }
 

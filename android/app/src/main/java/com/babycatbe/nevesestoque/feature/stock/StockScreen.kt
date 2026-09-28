@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.stock
 
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.toMutableStateList
@@ -82,7 +83,10 @@ private fun StockScreen(
     // Grupos abertos ficam na tela (não em cada item da lista): não fecham ao rolar
     // para fora da área visível nem ao voltar de um Produto.
     val expandedGroups = rememberSaveable(
-        saver = listSaver(save = { it.toList() }, restore = { it.toMutableStateList() }),
+        saver = listSaver<SnapshotStateList<String>, String>(
+            save = { it.toList() },
+            restore = { it.toMutableStateList() },
+        ),
     ) { mutableStateListOf<String>() }
 
     val data = state.data

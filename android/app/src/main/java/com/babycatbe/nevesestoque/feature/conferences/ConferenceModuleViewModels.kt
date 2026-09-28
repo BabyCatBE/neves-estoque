@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.async
 import com.babycatbe.nevesestoque.ui.load.LatestLoad
 import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.lifecycle.ViewModel
@@ -347,8 +349,11 @@ class CategoryConferenceHistoryViewModel(private val categoryId: String) : ViewM
                 errorMessage = null,
             )
             try {
-                val setup = repository.loadCategorySetup(categoryId)
-                val history = repository.loadCategoryHistory(categoryId)
+                val (setup, history) = coroutineScope {
+                    val setupAsync = async { repository.loadCategorySetup(categoryId) }
+                    val historyAsync = async { repository.loadCategoryHistory(categoryId) }
+                    setupAsync.await() to historyAsync.await()
+                }
                 _uiState.value = CategoryConferenceHistoryUiState(
                     loading = false,
                     setup = setup,
@@ -400,7 +405,7 @@ class ConferenceDetailViewModel(private val conferenceId: String) : ViewModel() 
                 errorMessage = null,
                 actionError = null,
             )
-            loadCatching {{ repository.loadConferenceDetails(conferenceId) }
+            loadCatching { repository.loadConferenceDetails(conferenceId) }
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         loading = false,
