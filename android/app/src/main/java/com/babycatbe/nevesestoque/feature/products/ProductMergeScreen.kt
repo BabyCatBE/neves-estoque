@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,6 +96,10 @@ private fun ProductMergeScreen(
     val candidate = state.candidate
     val pair = if (source != null && candidate != null) determineMergePair(source, candidate) else null
     val catalog = state.catalog
+
+    BackHandler(enabled = state.merging) {
+        // A mescla é transacional e não deve ser abandonada enquanto o backend responde.
+    }
 
     LaunchedEffect(candidate?.id) {
         val activePair = pair
