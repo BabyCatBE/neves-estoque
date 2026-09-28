@@ -124,3 +124,14 @@ Uma tarefa técnica só pode ser tratada como concluída quando:
 4. nenhuma divergência relevante ficou escondida;
 5. documentação aplicável foi sincronizada;
 6. o próximo passo ficou claro.
+
+
+## 13. Trabalho com múltiplas IAs e branches paralelas
+
+- é normal existir trabalho novo em branch isolada depois do último checkpoint integrado;
+- separar sempre **último ponto funcional integrado/comprovado** de **trabalho atual ainda não integrado**;
+- não assumir que o HEAD mais novo invalida o checkpoint seguro anterior;
+- antes de escrever ou integrar, verificar se outra IA avançou uma branch ou atualizou Contexto Mestre/Notion;
+- se a branch operacional avançar por documentação enquanto outra branch funcional estiver em andamento, não forçar fast-forward nem reescrever histórico;
+- preservar as duas linhas de trabalho e verificar o método seguro de integração no momento apropriado;
+- integração de trabalho funcional isolado que dependa de decisão/autoridade de Elias não deve ser antecipada apenas para “sincronizar” documentação.
