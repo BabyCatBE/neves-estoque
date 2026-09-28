@@ -109,6 +109,35 @@ class SupplierValidationTest {
     }
 
     @Test
+    fun updateReconciliationRequiresExactPersistedState() {
+        val supplier = SupplierDetails(
+            id = "1",
+            name = "João",
+            company = "Empresa X",
+            phone = "75999990000",
+            observation = "Entrega cedo",
+            purchaseFrequencyDays = 7,
+            preferredOrderWeekday = 2,
+            averageDeliveryDays = 1,
+            safetyMarginDays = 2,
+            isPending = false,
+        )
+        val input = SupplierMutationInput(
+            name = "João",
+            company = "Empresa X",
+            phone = "75999990000",
+            observation = "Entrega cedo",
+            purchaseFrequencyDays = 7,
+            preferredOrderWeekday = 2,
+            averageDeliveryDays = 1,
+            safetyMarginDays = 2,
+        )
+
+        assertTrue(supplierMatchesInput(supplier, input))
+        assertFalse(supplierMatchesInput(supplier, input.copy(safetyMarginDays = 3)))
+    }
+
+    @Test
     fun weekdayLabelsMatchOperationalConvention() {
         assertEquals("Segunda-feira", supplierWeekdayLabel(1))
         assertEquals("Domingo", supplierWeekdayLabel(7))

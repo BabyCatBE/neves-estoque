@@ -421,7 +421,7 @@ private fun SupplierDetailScreen(
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Lixeira", fontWeight = FontWeight.Bold)
                         Text(
-                            "Excluir remove o Fornecedor do cadastro ativo, preserva o histórico de Entradas e mantém restauração por 7 dias. A Lixeira Android completa será implementada no bloco próprio.",
+                            "Excluir remove o Fornecedor do cadastro ativo, preserva o histórico de Entradas e mantém restauração por 7 dias na Lixeira do sistema.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 6.dp),
@@ -667,7 +667,7 @@ private fun SupplierFormScreen(
                             ) {
                                 Text(
                                     preferredOrderWeekday.toIntOrNull()
-                                        ?.let(::supplierWeekdayLabel)
+                                        ?.let { supplierWeekdayLabel(it) }
                                         ?: "Não informado"
                                 )
                             }

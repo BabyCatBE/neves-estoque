@@ -73,6 +73,12 @@ class SuppliersRepository {
         ) { attachRegisteredDevice() }
     }
 
+    suspend fun isSupplierUpdateApplied(
+        supplierId: String,
+        input: SupplierMutationInput,
+    ): Boolean =
+        supplierMatchesInput(loadSupplier(supplierId), input)
+
     suspend fun softDeleteSupplier(supplierId: String) {
         client().postgrest.rpc(
             function = "soft_delete_supplier",

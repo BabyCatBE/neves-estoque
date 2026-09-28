@@ -231,10 +231,33 @@ class SupplierFormViewModel(
                 )
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
-                _uiState.value = _uiState.value.copy(
-                    saving = false,
-                    errorMessage = supplierErrorMessage(error),
-                )
+
+                val updateReconciled = if (
+                    supplierId != null &&
+                    shouldReconcileSupplierUpdate(error)
+                ) {
+                    try {
+                        repository.isSupplierUpdateApplied(supplierId, validated.input)
+                    } catch (reloadError: Throwable) {
+                        if (reloadError is CancellationException) throw reloadError
+                        false
+                    }
+                } else {
+                    false
+                }
+
+                _uiState.value = if (updateReconciled) {
+                    _uiState.value.copy(
+                        saving = false,
+                        savedMessage = "Fornecedor atualizado com sucesso.",
+                        errorMessage = null,
+                    )
+                } else {
+                    _uiState.value.copy(
+                        saving = false,
+                        errorMessage = supplierErrorMessage(error),
+                    )
+                }
             }
         }
     }

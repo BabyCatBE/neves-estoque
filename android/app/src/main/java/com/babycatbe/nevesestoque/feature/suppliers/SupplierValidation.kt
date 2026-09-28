@@ -193,6 +193,23 @@ fun matchesSupplierSearch(supplier: SupplierDetails, search: String): Boolean {
     ).any { normalizeSupplierSearchText(it).contains(term) }
 }
 
+fun supplierMatchesInput(
+    supplier: SupplierDetails,
+    input: SupplierMutationInput,
+): Boolean =
+    supplier.name.trim() == input.name &&
+        supplier.company?.trim() == input.company &&
+        supplierPhoneDigits(supplier.phone) == input.phone &&
+        supplier.observation?.trim() == input.observation &&
+        supplier.purchaseFrequencyDays == input.purchaseFrequencyDays &&
+        supplier.preferredOrderWeekday == input.preferredOrderWeekday &&
+        supplier.averageDeliveryDays == input.averageDeliveryDays &&
+        supplier.safetyMarginDays == input.safetyMarginDays
+
+fun shouldReconcileSupplierUpdate(error: Throwable): Boolean =
+    error !is PostgrestRestException &&
+        !error.message.orEmpty().contains("Supabase não está configurado")
+
 fun supplierErrorMessage(error: Throwable): String {
     val message = error.message.orEmpty()
     val code = (error as? PostgrestRestException)?.code
