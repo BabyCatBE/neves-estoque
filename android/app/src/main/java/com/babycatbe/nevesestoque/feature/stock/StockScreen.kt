@@ -49,6 +49,7 @@ import java.util.Locale
 @Composable
 fun StockRoute(
     onBack: () -> Unit,
+    onProductClick: (String) -> Unit,
     stockViewModel: StockViewModel = viewModel(),
 ) {
     val state by stockViewModel.uiState.collectAsState()
@@ -56,6 +57,7 @@ fun StockRoute(
         state = state,
         onBack = onBack,
         onRefresh = stockViewModel::refresh,
+        onProductClick = onProductClick,
     )
 }
 
@@ -64,6 +66,7 @@ private fun StockScreen(
     state: StockUiState,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
+    onProductClick: (String) -> Unit,
 ) {
     var search by rememberSaveable { mutableStateOf("") }
     var viewMode by rememberSaveable { mutableStateOf(StockViewMode.Category) }
@@ -265,7 +268,7 @@ private fun StockScreen(
                             item { EmptyStock(search) }
                         } else {
                             items(categoryGroups, key = { it.id }) { group ->
-                                StockGroupCard(group, showValues, search.isNotBlank())
+                                StockGroupCard(group, showValues, search.isNotBlank(), onProductClick)
                             }
                         }
                     }
@@ -275,7 +278,7 @@ private fun StockScreen(
                             item { EmptyStock(search) }
                         } else {
                             items(supplierGroups, key = { it.id }) { group ->
-                                StockGroupCard(group, showValues, search.isNotBlank())
+                                StockGroupCard(group, showValues, search.isNotBlank(), onProductClick)
                             }
                         }
                     }
@@ -295,7 +298,7 @@ private fun StockScreen(
                                                 style = MaterialTheme.typography.bodySmall,
                                             )
                                         }
-                                        alphabetical.forEach { StockItemRow(it, showValues) }
+                                        alphabetical.forEach { StockItemRow(it, showValues, onProductClick) }
                                     }
                                 }
                             }
@@ -314,6 +317,7 @@ private fun StockGroupCard(
     group: StockGroup,
     showValues: Boolean,
     forceOpen: Boolean,
+    onProductClick: (String) -> Unit,
 ) {
     val expandedState = remember { mutableStateMapOf<String, Boolean>() }
     val expanded = forceOpen || expandedState[group.id] == true
@@ -355,7 +359,7 @@ private fun StockGroupCard(
 
             AnimatedVisibility(visible = expanded) {
                 Column {
-                    group.items.forEach { StockItemRow(it, showValues) }
+                    group.items.forEach { StockItemRow(it, showValues, onProductClick) }
                 }
             }
         }
@@ -363,10 +367,15 @@ private fun StockGroupCard(
 }
 
 @Composable
-private fun StockItemRow(item: CurrentStockRow, showValues: Boolean) {
+private fun StockItemRow(
+    item: CurrentStockRow,
+    showValues: Boolean,
+    onProductClick: (String) -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onProductClick(item.productId) }
             .padding(horizontal = 18.dp, vertical = 12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
