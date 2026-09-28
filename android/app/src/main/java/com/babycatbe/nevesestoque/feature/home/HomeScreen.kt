@@ -21,10 +21,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,19 +35,16 @@ import com.babycatbe.nevesestoque.BuildConfig
 
 @Composable
 fun HomeScreen(
-    snackbarHostState: SnackbarHostState,
+    displayName: String?,
+    roleName: String?,
+    onSignOut: () -> Unit,
     onModuleClick: (HomeModule) -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = { NevesHeader() },
+        topBar = { NevesHeader(displayName, roleName, onSignOut) },
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(16.dp),
@@ -57,110 +53,74 @@ fun HomeScreen(
                 modifier = Modifier.weight(1f),
             ) {
                 items(homeModules) { module ->
-                    ModuleCard(
-                        module = module,
-                        onClick = { onModuleClick(module) },
-                    )
+                    ModuleCard(module) { onModuleClick(module) }
                 }
             }
-
             Text(
                 text = "Android ${BuildConfig.ANDROID_VERSION} • Sistema ${BuildConfig.SYSTEM_VERSION}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
             )
         }
     }
 }
 
 @Composable
-private fun NevesHeader() {
-    Surface(
-        tonalElevation = 1.dp,
-        shadowElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+private fun NevesHeader(displayName: String?, roleName: String?, onSignOut: () -> Unit) {
+    Surface(tonalElevation = 1.dp, shadowElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
         ) {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(34.dp)
-                    .shadow(1.dp, CircleShape),
+                modifier = Modifier.size(34.dp).shadow(1.dp, CircleShape),
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxSize()) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "N",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Black,
-                        )
+                        Text("N", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Text(
-                text = "Controle de Estoque",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Controle de Estoque", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                if (!displayName.isNullOrBlank()) {
+                    Text(
+                        listOfNotNull(displayName, roleName?.takeIf { it.isNotBlank() }).joinToString(" • "),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+            TextButton(onClick = onSignOut) { Text("Sair") }
         }
     }
 }
 
 @Composable
-private fun ModuleCard(
-    module: HomeModule,
-    onClick: () -> Unit,
-) {
+private fun ModuleCard(module: HomeModule, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1.08f),
+        modifier = Modifier.fillMaxWidth().aspectRatio(1.08f),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(56.dp),
-            ) {
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(56.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = module.mark,
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Text(module.mark, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             }
-
             Text(
-                text = module.title,
+                module.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,

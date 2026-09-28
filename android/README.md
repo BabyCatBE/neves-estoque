@@ -1,27 +1,39 @@
 # Neves Estoque — Android
 
-Base nativa do Neves Estoque, construída em Kotlin + Jetpack Compose dentro do mesmo repositório da Web.
+Aplicativo Android nativo do Neves Estoque, no mesmo repositório da Web.
 
-## Estado deste bloco
+## Estado atual
 
-- Base Android incremental criada.
-- applicationId inicial e estável: `com.babycatbe.nevesestoque`.
-- Android: `0.1.0-alpha01`.
-- Sistema Neves Estoque de referência: `0.26.0`.
-- compileSdk 37, targetSdk 36, minSdk 26.
-- AGP 9.3.3, Gradle 9.5.0, JDK 17.
-- Compose BOM 2026.09.00.
-- Home estrutural com os seis módulos aprovados.
-- Ainda não é o primeiro APK de distribuição: os módulos ainda precisam receber paridade funcional e a assinatura estável precisa ser configurada fora do repositório.
+- applicationId: `com.babycatbe.nevesestoque`.
+- Android: `0.2.0-alpha01`.
+- Sistema: `0.26.0`.
+- Kotlin + Jetpack Compose.
+- Supabase Kotlin 3.8.0 + Ktor Android 3.5.1.
+- Autenticação nativa preparada para usuário/senha e Google.
+- Sessão persistente e auto-refresh pelo Auth do Supabase.
+- Android reutiliza `claim_app_access`, `app_users` e `register_device` da Web.
+- `x-device-id` é adicionado após o registro do aparelho.
+- Home navega de verdade para os seis módulos; as telas dos módulos ainda são placeholders.
+- Testes manuais Offline continuam deferidos.
 
-## Build de validação
+## Configuração
 
-A CI usa Gradle 9.5.0 diretamente, sem depender de wrapper binário versionado nesta primeira etapa:
+Crie `android/local.properties` a partir de `android/local.properties.example` ou forneça `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY` por Gradle/environment no build.
+
+Nenhuma chave, senha, token, service role ou secret deve ser commitado.
+
+## Google OAuth
+
+Callback Android previsto:
+
+`nevesestoque://auth`
+
+Ele precisa estar permitido nas Redirect URLs do Supabase Auth antes do teste real do Google.
+
+## Validação
 
 ```bash
 gradle -p android --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 ```
 
-## Assinatura
-
-APK de distribuição deve manter o mesmo applicationId e a mesma assinatura entre versões. Chaves e senhas não devem ser commitadas. O fluxo de release assinado será preparado com secrets apropriados antes do primeiro APK distribuído.
+O APK de distribuição ainda depende de configuração pública de build e assinatura estável fora do repositório.

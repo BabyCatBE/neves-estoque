@@ -1,0 +1,4 @@
+# Copie para android/local.properties no desenvolvimento local.
+# Não commite valores de configuração.
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_SUBSTITUA_AQUI
