@@ -44,6 +44,7 @@ export async function listRestorableTrashItems(): Promise<TrashItem[]> {
       .select("id,scope_type,category_id,scope_product_id,effective_at,physical_responsible,deleted_at,restore_until")
       .not("deleted_at", "is", null)
       .gt("restore_until", now)
+      .is("permanently_deleted_at", null)
   ]);
 
   if (productsResult.error) throw productsResult.error;
