@@ -82,3 +82,27 @@ Os nomes lógicos correspondem. O Contexto Mestre já registra essa divergência
 README e documentação auxiliar podem ficar atrás do código. Em 28/09/2026, antes de criar estes arquivos, `README.md` e `android/README.md` continham snapshots antigos enquanto Contexto Mestre, GitHub e Supabase já estavam muito à frente.
 
 **Regra:** nunca usar uma única documentação auxiliar como prova de estado; cruzar com código, CI e banco e atualizar docs quando a divergência puder induzir o próximo agente ao erro.
+
+
+## 2026-09-28 — sub-bloco 11.3 em branch isolada
+
+**Estado:** `IMPLEMENTADO / CI APROVADA / AUDITORIA INDEPENDENTE APROVADA`, porém **NÃO INTEGRADO** na branch operacional.
+
+**Branch/HEAD:** `feat/android-11-3-history-pagination` em `9aa118c16e5f6f91d1a0bd6482b5f5e892792c29`.
+
+**Decisão técnica implementada nessa branch:** leituras históricas usadas por Compras passam a usar paginação por cursor/chave primária `id`, terminando somente com página vazia e falhando sem devolver resultado parcial quando a leitura não puder ser garantida.
+
+**Validação:** CI Web run `36473536301` SUCCESS e Android CI run `36472525419` SUCCESS. Sem migration e sem alteração no Supabase.
+
+**Ponto separado:** Relatórios não foram alterados no 11.3; um risco latente de paginação foi identificado e deve ser tratado conscientemente em etapa posterior.
+
+## 2026-09-28 — concorrência entre trabalho funcional e documentação
+
+O mini-checkpoint 11.3 registrou que a integração poderia ser fast-forward enquanto `fix/audit-device-id` permanecesse em `10ec3ab...`. Em seguida, a implantação dos seis arquivos de contexto adicionou commits exclusivamente documentais à branch operacional.
+
+**Aprendizado:** em trabalho com múltiplas IAs/branches, distinguir sempre:
+- último HEAD funcional integrado e comprovado;
+- HEAD atual da branch operacional, que pode conter apenas documentação;
+- trabalho funcional posterior em branch isolada ainda não integrado.
+
+**Regra:** não forçar nem reescrever histórico para recuperar um fast-forward. Preservar as duas linhas de trabalho e definir o método de integração somente quando Elias autorizar a integração.
