@@ -169,6 +169,15 @@ private fun ProductMergeScreen(
                     )
                 }
             }
+            state.actionError?.let {
+                Card {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    )
+                }
+            }
 
             if (!state.loading && state.errorMessage == null && source != null && catalog != null) {
                 ProductMergeIdentityCard(
@@ -440,8 +449,6 @@ private fun ProductMergeScreen(
                             )
 
                             formError?.let { MergeErrorText(it) }
-                            state.actionError?.let { MergeErrorText(it) }
-
                             Button(
                                 onClick = {
                                     if (validate() != null) preview = true
@@ -454,7 +461,15 @@ private fun ProductMergeScreen(
                         }
                     }
                 } else {
-                    val draft = validate()
+                    val previewDraft = validateProductMergeDraft(
+                        pair = pair,
+                        finalName = finalName,
+                        finalCategoryId = finalCategoryId,
+                        finalUnit = finalUnit,
+                        survivorEquivalentQuantity = survivorEquivalentQuantity,
+                        absorbedEquivalentQuantity = absorbedEquivalentQuantity,
+                        initialPriceSource = priceSource(),
+                    ).draft
                     Card {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(
@@ -482,12 +497,12 @@ private fun ProductMergeScreen(
                                 pair.survivor.name + " · cadastro mais antigo",
                             )
 
-                            if (pair.survivor.unit != pair.absorbed.unit && draft != null) {
+                            if (pair.survivor.unit != pair.absorbed.unit && previewDraft != null) {
                                 Text(
                                     "Equivalência: " +
-                                        formatMergeDecimal(draft.survivorEquivalentQuantity ?: 0.0) +
+                                        formatMergeDecimal(previewDraft.survivorEquivalentQuantity ?: 0.0) +
                                         " " + pair.survivor.unit + " = " +
-                                        formatMergeDecimal(draft.absorbedEquivalentQuantity ?: 0.0) +
+                                        formatMergeDecimal(previewDraft.absorbedEquivalentQuantity ?: 0.0) +
                                         " " + pair.absorbed.unit +
                                         ". Todo o histórico será convertido para " + finalUnit + ".",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -509,8 +524,6 @@ private fun ProductMergeScreen(
                             )
 
                             formError?.let { MergeErrorText(it) }
-                            state.actionError?.let { MergeErrorText(it) }
-
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
