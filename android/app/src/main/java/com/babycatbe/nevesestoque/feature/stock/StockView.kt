@@ -6,7 +6,7 @@ import java.util.Locale
 
 private val combiningMarks = Regex("\\p{Mn}+")
 private val spaces = Regex("\\s+")
-private val ptBr = Locale("pt", "BR")
+private val ptBr = Locale.forLanguageTag("pt-BR")
 
 fun normalizeStockSearch(value: String): String =
     Normalizer.normalize(value, Normalizer.Form.NFD)
