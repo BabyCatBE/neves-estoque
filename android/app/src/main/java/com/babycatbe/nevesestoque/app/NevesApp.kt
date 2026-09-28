@@ -2,8 +2,10 @@ package com.babycatbe.nevesestoque.app
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,14 +25,25 @@ fun NevesApp(authViewModel: AuthViewModel = viewModel()) {
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
 
     NevesTheme {
-        when (authState.status) {
-            AuthStatus.Loading -> LoadingAccessScreen()
-            AuthStatus.Ready -> AuthenticatedApp(authState, authViewModel::signOut)
-            else -> LoginScreen(
-                state = authState,
-                onUsernameLogin = authViewModel::signInWithUsername,
-                onGoogleLogin = authViewModel::signInWithGoogle,
-            )
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .safeDrawingPadding(),
+            ) {
+                when (authState.status) {
+                    AuthStatus.Loading -> LoadingAccessScreen()
+                    AuthStatus.Ready -> AuthenticatedApp(authState, authViewModel::signOut)
+                    else -> LoginScreen(
+                        state = authState,
+                        onUsernameLogin = authViewModel::signInWithUsername,
+                        onGoogleLogin = authViewModel::signInWithGoogle,
+                    )
+                }
+            }
         }
     }
 }
