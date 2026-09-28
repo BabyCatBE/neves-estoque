@@ -49,11 +49,14 @@ data class ProductMergeResult(
 
 @Serializable
 data class ProductMergeRpcResponse(
+    @SerialName("backup_id") val backupId: String,
     @SerialName("survivor_product_id") val survivorProductId: String,
     @SerialName("absorbed_product_id") val absorbedProductId: String,
     @SerialName("entry_items_count") val entryItemsCount: Int = 0,
     @SerialName("conference_items_count") val conferenceItemsCount: Int = 0,
+    @SerialName("scope_conferences_count") val scopeConferencesCount: Int = 0,
     @SerialName("overlap_conference_count") val overlapConferenceCount: Int = 0,
+    @SerialName("stock_requires_conference") val stockRequiresConference: Boolean = true,
 ) {
     fun toResult() = ProductMergeResult(
         survivorProductId = survivorProductId,
