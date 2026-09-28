@@ -1,14 +1,11 @@
 package com.babycatbe.nevesestoque.data.supabase
 
 import com.babycatbe.nevesestoque.BuildConfig
-import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.request.header
 
 object SupabaseProvider {
     val isConfigured: Boolean
@@ -28,11 +25,8 @@ object SupabaseProvider {
                 autoLoadFromStorage = true
                 autoSaveToStorage = true
             }
-            install(Postgrest) { requireValidSession = true }
-            httpConfig {
-                defaultRequest {
-                    DeviceIdentityStore.registeredDeviceId()?.let { header("x-device-id", it) }
-                }
+            install(Postgrest) {
+                requireValidSession = true
             }
         }
     }
