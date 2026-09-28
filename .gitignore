@@ -21,3 +21,10 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Android signing material must stay outside version control.
+*.jks
+*.keystore
+*.p12
+*.pfx
+keystore.properties
