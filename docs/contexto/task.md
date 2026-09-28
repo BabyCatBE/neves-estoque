@@ -6,67 +6,80 @@
 
 `IMPLEMENTAÇÃO INCREMENTAL / TESTES`
 
-## Referência técnica segura
+## Último ponto funcional integrado e comprovado
 
 - branch operacional: `fix/audit-device-id`;
+- último HEAD funcional integrado: `10ec3abfc76185fa75afdc47a3b1cdac8d676433`;
 - Web: `0.26.0`;
 - Android: `0.21.0-alpha01` (versionCode 21);
-- último commit **funcional** seguro antes da implantação destes documentos: `10ec3abfc76185fa75afdc47a3b1cdac8d676433`;
-- Android CI #62: `SUCCESS`;
-- Supabase: `ACTIVE_HEALTHY`, 42 migrations aplicadas no checkpoint 11.2, última `20260927171450_trash_permanent_delete_v1`;
+- Android CI funcional #62: `SUCCESS`;
+- sub-blocos 11.1 e 11.2: concluídos;
 - testes Offline, performance e aparelho: `A VERIFICAR`.
 
-Alterações exclusivamente documentais podem mover o HEAD do repositório sem mudar esse baseline funcional.
+## HEAD atual da branch operacional
 
-## Objetivo atual
+A branch `fix/audit-device-id` avançou após o ponto funcional seguro apenas por documentação:
 
-Continuar o **BLOCO ANDROID 11 DE 13 — EXPERIÊNCIA, FLUIDEZ E PERFORMANCE ANDROID**.
+- HEAD documental atual: `a7478baa559485c7370fcb792f90c6b66167038a`;
+- mudanças desde `10ec3ab...`: seis arquivos em `docs/contexto/` + atualização de `README.md` e `android/README.md`;
+- nenhum código funcional, migration ou dado foi alterado por essa implantação documental.
 
-### Concluído dentro do Bloco 11
+## Trabalho atual posterior ao ponto seguro — 11.3
 
-- **11.1 — Diagnóstico:** CONCLUÍDO como auditoria; sem alteração funcional;
-- **11.2 — Fundação de performance e durabilidade do Offline:** IMPLEMENTADO / CI APROVADA.
+O **SUB-BLOCO 11.3 — Integridade das leituras históricas e paginação** foi implementado e auditado em branch isolada, mas **ainda NÃO está integrado** na branch operacional.
 
-### Próximo trabalho
+- branch isolada: `feat/android-11-3-history-pagination`;
+- HEAD: `9aa118c16e5f6f91d1a0bd6482b5f5e892792c29`;
+- estado: `IMPLEMENTADO / CI APROVADA / AUDITORIA INDEPENDENTE APROVADA`;
+- CI Web final: run `36473536301` — SUCCESS;
+- Android CI final: run `36472525419` — SUCCESS;
+- Supabase: sem alteração e sem migration nova;
+- testes manuais Web/Android: `A VERIFICAR`.
 
-Definir e executar **somente o SUB-BLOCO 11.3**, a partir dos achados ainda abertos do diagnóstico 11.1, sem reabrir a arquitetura Offline já fortalecida.
+### O que o 11.3 fez
 
-## Backlog aberto do diagnóstico para 11.3+
+- corrigiu risco de truncamento silencioso de leituras históricas em Compras;
+- Web e Android passaram, nessa branch isolada, a usar paginação por cursor/chave primária `id`;
+- leitura termina somente quando chega página vazia;
+- falhas intermediárias não devolvem histórico parcial;
+- regra de negócio de Compras foi preservada;
+- Relatórios não foram alterados nesse sub-bloco e permanecem como ponto de atenção separado.
 
-- recargas concorrentes em Alertas/Compras;
-- cargas repetidas e cálculos repetidos em Compras;
-- consultas mais amplas do que o necessário;
-- processamento pesado fora da UI quando aplicável;
-- listas/recomposições e renderização eficiente;
-- estados visuais e mudanças bruscas de layout;
-- animações/transições coerentes e rápidas;
-- feedback háptico quando fizer sentido;
-- validar fluidez, frames, rolagem e resposta a toque em aparelho real.
+## Divergência de branches após a implantação documental
+
+O mini-checkpoint 11.3 foi criado quando `fix/audit-device-id` ainda estava em `10ec3ab...` e registrou que um fast-forward seria possível enquanto isso permanecesse verdadeiro.
+
+Depois disso, a implantação dos arquivos de contexto avançou a branch operacional para `a7478baa...` com commits exclusivamente documentais. Portanto:
+
+- a hipótese de fast-forward direto do 11.3 **não vale mais**;
+- não reescrever histórico nem forçar branch;
+- preservar tanto os commits documentais quanto os três commits funcionais do 11.3;
+- o método exato de integração deve ser verificado no momento da integração;
+- **não integrar o 11.3 sem autorização de Elias**.
+
+## Próximo passo
+
+1. aguardar autorização de Elias para integrar o 11.3 na branch operacional;
+2. no momento da integração, reconciliar as duas linhas de commits sem perder `docs/contexto/` nem o trabalho funcional do 11.3;
+3. rodar novamente as CIs aplicáveis na branch operacional;
+4. só então decidir conscientemente o tratamento do bug latente de paginação de Relatórios e o próximo sub-bloco do Bloco 11.
 
 ## Pendências conhecidas
 
-- **A DEFINIR:** comportamento das pendências Offline ao trocar de usuário no mesmo aparelho; não alterar sem decisão de Elias;
+- **A DEFINIR:** comportamento das pendências Offline ao trocar de usuário no mesmo aparelho;
 - **BUG confirmado Web:** Conferências na Lixeira Web ainda não filtram `permanently_deleted_at`; Android já filtra;
-- testes funcionais Android em aparelho permanecem `A VERIFICAR`;
-- teste manual Offline agrupado permanece `A VERIFICAR`;
+- paginação de Relatórios: problema latente identificado no trabalho do 11.3, fora do escopo daquele sub-bloco; precisa de decisão/execução posterior;
+- testes funcionais Android em aparelho: `A VERIFICAR`;
+- teste manual Offline agrupado: `A VERIFICAR`;
 - preparação/atualização do APK pertence ao Bloco 12, não ao Bloco 11.
 
-## Ordem lógica aprovada
+## Ordem macro aprovada
 
-1. concluir Bloco 11;
+1. concluir Bloco 11 de 13;
 2. Bloco 12 de 13 — atualização/distribuição do APK + acabamentos finais;
 3. Bloco 13 de 13 — fechamento para produção e bateria final;
-4. somente após validação completa e confirmação, realizar a transição para dados reais/go-live.
-
-## Restrições enquanto este estado estiver vigente
-
-- não preparar APK de distribuição ainda;
-- não apagar dados de teste;
-- não iniciar migração real;
-- não mudar a regra de troca de usuário das pendências;
-- não tratar CI como teste funcional em aparelho;
-- não corrigir a pendência Web da Lixeira dentro de um bloco Android sem decisão de escopo.
+4. somente após validação completa e confirmação, realizar transição para dados reais/go-live.
 
 ## Critério para atualizar este arquivo
 
-Atualizar quando mudar fase, objetivo, prioridade, próxima tarefa, bloqueio, pendência operacional ou conclusão relevante. Histórico detalhado deve ficar no Contexto Mestre/checkpoints; decisões duradouras ficam em `memory.md`.
+Atualizar quando mudar fase, objetivo, prioridade, próxima tarefa, bloqueio, branch de trabalho, pendência operacional ou estado de integração. Histórico detalhado deve ficar no Contexto Mestre/checkpoints; decisões duradouras ficam em `memory.md`.
