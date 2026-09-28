@@ -254,7 +254,7 @@ class EntriesRepository {
                 filter { eq("idempotency_key", idempotencyKey) }
             }
             .decodeList<EntryLookupRow>()
-            .firstOrNull()
+            .firstOrNull { it.deletedAt == null }
             ?.id
 
     suspend fun updateEntry(input: EntryUpdateInput) {
@@ -288,15 +288,18 @@ class EntriesRepository {
         ) { attachRegisteredDevice() }
     }
 
-    suspend fun isEntryActive(entryId: String): Boolean =
-        client().from("entries")
+    suspend fun isEntryActive(entryId: String): Boolean {
+        val row = client().from("entries")
             .select(Columns.list("id", "idempotency_key", "deleted_at")) {
                 attachRegisteredDevice()
                 filter { eq("id", entryId) }
             }
             .decodeList<EntryLookupRow>()
             .firstOrNull()
-            ?.deletedAt == null
+            ?: return false
+
+        return row.deletedAt == null
+    }
 
     suspend fun completePendingProduct(
         productId: String,
