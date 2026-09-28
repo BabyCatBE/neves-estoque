@@ -5,10 +5,12 @@ import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.time.OffsetDateTime
 import java.util.UUID
 
 class ProductsRepository {
@@ -172,6 +174,71 @@ class ProductsRepository {
                 )
             },
         ) { attachRegisteredDevice() }
+    }
+
+    suspend fun softDeleteProduct(productId: String) {
+        client().postgrest.rpc(
+            function = "soft_delete_product",
+            parameters = buildJsonObject { put("p_product_id", productId) },
+        ) { attachRegisteredDevice() }
+    }
+
+    suspend fun restoreProduct(productId: String) {
+        client().postgrest.rpc(
+            function = "restore_product",
+            parameters = buildJsonObject { put("p_product_id", productId) },
+        ) { attachRegisteredDevice() }
+    }
+
+    suspend fun softDeleteCategory(categoryId: String) {
+        client().from("categories").update(
+            buildJsonObject { put("deleted_at", OffsetDateTime.now().toString()) }
+        ) {
+            attachRegisteredDevice()
+            filter {
+                eq("id", categoryId)
+                exact("deleted_at", null)
+            }
+        }
+    }
+
+    suspend fun restoreCategory(categoryId: String) {
+        client().from("categories").update(
+            buildJsonObject { put("deleted_at", JsonNull) }
+        ) {
+            attachRegisteredDevice()
+            filter { eq("id", categoryId) }
+        }
+    }
+
+    suspend fun loadCatalogTrash(): List<CatalogTrashItem> {
+        val client = client()
+        val products = client.from("products")
+            .select(
+                Columns.list(
+                    "id", "name", "unit", "deleted_at", "restore_until",
+                    "permanently_deleted_at",
+                )
+            ) { attachRegisteredDevice() }
+            .decodeList<ProductTrashRow>()
+
+        val categories = client.from("categories")
+            .select(
+                Columns.list(
+                    "id", "name", "deleted_at", "restore_until",
+                    "permanently_deleted_at",
+                )
+            ) { attachRegisteredDevice() }
+            .decodeList<CategoryTrashRow>()
+
+        return buildRestorableCatalogTrash(products, categories)
+    }
+
+    suspend fun restoreCatalogTrashItem(item: CatalogTrashItem) {
+        when (item.type) {
+            CatalogTrashType.Product -> restoreProduct(item.id)
+            CatalogTrashType.Category -> restoreCategory(item.id)
+        }
     }
 
     suspend fun loadProductDetails(productId: String): Pair<ProductDetails, List<ProductCategoryRow>> {

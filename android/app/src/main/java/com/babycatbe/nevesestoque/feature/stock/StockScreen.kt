@@ -30,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -50,9 +51,13 @@ import java.util.Locale
 fun StockRoute(
     onBack: () -> Unit,
     onProductClick: (String) -> Unit,
+    refreshKey: Long = 0L,
     stockViewModel: StockViewModel = viewModel(),
 ) {
     val state by stockViewModel.uiState.collectAsState()
+    LaunchedEffect(refreshKey) {
+        if (refreshKey > 0L) stockViewModel.refresh()
+    }
     StockScreen(
         state = state,
         onBack = onBack,

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -44,6 +45,8 @@ fun CategoriesScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var actionNotice by remember { mutableStateOf<String?>(null) }
     var actionError by remember { mutableStateOf<String?>(null) }
+    var pendingDelete by remember { mutableStateOf<CategoryListItem?>(null) }
+    var deletingCategory by remember { mutableStateOf(false) }
     var reordering by remember { mutableStateOf(false) }
     var reorderSaving by remember { mutableStateOf(false) }
     var originalOrder by remember { mutableStateOf<List<CategoryListItem>>(emptyList()) }
@@ -71,6 +74,38 @@ fun CategoriesScreen(
         originalOrder = emptyList()
         draftOrder = emptyList()
         actionError = null
+    }
+
+    fun requestDelete(category: CategoryListItem) {
+        actionNotice = null
+        actionError = null
+        if (!canSoftDeleteCategory(category.productCount)) {
+            actionError = "A Categoria só pode ser excluída quando estiver vazia."
+            return
+        }
+        pendingDelete = category
+    }
+
+    fun confirmDelete() {
+        val category = pendingDelete ?: return
+        if (deletingCategory) return
+
+        deletingCategory = true
+        actionNotice = null
+        actionError = null
+        scope.launch {
+            try {
+                repository.softDeleteCategory(category.id)
+                categories = orderedCategories(repository.loadCategories())
+                pendingDelete = null
+                actionNotice = "Categoria enviada para a Lixeira. Ela pode ser restaurada por 7 dias."
+            } catch (failure: Throwable) {
+                if (failure is CancellationException) throw failure
+                actionError = catalogTrashErrorMessage(failure)
+            } finally {
+                deletingCategory = false
+            }
+        }
     }
 
     fun beginReordering() {
@@ -333,11 +368,45 @@ fun CategoriesScreen(
                                 TextButton(onClick = { onEditCategory(category.id) }) {
                                     Text("Editar")
                                 }
+                                TextButton(
+                                    onClick = { requestDelete(category) },
+                                    enabled = !deletingCategory && category.productCount == 0,
+                                ) {
+                                    Text("Excluir")
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    pendingDelete?.let { category ->
+        AlertDialog(
+            onDismissRequest = { if (!deletingCategory) pendingDelete = null },
+            title = { Text("Excluir Categoria?") },
+            text = {
+                Text(
+                    "Excluir a Categoria “${category.name}”? Ela irá para a Lixeira e poderá ser restaurada por 7 dias."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { confirmDelete() },
+                    enabled = !deletingCategory,
+                ) {
+                    Text(if (deletingCategory) "Excluindo…" else "Excluir Categoria")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { pendingDelete = null },
+                    enabled = !deletingCategory,
+                ) {
+                    Text("Cancelar")
+                }
+            },
+        )
     }
 }

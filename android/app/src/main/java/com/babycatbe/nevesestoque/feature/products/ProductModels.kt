@@ -169,6 +169,25 @@ data class CreateCategoryPayload(
 @Serializable
 data class CategoryNamePayload(val name: String)
 
+@Serializable
+data class ProductTrashRow(
+    val id: String,
+    val name: String,
+    val unit: String,
+    @SerialName("deleted_at") val deletedAt: String? = null,
+    @SerialName("restore_until") val restoreUntil: String? = null,
+    @SerialName("permanently_deleted_at") val permanentlyDeletedAt: String? = null,
+)
+
+@Serializable
+data class CategoryTrashRow(
+    val id: String,
+    val name: String,
+    @SerialName("deleted_at") val deletedAt: String? = null,
+    @SerialName("restore_until") val restoreUntil: String? = null,
+    @SerialName("permanently_deleted_at") val permanentlyDeletedAt: String? = null,
+)
+
 data class CategoryListItem(
     val id: String,
     val name: String,

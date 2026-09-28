@@ -21,6 +21,7 @@ fun ProductsHubScreen(
     onBack: () -> Unit,
     onProducts: () -> Unit,
     onCategories: () -> Unit,
+    onTrash: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -57,6 +58,11 @@ fun ProductsHubScreen(
                 title = "Categorias",
                 description = "Consultar a organização, a ordem e quantos Produtos existem em cada Categoria.",
                 onClick = onCategories,
+            )
+            HubCard(
+                title = "Lixeira",
+                description = "Restaurar Produtos e Categorias excluídos dentro da janela de 7 dias.",
+                onClick = onTrash,
             )
         }
     }

@@ -86,9 +86,12 @@ class ProductsViewModel : ViewModel() {
 data class ProductDetailUiState(
     val loading: Boolean = true,
     val refreshing: Boolean = false,
+    val deleting: Boolean = false,
+    val deleted: Boolean = false,
     val product: ProductDetails? = null,
     val categories: List<ProductCategoryRow> = emptyList(),
     val errorMessage: String? = null,
+    val actionError: String? = null,
 )
 
 class ProductDetailViewModel(
@@ -122,6 +125,27 @@ class ProductDetailViewModel(
                         loading = false,
                         refreshing = false,
                         errorMessage = "Não foi possível carregar este Produto.",
+                    )
+                }
+        }
+    }
+
+    fun deleteProduct() {
+        if (_uiState.value.deleting || _uiState.value.deleted) return
+        _uiState.value = _uiState.value.copy(deleting = true, actionError = null)
+
+        viewModelScope.launch {
+            runCatching { repository.softDeleteProduct(productId) }
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        deleting = false,
+                        deleted = true,
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        deleting = false,
+                        actionError = catalogTrashErrorMessage(error),
                     )
                 }
         }

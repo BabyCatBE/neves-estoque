@@ -12,6 +12,7 @@ import com.babycatbe.nevesestoque.feature.auth.AuthUiState
 import com.babycatbe.nevesestoque.feature.home.HomeScreen
 import com.babycatbe.nevesestoque.feature.home.homeModules
 import com.babycatbe.nevesestoque.feature.module.ModulePlaceholderScreen
+import com.babycatbe.nevesestoque.feature.products.CatalogTrashScreen
 import com.babycatbe.nevesestoque.feature.products.CategoriesScreen
 import com.babycatbe.nevesestoque.feature.products.CategoryFormRoute
 import com.babycatbe.nevesestoque.feature.products.ProductDetailRoute
@@ -25,6 +26,7 @@ private const val MODULE_ROUTE = "module/{route}"
 private const val PRODUCTS_LIST_ROUTE = "products/list"
 private const val PRODUCTS_CATEGORY_ROUTE = "products/list/category/{categoryId}"
 private const val CATEGORIES_ROUTE = "products/categories"
+private const val CATALOG_TRASH_ROUTE = "products/trash"
 private const val PRODUCT_DETAIL_ROUTE = "product/{productId}"
 private const val PRODUCT_CREATE_ROUTE = "products/new"
 private const val PRODUCT_EDIT_ROUTE = "product/{productId}/edit"
@@ -50,16 +52,19 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         composable(MODULE_ROUTE, arguments = listOf(navArgument("route") { type = NavType.StringType })) { entry ->
             val route = entry.arguments?.getString("route")
             val module = homeModules.firstOrNull { it.route == route }
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
 
             when (route) {
                 "estoque" -> StockRoute(
                     onBack = { navController.popBackStack() },
                     onProductClick = { navController.navigate("product/$it") },
+                    refreshKey = refreshKey,
                 )
                 "produtos" -> ProductsHubScreen(
                     onBack = { navController.popBackStack() },
                     onProducts = { navController.navigate(PRODUCTS_LIST_ROUTE) },
                     onCategories = { navController.navigate(CATEGORIES_ROUTE) },
+                    onTrash = { navController.navigate(CATALOG_TRASH_ROUTE) },
                 )
                 else -> ModulePlaceholderScreen(
                     title = module?.title ?: "Módulo",
@@ -123,9 +128,22 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 productId = productId,
                 onBack = { navController.popBackStack() },
                 onEdit = { navController.navigate("product/$productId/edit") },
+                onDeleted = { message ->
+                    navController.previousBackStackEntry?.savedStateHandle?.apply {
+                        set(REFRESH_KEY, System.currentTimeMillis())
+                        set(NOTICE_KEY, message)
+                    }
+                    navController.popBackStack()
+                },
                 refreshKey = refreshKey,
                 noticeMessage = notice,
                 onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(CATALOG_TRASH_ROUTE) {
+            CatalogTrashScreen(
+                onBack = { navController.popBackStack() },
             )
         }
 

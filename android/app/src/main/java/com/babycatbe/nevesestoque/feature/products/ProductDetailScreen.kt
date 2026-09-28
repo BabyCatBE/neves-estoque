@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -18,6 +19,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +36,7 @@ fun ProductDetailRoute(
     productId: String,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onDeleted: (String) -> Unit,
     refreshKey: Long = 0L,
     noticeMessage: String? = null,
     onDismissNotice: () -> Unit = {},
@@ -44,7 +49,20 @@ fun ProductDetailRoute(
     LaunchedEffect(refreshKey) {
         if (refreshKey > 0L) vm.refresh()
     }
-    ProductDetailScreen(state, onBack, onEdit, vm::refresh, noticeMessage, onDismissNotice)
+    LaunchedEffect(state.deleted) {
+        if (state.deleted) {
+            onDeleted("Produto enviado para a Lixeira. Ele pode ser restaurado por 7 dias.")
+        }
+    }
+    ProductDetailScreen(
+        state = state,
+        onBack = onBack,
+        onEdit = onEdit,
+        onDelete = vm::deleteProduct,
+        onRefresh = vm::refresh,
+        noticeMessage = noticeMessage,
+        onDismissNotice = onDismissNotice,
+    )
 }
 
 @Composable
@@ -52,10 +70,12 @@ private fun ProductDetailScreen(
     state: ProductDetailUiState,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onDelete: () -> Unit,
     onRefresh: () -> Unit,
     noticeMessage: String?,
     onDismissNotice: () -> Unit,
 ) {
+    var deleteOpen by rememberSaveable { mutableStateOf(false) }
     val product = state.product
     val categoryName = state.categories.firstOrNull { it.id == product?.categoryId }?.name ?: "Sem categoria"
 
@@ -108,6 +128,18 @@ private fun ProductDetailScreen(
                             Text(error, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = onRefresh) { Text("Tentar novamente") }
                         }
+                    }
+                }
+            }
+
+            state.actionError?.let { error ->
+                item {
+                    Card {
+                        Text(
+                            error,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        )
                     }
                 }
             }
@@ -263,8 +295,29 @@ private fun ProductDetailScreen(
 
                 item {
                     Card {
+                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text("Lixeira", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Excluir remove este Produto das áreas ativas. Ele ficará restaurável por 7 dias.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                            TextButton(
+                                onClick = { deleteOpen = true },
+                                enabled = !state.deleting,
+                                modifier = Modifier.padding(top = 6.dp),
+                            ) {
+                                Text(if (state.deleting) "Excluindo…" else "Excluir Produto")
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Card {
                         Text(
-                            "Alteração de Unidade, mescla, exclusão e atualização de estoque continuam reservadas para os próximos blocos. Nenhuma ação destrutiva foi simulada aqui.",
+                            "Alteração de Unidade, mescla e atualização de estoque continuam reservadas para os próximos blocos.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(16.dp),
@@ -275,6 +328,41 @@ private fun ProductDetailScreen(
 
             item { androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 8.dp)) }
         }
+    }
+
+    if (deleteOpen && product != null) {
+        AlertDialog(
+            onDismissRequest = { if (!state.deleting) deleteOpen = false },
+            title = { Text("Excluir Produto?") },
+            text = {
+                Text(
+                    productDeleteConfirmation(
+                        name = product.name,
+                        currentQuantity = product.currentQuantity,
+                        unit = product.unit,
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleteOpen = false
+                        onDelete()
+                    },
+                    enabled = !state.deleting,
+                ) {
+                    Text("Excluir Produto")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { deleteOpen = false },
+                    enabled = !state.deleting,
+                ) {
+                    Text("Cancelar")
+                }
+            },
+        )
     }
 }
 
