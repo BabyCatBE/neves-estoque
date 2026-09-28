@@ -65,6 +65,7 @@ private data class EditEntryLineUi(
 
 @Composable
 fun NewEntryRoute(
+    initialProductId: String? = null,
     onBack: () -> Unit,
     onSaved: (String, String) -> Unit,
 ) {
@@ -77,6 +78,7 @@ fun NewEntryRoute(
 
     NewEntryScreen(
         state = state,
+        initialProductId = initialProductId,
         onBack = onBack,
         onSave = vm::save,
         onRefresh = vm::refreshOptions,
@@ -88,6 +90,7 @@ fun NewEntryRoute(
 @Composable
 private fun NewEntryScreen(
     state: NewEntryUiState,
+    initialProductId: String?,
     onBack: () -> Unit,
     onSave: (EntryCreateInput) -> Unit,
     onRefresh: () -> Unit,
@@ -96,6 +99,9 @@ private fun NewEntryScreen(
 ) {
     val scope = rememberCoroutineScope()
     val options = state.options
+    var initialProductHandled by rememberSaveable(initialProductId) {
+        mutableStateOf(initialProductId.isNullOrBlank())
+    }
 
     var supplierId by rememberSaveable { mutableStateOf("") }
     var draftSupplierName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -224,6 +230,18 @@ private fun NewEntryScreen(
             missingPriceOpen = true
         } else {
             onSave(input)
+        }
+    }
+
+    LaunchedEffect(options, initialProductId, initialProductHandled) {
+        if (!initialProductHandled && options != null && !initialProductId.isNullOrBlank()) {
+            val initialProduct = options.products.firstOrNull { it.id == initialProductId }
+            if (initialProduct != null) {
+                chooseProduct(initialProduct)
+            } else {
+                actionError = "Produto não encontrado para iniciar a Entrada."
+            }
+            initialProductHandled = true
         }
     }
 
