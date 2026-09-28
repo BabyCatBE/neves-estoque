@@ -34,12 +34,23 @@ suspend fun <T> fetchAllByIdKeyset(
     pageSize: Long = DEFAULT_KEYSET_PAGE_SIZE,
     maxPages: Int = DEFAULT_KEYSET_MAX_PAGES,
     fetchPage: suspend (afterId: String?, limit: Long) -> List<T>,
+): List<T> = fetchAllByKeyset(idOf, pageSize, maxPages, fetchPage)
+
+/**
+ * Mesma regra de [fetchAllByIdKeyset] para qualquer chave primária ordenável
+ * (ex.: `bigint generated always as identity` do audit_log).
+ */
+suspend fun <T, K : Comparable<K>> fetchAllByKeyset(
+    keyOf: (T) -> K,
+    pageSize: Long = DEFAULT_KEYSET_PAGE_SIZE,
+    maxPages: Int = DEFAULT_KEYSET_MAX_PAGES,
+    fetchPage: suspend (afterKey: K?, limit: Long) -> List<T>,
 ): List<T> {
     require(pageSize > 0) { "pageSize deve ser positivo." }
     require(maxPages > 0) { "maxPages deve ser positivo." }
 
     val rows = mutableListOf<T>()
-    var afterId: String? = null
+    var afterKey: K? = null
     var pages = 0
 
     while (true) {
@@ -48,22 +59,23 @@ suspend fun <T> fetchAllByIdKeyset(
                 "Leitura interrompida: mais de $maxPages páginas. O histórico não foi carregado por completo."
             )
         }
-        val page = fetchPage(afterId, pageSize)
+        val page = fetchPage(afterKey, pageSize)
         pages += 1
         if (page.isEmpty()) break
 
         for (row in page) {
-            val id = idOf(row)
+            val key = keyOf(row)
             // UUIDs canônicos (hex minúsculo, hífens em posição fixa) comparam como texto
-            // na mesma ordem em que o PostgreSQL ordena o tipo uuid.
-            val previous = afterId
-            if (previous != null && id <= previous) {
+            // na mesma ordem em que o PostgreSQL ordena o tipo uuid; chaves numéricas
+            // comparam numericamente.
+            val previous = afterKey
+            if (previous != null && key <= previous) {
                 throw IncompletePaginationException(
                     "Leitura interrompida: o servidor devolveu registros fora da ordem esperada."
                 )
             }
             rows += row
-            afterId = id
+            afterKey = key
         }
     }
     return rows
