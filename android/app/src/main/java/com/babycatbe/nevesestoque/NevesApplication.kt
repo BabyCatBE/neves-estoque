@@ -10,6 +10,7 @@ class NevesApplication : Application() {
         super.onCreate()
         DeviceIdentityStore.initialize(this)
         OfflineStore.initialize(this)
+        com.babycatbe.nevesestoque.feature.offline.PendingStore.reload()
         ConnectivityMonitor.initialize(this)
     }
 }

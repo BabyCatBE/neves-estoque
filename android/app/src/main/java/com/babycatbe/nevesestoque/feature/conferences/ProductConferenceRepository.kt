@@ -36,7 +36,36 @@ class ProductConferenceRepository {
         ?: error("Supabase não está configurado nesta build.")
 
     suspend fun loadProduct(productId: String): ProductDetails =
-        productsRepository.loadProductDetails(productId).first
+        try {
+            productsRepository.loadProductDetails(productId).first
+        } catch (error: Throwable) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            if (!com.babycatbe.nevesestoque.data.offline.isNetworkFailure(error)) throw error
+            // Sem internet: usa a cópia local do catálogo (dados mínimos para a Conferência unitária).
+            val product = productsRepository.loadCatalog().products.firstOrNull { it.id == productId }
+                ?: throw error
+            ProductDetails(
+                id = product.id,
+                name = product.name,
+                categoryId = product.categoryId,
+                unit = product.unit,
+                createdAt = product.createdAt,
+                initialStockQuantity = null,
+                initialStockAt = null,
+                initialPrice = null,
+                initialPriceAt = null,
+                currentQuantity = product.currentQuantity,
+                currentPrice = product.currentPrice,
+                currentValue = null,
+                stockRequiresConference = product.stockRequiresConference,
+                priceHistory = emptyList(),
+                usageInsights = com.babycatbe.nevesestoque.feature.products.calculateProductUsageInsights(
+                    conferences = emptyList(),
+                    entries = emptyList(),
+                    currentQuantity = product.currentQuantity,
+                ),
+            )
+        }
 
     suspend fun createProductConference(input: ProductConferenceWriteInput) {
         client().postgrest.rpc(

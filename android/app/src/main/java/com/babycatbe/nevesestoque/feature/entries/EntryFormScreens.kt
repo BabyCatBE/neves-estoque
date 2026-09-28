@@ -68,12 +68,16 @@ fun NewEntryRoute(
     initialProductId: String? = null,
     onBack: () -> Unit,
     onSaved: (String, String) -> Unit,
+    onSavedPending: (String) -> Unit = {},
 ) {
     val vm: NewEntryViewModel = viewModel()
     val state by vm.uiState.collectAsState()
 
     LaunchedEffect(state.savedEntryId) {
         state.savedEntryId?.let { onSaved(it, "Entrada salva com sucesso.") }
+    }
+    LaunchedEffect(state.savedPendingId) {
+        state.savedPendingId?.let { onSavedPending(com.babycatbe.nevesestoque.feature.offline.PENDING_SAVED_MESSAGE) }
     }
 
     NewEntryScreen(

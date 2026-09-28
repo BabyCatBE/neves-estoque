@@ -45,6 +45,9 @@ fun CategoryConferenceFormRoute(
     )
     val state by vm.uiState.collectAsState()
 
+    LaunchedEffect(state.savedPendingMessage) {
+        state.savedPendingMessage?.let { onSaved(it) }
+    }
     LaunchedEffect(state.savedConferenceId) {
         state.savedConferenceId?.let {
             onSaved("Conferência salva com sucesso.")

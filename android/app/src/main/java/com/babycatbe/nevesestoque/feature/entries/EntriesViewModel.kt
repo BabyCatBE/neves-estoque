@@ -131,6 +131,7 @@ data class NewEntryUiState(
     val options: EntryFormOptions? = null,
     val errorMessage: String? = null,
     val savedEntryId: String? = null,
+    val savedPendingId: String? = null,
 )
 
 class NewEntryViewModel : ViewModel() {
@@ -162,9 +163,13 @@ class NewEntryViewModel : ViewModel() {
     }
 
     fun save(input: EntryCreateInput) {
-        if (_uiState.value.saving || _uiState.value.savedEntryId != null) return
+        if (_uiState.value.saving || _uiState.value.savedEntryId != null || _uiState.value.savedPendingId != null) return
         _uiState.value = _uiState.value.copy(saving = true, errorMessage = null)
         val finalInput = input.copy(idempotencyKey = idempotencyKey)
+        if (!com.babycatbe.nevesestoque.data.offline.ConnectivityMonitor.isOnline) {
+            saveAsPending(finalInput)
+            return
+        }
         viewModelScope.launch {
             try {
                 val entryId = repository.createEntry(finalInput)
@@ -198,6 +203,39 @@ class NewEntryViewModel : ViewModel() {
                 }
             }
         }
+    }
+
+    /** Sem internet: guarda a Entrada validada como pendência local, sem chamar o servidor. */
+    private fun saveAsPending(input: EntryCreateInput) {
+        val metadata = com.babycatbe.nevesestoque.feature.offline.currentPendingMetadata()
+        if (metadata == null) {
+            _uiState.value = _uiState.value.copy(
+                saving = false,
+                errorMessage = "Este dispositivo ainda não está pronto para registrar Entradas.",
+            )
+            return
+        }
+        val options = _uiState.value.options
+        val supplierLabel = input.newSupplier?.name
+            ?: options?.suppliers?.firstOrNull { it.id == input.supplierId }?.name
+            ?: "Fornecedor não identificado"
+        val operation = com.babycatbe.nevesestoque.feature.offline.buildPendingEntry(
+            input = input,
+            supplierLabel = supplierLabel,
+            productLabel = { item ->
+                val product = options?.products?.firstOrNull { it.id == item.productId }
+                (product?.name ?: "Produto") to (product?.unit ?: "")
+            },
+            metadata = metadata,
+        )
+        runCatching { com.babycatbe.nevesestoque.feature.offline.PendingStore.save(operation) }
+            .onSuccess { _uiState.value = _uiState.value.copy(saving = false, savedPendingId = operation.localId) }
+            .onFailure {
+                _uiState.value = _uiState.value.copy(
+                    saving = false,
+                    errorMessage = "Não foi possível guardar a pendência neste aparelho.",
+                )
+            }
     }
 
     suspend fun completePendingProduct(

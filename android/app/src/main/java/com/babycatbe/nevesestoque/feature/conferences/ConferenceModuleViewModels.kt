@@ -62,6 +62,7 @@ data class CategoryConferenceFormUiState(
     val sameDayConferences: List<ConferenceHistoryItem> = emptyList(),
     val errorMessage: String? = null,
     val savedConferenceId: String? = null,
+    val savedPendingMessage: String? = null,
 )
 
 class CategoryConferenceFormViewModel(private val categoryId: String) : ViewModel() {
@@ -136,6 +137,31 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
             observation = validation.observation,
             items = validation.items,
         )
+
+        if (!com.babycatbe.nevesestoque.data.offline.ConnectivityMonitor.isOnline) {
+            // Sem internet: guarda como pendência. A revisão de consumo e a checagem de mesma data
+            // não são fingidas offline; acontecem na confirmação online (mesma regra da Web).
+            val metadata = com.babycatbe.nevesestoque.feature.offline.currentPendingMetadata()
+            val operation = metadata?.let {
+                com.babycatbe.nevesestoque.feature.offline.buildPendingCategoryConference(
+                    input = input,
+                    categoryLabel = setup.categoryName,
+                    productLabel = { productId ->
+                        val product = setup.products.firstOrNull { p -> p.id == productId }
+                        (product?.name ?: "Produto") to (product?.unit ?: "")
+                    },
+                    metadata = it,
+                )
+            }
+            val saved = operation != null &&
+                runCatching { com.babycatbe.nevesestoque.feature.offline.PendingStore.save(operation) }.isSuccess
+            _uiState.value = if (saved) {
+                _uiState.value.copy(fieldErrors = CategoryConferenceFormErrors(), savedPendingMessage = com.babycatbe.nevesestoque.feature.offline.PENDING_SAVED_MESSAGE)
+            } else {
+                _uiState.value.copy(errorMessage = "Não foi possível guardar a pendência neste aparelho.")
+            }
+            return
+        }
 
         _uiState.value = _uiState.value.copy(
             checking = true,

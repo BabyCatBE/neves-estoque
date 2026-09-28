@@ -44,6 +44,9 @@ import com.babycatbe.nevesestoque.feature.stock.StockRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierDetailRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierFormRoute
 import com.babycatbe.nevesestoque.feature.alerts.AlertsRoute
+import com.babycatbe.nevesestoque.feature.offline.PendingEditRoute
+import com.babycatbe.nevesestoque.feature.offline.PendingListRoute
+import com.babycatbe.nevesestoque.feature.offline.PendingStore
 import com.babycatbe.nevesestoque.feature.alerts.AlertsViewModel
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseCategorySelectRoute
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseListRoute
@@ -62,6 +65,8 @@ private const val CATEGORIES_ROUTE = "products/categories"
 private const val TRASH_ROUTE = "trash?filter={filter}"
 private const val REPORTS_ROUTE = "stock/reports"
 private const val ALERTS_ROUTE = "alerts"
+private const val PENDING_LOCAL_ROUTE = "offline/pending"
+private const val PENDING_EDIT_ROUTE = "offline/pending/{localId}/edit"
 private const val PENDING_SUPPLIERS_ROUTE = "suppliers/pending"
 private const val PENDING_PRODUCTS_ROUTE = "products/list/pending"
 private const val PURCHASE_SUPPLIERS_ROUTE = "purchases/suppliers"
@@ -105,13 +110,14 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         composable(HOME_ROUTE) {
             val alertsViewModel: AlertsViewModel = viewModel()
             val alertsState by alertsViewModel.uiState.collectAsState()
+            val localPending by PendingStore.pending.collectAsState()
             LaunchedEffect(Unit) { alertsViewModel.refresh() }
             HomeScreen(
                 displayName = authState.displayName,
                 roleName = authState.roleName,
                 onSignOut = onSignOut,
                 onModuleClick = { navController.navigate("module/${it.route}") },
-                alertCount = alertsState.counts?.total,
+                alertCount = (alertsState.counts?.total ?: 0) + localPending.size,
                 onAlerts = { navController.navigate(ALERTS_ROUTE) },
             )
         }
@@ -122,6 +128,31 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 onTrash = { navController.navigate("trash") },
                 onPendingSuppliers = { navController.navigate(PENDING_SUPPLIERS_ROUTE) },
                 onPendingProducts = { navController.navigate(PENDING_PRODUCTS_ROUTE) },
+                onLocalPending = { navController.navigate(PENDING_LOCAL_ROUTE) },
+            )
+        }
+
+        composable(PENDING_LOCAL_ROUTE) { entry ->
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            PendingListRoute(
+                onBack = { navController.popBackStack() },
+                onEdit = { navController.navigate("offline/pending/$it/edit") },
+                noticeMessage = notice,
+                onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(
+            PENDING_EDIT_ROUTE,
+            arguments = listOf(navArgument("localId") { type = NavType.StringType }),
+        ) { entry ->
+            PendingEditRoute(
+                localId = entry.arguments?.getString("localId").orEmpty(),
+                onBack = { navController.popBackStack() },
+                onSaved = { message ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set(NOTICE_KEY, message)
+                    navController.popBackStack()
+                },
             )
         }
 
@@ -413,6 +444,11 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     navController.navigate("entry/$entryId")
                     navController.currentBackStackEntry?.savedStateHandle?.set(NOTICE_KEY, message)
                 },
+                onSavedPending = { message ->
+                    navController.popBackStack()
+                    navController.navigate(PENDING_LOCAL_ROUTE)
+                    navController.currentBackStackEntry?.savedStateHandle?.set(NOTICE_KEY, message)
+                },
             )
         }
 
@@ -427,6 +463,11 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 onSaved = { entryId, message ->
                     navController.popBackStack()
                     navController.navigate("entry/$entryId")
+                    navController.currentBackStackEntry?.savedStateHandle?.set(NOTICE_KEY, message)
+                },
+                onSavedPending = { message ->
+                    navController.popBackStack()
+                    navController.navigate(PENDING_LOCAL_ROUTE)
                     navController.currentBackStackEntry?.savedStateHandle?.set(NOTICE_KEY, message)
                 },
             )

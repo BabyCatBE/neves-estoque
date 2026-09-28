@@ -112,9 +112,11 @@ fun AlertsRoute(
     onTrash: () -> Unit,
     onPendingSuppliers: () -> Unit,
     onPendingProducts: () -> Unit,
+    onLocalPending: () -> Unit = {},
     vm: AlertsViewModel = viewModel(),
 ) {
     val state by vm.uiState.collectAsState()
+    val localPending by com.babycatbe.nevesestoque.feature.offline.PendingStore.pending.collectAsState()
     LaunchedEffect(Unit) { vm.refresh() }
     val counts = state.counts
 
@@ -138,6 +140,16 @@ fun AlertsRoute(
                     "A Lixeira é uma área de recuperação. Abaixo ficam apenas cadastros e tarefas que exigem atenção.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+            item { SectionTitle("OFFLINE") }
+            item {
+                AlertCard(
+                    title = "Pendências locais",
+                    count = localPending.size,
+                    description = "Entradas e Conferências preparadas sem internet que ainda não foram enviadas ao estoque oficial.",
+                    tone = if (localPending.isNotEmpty()) Tone.Amber else Tone.Neutral,
+                    onClick = onLocalPending,
                 )
             }
             if (state.loading) item { Card { Text("Carregando Alertas…", modifier = Modifier.padding(18.dp)) } }
@@ -195,13 +207,6 @@ fun AlertsRoute(
                         description = "Produtos sem Categoria que ainda precisam ter o cadastro concluído.",
                         tone = if (counts.pendingProducts > 0) Tone.Amber else Tone.Neutral,
                         onClick = onPendingProducts,
-                    )
-                }
-                item {
-                    Text(
-                        "Pendências offline (Entradas e Conferências preparadas sem internet) aparecerão aqui com o Offline Android.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
