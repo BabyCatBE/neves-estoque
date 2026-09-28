@@ -46,6 +46,8 @@ fun SuppliersRoute(
     refreshKey: Long = 0L,
     noticeMessage: String? = null,
     onDismissNotice: () -> Unit = {},
+    initialPendingOnly: Boolean = false,
+    onTrash: () -> Unit = {},
 ) {
     val vm: SuppliersViewModel = viewModel()
     val state by vm.uiState.collectAsState()
@@ -60,6 +62,8 @@ fun SuppliersRoute(
         onRefresh = vm::refresh,
         noticeMessage = noticeMessage,
         onDismissNotice = onDismissNotice,
+        initialPendingOnly = initialPendingOnly,
+        onTrash = onTrash,
     )
 }
 
@@ -72,9 +76,11 @@ private fun SuppliersScreen(
     onRefresh: () -> Unit,
     noticeMessage: String?,
     onDismissNotice: () -> Unit,
+    initialPendingOnly: Boolean,
+    onTrash: () -> Unit,
 ) {
     var search by rememberSaveable { mutableStateOf("") }
-    var pendingOnly by rememberSaveable { mutableStateOf(false) }
+    var pendingOnly by rememberSaveable { mutableStateOf(initialPendingOnly) }
 
     val filtered = state.suppliers.filter {
         (!pendingOnly || it.isPending) && matchesSupplierSearch(it, search)
@@ -133,11 +139,11 @@ private fun SuppliersScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                     )
-                    OutlinedButton(
-                        onClick = { pendingOnly = !pendingOnly },
-                        modifier = Modifier.padding(top = 8.dp),
-                    ) {
-                        Text(if (pendingOnly) "Mostrando pendentes · Ver todos" else "Mostrar cadastros pendentes")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                        OutlinedButton(onClick = { pendingOnly = !pendingOnly }, modifier = Modifier.weight(1f)) {
+                            Text(if (pendingOnly) "Mostrando pendentes · Ver todos" else "Mostrar cadastros pendentes")
+                        }
+                        OutlinedButton(onClick = onTrash) { Text("Lixeira") }
                     }
                 }
             }

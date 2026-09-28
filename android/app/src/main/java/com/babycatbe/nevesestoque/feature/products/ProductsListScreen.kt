@@ -41,6 +41,7 @@ fun ProductsListRoute(
     onProductClick: (String) -> Unit,
     onCreateProduct: () -> Unit,
     categoryFilter: String? = null,
+    pendingOnly: Boolean = false,
     refreshKey: Long = 0L,
     noticeMessage: String? = null,
     onDismissNotice: () -> Unit = {},
@@ -53,6 +54,7 @@ fun ProductsListRoute(
     ProductsListScreen(
         state = state,
         categoryFilter = categoryFilter,
+        pendingOnly = pendingOnly,
         onBack = onBack,
         onRefresh = productsViewModel::refresh,
         onSaveProductOrder = productsViewModel::saveProductOrder,
@@ -67,6 +69,7 @@ fun ProductsListRoute(
 private fun ProductsListScreen(
     state: ProductsUiState,
     categoryFilter: String?,
+    pendingOnly: Boolean,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onSaveProductOrder: suspend (List<ProductOrderChange>) -> Boolean,
@@ -89,14 +92,19 @@ private fun ProductsListScreen(
     val officialOrder = remember(data) {
         buildProductOrderGroups(data?.categories.orEmpty(), data?.products.orEmpty())
     }
-    val canReorder = categoryFilter == null && officialOrder.any { it.items.size >= 2 }
-    val filtered = remember(data, search, categoryFilter) {
+    val canReorder = categoryFilter == null && !pendingOnly && officialOrder.any { it.items.size >= 2 }
+    val filtered = remember(data, search, categoryFilter, pendingOnly) {
         filterAndSortProducts(data?.products.orEmpty(), search, categoryFilter)
+            .filter { !pendingOnly || it.categoryId == null }
     }
     val groups = remember(data, search) {
         buildProductGroups(data?.categories.orEmpty(), data?.products.orEmpty(), search)
     }
-    val categoryName = data?.categories?.firstOrNull { it.id == categoryFilter }?.name
+    val categoryName = if (pendingOnly) {
+        "Produtos pendentes"
+    } else {
+        data?.categories?.firstOrNull { it.id == categoryFilter }?.name
+    }
 
     fun cancelReordering() {
         if (reorderSaving) return
@@ -167,7 +175,7 @@ private fun ProductsListScreen(
                         )
                         if (!reordering && categoryName != null) {
                             Text(
-                                "Produtos da Categoria",
+                                if (pendingOnly) "Sem Categoria — cadastro a concluir" else "Produtos da Categoria",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall,
                             )
@@ -252,7 +260,7 @@ private fun ProductsListScreen(
                     )
                 }
 
-                if (categoryFilter == null) {
+                if (categoryFilter == null && !pendingOnly) {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -324,12 +332,15 @@ private fun ProductsListScreen(
                             )
                         }
                     }
-                } else if (categoryFilter != null || mode == "alphabetical") {
+                } else if (categoryFilter != null || pendingOnly || mode == "alphabetical") {
                     if (filtered.isEmpty()) {
                         item {
                             StatusCard(
-                                if (search.isBlank()) "Nenhum Produto para exibir."
-                                else "Nenhum Produto encontrado."
+                                when {
+                                    pendingOnly && search.isBlank() -> "Nenhum Produto pendente."
+                                    search.isBlank() -> "Nenhum Produto para exibir."
+                                    else -> "Nenhum Produto encontrado."
+                                }
                             )
                         }
                     } else {

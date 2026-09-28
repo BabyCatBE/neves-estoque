@@ -1,8 +1,10 @@
 package com.babycatbe.nevesestoque.app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -37,6 +39,8 @@ import com.babycatbe.nevesestoque.feature.products.ProductsListRoute
 import com.babycatbe.nevesestoque.feature.stock.StockRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierDetailRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierFormRoute
+import com.babycatbe.nevesestoque.feature.alerts.AlertsRoute
+import com.babycatbe.nevesestoque.feature.alerts.AlertsViewModel
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseCategorySelectRoute
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseListRoute
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseMode
@@ -53,6 +57,9 @@ private const val PRODUCTS_CATEGORY_ROUTE = "products/list/category/{categoryId}
 private const val CATEGORIES_ROUTE = "products/categories"
 private const val TRASH_ROUTE = "trash?filter={filter}"
 private const val REPORTS_ROUTE = "stock/reports"
+private const val ALERTS_ROUTE = "alerts"
+private const val PENDING_SUPPLIERS_ROUTE = "suppliers/pending"
+private const val PENDING_PRODUCTS_ROUTE = "products/list/pending"
 private const val PURCHASE_SUPPLIERS_ROUTE = "purchases/suppliers"
 private const val PURCHASE_SUPPLIER_ROUTE = "purchases/supplier/{supplierId}"
 private const val PURCHASE_STOCK_ROUTE = "purchases/stock"
@@ -90,11 +97,44 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
 
     NavHost(navController = navController, startDestination = HOME_ROUTE) {
         composable(HOME_ROUTE) {
+            val alertsViewModel: AlertsViewModel = viewModel()
+            val alertsState by alertsViewModel.uiState.collectAsState()
+            LaunchedEffect(Unit) { alertsViewModel.refresh() }
             HomeScreen(
                 displayName = authState.displayName,
                 roleName = authState.roleName,
                 onSignOut = onSignOut,
                 onModuleClick = { navController.navigate("module/${it.route}") },
+                alertCount = alertsState.counts?.total,
+                onAlerts = { navController.navigate(ALERTS_ROUTE) },
+            )
+        }
+
+        composable(ALERTS_ROUTE) {
+            AlertsRoute(
+                onBack = { navController.popBackStack() },
+                onTrash = { navController.navigate("trash") },
+                onPendingSuppliers = { navController.navigate(PENDING_SUPPLIERS_ROUTE) },
+                onPendingProducts = { navController.navigate(PENDING_PRODUCTS_ROUTE) },
+            )
+        }
+
+        composable(PENDING_SUPPLIERS_ROUTE) {
+            SuppliersRoute(
+                onBack = { navController.popBackStack() },
+                onSupplierClick = { navController.navigate("supplier/$it") },
+                onCreateSupplier = { navController.navigate(SUPPLIER_CREATE_ROUTE) },
+                initialPendingOnly = true,
+                onTrash = { navController.navigate("trash?filter=supplier") },
+            )
+        }
+
+        composable(PENDING_PRODUCTS_ROUTE) {
+            ProductsListRoute(
+                pendingOnly = true,
+                onBack = { navController.popBackStack() },
+                onProductClick = { navController.navigate("product/$it") },
+                onCreateProduct = { navController.navigate(PRODUCT_CREATE_ROUTE) },
             )
         }
 
@@ -124,6 +164,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                         onBack = { navController.popBackStack() },
                         onSupplierClick = { navController.navigate("supplier/$it") },
                         onCreateSupplier = { navController.navigate(SUPPLIER_CREATE_ROUTE) },
+                        onTrash = { navController.navigate("trash?filter=supplier") },
                         refreshKey = refreshKey,
                         noticeMessage = notice,
                         onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },

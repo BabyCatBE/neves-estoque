@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.home
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +28,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -39,10 +47,31 @@ fun HomeScreen(
     roleName: String?,
     onSignOut: () -> Unit,
     onModuleClick: (HomeModule) -> Unit,
+    alertCount: Int? = null,
+    onAlerts: () -> Unit = {},
 ) {
+    val context = LocalContext.current
+    var confirmExit by remember { mutableStateOf(false) }
+    // Regra aprovada: na Home, o Voltar do Android pergunta antes de sair do aplicativo.
+    BackHandler { confirmExit = true }
+
+    if (confirmExit) {
+        AlertDialog(
+            onDismissRequest = { confirmExit = false },
+            title = { Text("Deseja sair do aplicativo?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmExit = false
+                    (context as? Activity)?.finish()
+                }) { Text("Sair") }
+            },
+            dismissButton = { TextButton(onClick = { confirmExit = false }) { Text("Cancelar") } },
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { NevesHeader(displayName, roleName, onSignOut) },
+        topBar = { NevesHeader(displayName, roleName, onSignOut, alertCount, onAlerts) },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             LazyVerticalGrid(
@@ -68,7 +97,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun NevesHeader(displayName: String?, roleName: String?, onSignOut: () -> Unit) {
+private fun NevesHeader(
+    displayName: String?,
+    roleName: String?,
+    onSignOut: () -> Unit,
+    alertCount: Int?,
+    onAlerts: () -> Unit,
+) {
     Surface(tonalElevation = 1.dp, shadowElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -94,6 +129,14 @@ private fun NevesHeader(displayName: String?, roleName: String?, onSignOut: () -
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
+            }
+            val hasAlerts = (alertCount ?: 0) > 0
+            TextButton(onClick = onAlerts) {
+                Text(
+                    if (hasAlerts) "Alertas ($alertCount)" else "Alertas",
+                    color = if (hasAlerts) ALERT_AMBER else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (hasAlerts) FontWeight.Bold else FontWeight.Normal,
+                )
             }
             TextButton(onClick = onSignOut) { Text("Sair") }
         }
@@ -129,3 +172,5 @@ private fun ModuleCard(module: HomeModule, onClick: () -> Unit) {
         }
     }
 }
+
+private val ALERT_AMBER = androidx.compose.ui.graphics.Color(0xFFB45309)
