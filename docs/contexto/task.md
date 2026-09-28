@@ -16,13 +16,13 @@
 - sub-blocos 11.1 e 11.2: concluídos;
 - testes Offline, performance e aparelho: `A VERIFICAR`.
 
-## HEAD atual da branch operacional
+## Branch operacional após a implantação documental
 
-A branch `fix/audit-device-id` avançou após o ponto funcional seguro apenas por documentação:
+A branch `fix/audit-device-id` avançou após o ponto funcional seguro apenas por documentação. A linhagem documental inclui a criação/manutenção dos seis arquivos em `docs/contexto/` e a atualização de `README.md` e `android/README.md`.
 
-- HEAD documental atual: `a7478baa559485c7370fcb792f90c6b66167038a`;
-- mudanças desde `10ec3ab...`: seis arquivos em `docs/contexto/` + atualização de `README.md` e `android/README.md`;
-- nenhum código funcional, migration ou dado foi alterado por essa implantação documental.
+Como este próprio arquivo faz parte dessa linhagem, o SHA atual da branch deve ser consultado diretamente no GitHub; não é duplicado aqui para evitar uma referência que se torna obsoleta a cada atualização de `task.md`.
+
+Nenhum código funcional, migration ou dado foi alterado por essa implantação documental.
 
 ## Trabalho atual posterior ao ponto seguro — 11.3
 
