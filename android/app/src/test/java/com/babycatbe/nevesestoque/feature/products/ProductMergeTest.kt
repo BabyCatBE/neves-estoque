@@ -176,6 +176,14 @@ class ProductMergeTest {
             isMergeAppliedSnapshot(
                 input,
                 pair,
+                active,
+                survivor.copy(stockRequiresConference = false),
+            )
+        )
+        assertFalse(
+            isMergeAppliedSnapshot(
+                input,
+                pair,
                 active + ProductListItem(
                     id = "b",
                     name = "b",
