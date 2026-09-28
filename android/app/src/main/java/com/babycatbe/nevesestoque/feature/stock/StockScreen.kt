@@ -52,6 +52,7 @@ fun StockRoute(
     onBack: () -> Unit,
     onProductClick: (String) -> Unit,
     refreshKey: Long = 0L,
+    onReports: () -> Unit = {},
     stockViewModel: StockViewModel = viewModel(),
 ) {
     val state by stockViewModel.uiState.collectAsState()
@@ -63,6 +64,7 @@ fun StockRoute(
         onBack = onBack,
         onRefresh = stockViewModel::refresh,
         onProductClick = onProductClick,
+        onReports = onReports,
     )
 }
 
@@ -72,6 +74,7 @@ private fun StockScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onProductClick: (String) -> Unit,
+    onReports: () -> Unit,
 ) {
     var search by rememberSaveable { mutableStateOf("") }
     var viewMode by rememberSaveable { mutableStateOf(StockViewMode.Category) }
@@ -145,7 +148,7 @@ private fun StockScreen(
                     Button(onClick = { showValues = !showValues }) {
                         Text(if (showValues) "Ocultar valores" else "Mostrar valores")
                     }
-                    OutlinedButton(onClick = {}, enabled = false) {
+                    OutlinedButton(onClick = onReports) {
                         Text("Relatórios")
                     }
                 }

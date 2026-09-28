@@ -37,6 +37,7 @@ import com.babycatbe.nevesestoque.feature.products.ProductsListRoute
 import com.babycatbe.nevesestoque.feature.stock.StockRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierDetailRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierFormRoute
+import com.babycatbe.nevesestoque.feature.reports.ReportsRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SuppliersRoute
 import com.babycatbe.nevesestoque.feature.trash.TrashScreen
 
@@ -46,6 +47,7 @@ private const val PRODUCTS_LIST_ROUTE = "products/list"
 private const val PRODUCTS_CATEGORY_ROUTE = "products/list/category/{categoryId}"
 private const val CATEGORIES_ROUTE = "products/categories"
 private const val TRASH_ROUTE = "trash?filter={filter}"
+private const val REPORTS_ROUTE = "stock/reports"
 private const val PRODUCT_DETAIL_ROUTE = "product/{productId}"
 private const val PRODUCT_CREATE_ROUTE = "products/new"
 private const val PRODUCT_EDIT_ROUTE = "product/{productId}/edit"
@@ -96,6 +98,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     onBack = { navController.popBackStack() },
                     onProductClick = { navController.navigate("product/$it") },
                     refreshKey = refreshKey,
+                    onReports = { navController.navigate(REPORTS_ROUTE) },
                 )
                 "produtos" -> ProductsHubScreen(
                     onBack = { navController.popBackStack() },
@@ -510,6 +513,10 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
 
         composable(CONFERENCE_PRINT_ROUTE) {
             ConferencePrintRoute(onBack = { navController.popBackStack() })
+        }
+
+        composable(REPORTS_ROUTE) {
+            ReportsRoute(onBack = { navController.popBackStack() })
         }
 
         composable(
