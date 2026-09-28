@@ -104,8 +104,14 @@ private fun ProductDetailScreen(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
-                    TextButton(onClick = onEdit, enabled = product != null && !state.loading) { Text("Editar") }
-                    TextButton(onClick = onRefresh, enabled = !state.refreshing) {
+                    TextButton(
+                        onClick = onEdit,
+                        enabled = product != null && !state.loading && !state.convertingUnit,
+                    ) { Text("Editar") }
+                    TextButton(
+                        onClick = onRefresh,
+                        enabled = !state.refreshing && !state.convertingUnit,
+                    ) {
                         Text(if (state.refreshing) "Atualizando…" else "Atualizar")
                     }
                 }
@@ -354,7 +360,7 @@ private fun ProductDetailScreen(
                             )
                             TextButton(
                                 onClick = { deleteOpen = true },
-                                enabled = !state.deleting,
+                                enabled = !state.deleting && !state.convertingUnit,
                                 modifier = Modifier.padding(top = 6.dp),
                             ) {
                                 Text(if (state.deleting) "Excluindo…" else "Excluir Produto")

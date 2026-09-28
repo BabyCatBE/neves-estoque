@@ -108,7 +108,7 @@ class ProductDetailViewModel(
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing) return
+        if (_uiState.value.refreshing || _uiState.value.convertingUnit) return
         viewModelScope.launch {
             val hasData = _uiState.value.product != null
             _uiState.value = _uiState.value.copy(

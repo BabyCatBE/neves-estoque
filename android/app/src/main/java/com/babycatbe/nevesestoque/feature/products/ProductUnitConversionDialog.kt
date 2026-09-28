@@ -128,7 +128,7 @@ fun ProductUnitConversionDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
-                        "A conversço é retroativa: estoque inicial, Entradas, preços e Conferências são convertidos, inclusive registros excluídos/restauráveis.",
+                        "A conversão é retroativa: estoque inicial, Entradas, preços e Conferências são convertidos, inclusive registros excluídos/restauráveis.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 8.dp),
