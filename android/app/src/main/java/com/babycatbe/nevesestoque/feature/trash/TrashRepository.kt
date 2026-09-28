@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.trash
 
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.async
 import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
@@ -26,67 +28,83 @@ class TrashRepository {
     private fun requireDeviceId(): String =
         DeviceIdentityStore.registeredDeviceId() ?: error("Dispositivo não autorizado.")
 
-    suspend fun loadRestorableTrash(): List<TrashItem> {
+    suspend fun loadRestorableTrash(): List<TrashItem> = coroutineScope {
         val client = client()
 
-        val products = client.from("products")
-            .select(Columns.list("id", "name", "unit", "deleted_at", "restore_until", "permanently_deleted_at")) {
-                attachRegisteredDevice()
-                filter { exact("permanently_deleted_at", null) }
-            }
-            .decodeList<TrashProductRow>()
-            .filter { it.deletedAt != null }
+        val productsAsync = async {
+            client.from("products")
+                .select(Columns.list("id", "name", "unit", "deleted_at", "restore_until", "permanently_deleted_at")) {
+                    attachRegisteredDevice()
+                    filter { exact("permanently_deleted_at", null) }
+                }
+                .decodeList<TrashProductRow>()
+                .filter { it.deletedAt != null }
+        }
 
-        val categories = client.from("categories")
-            .select(Columns.list("id", "name", "deleted_at", "restore_until", "permanently_deleted_at")) {
-                attachRegisteredDevice()
-                filter { exact("permanently_deleted_at", null) }
-            }
-            .decodeList<TrashCategoryRow>()
-            .filter { it.deletedAt != null }
+        val categoriesAsync = async {
+            client.from("categories")
+                .select(Columns.list("id", "name", "deleted_at", "restore_until", "permanently_deleted_at")) {
+                    attachRegisteredDevice()
+                    filter { exact("permanently_deleted_at", null) }
+                }
+                .decodeList<TrashCategoryRow>()
+                .filter { it.deletedAt != null }
+        }
 
-        val suppliers = client.from("suppliers")
-            .select(
-                Columns.list(
-                    "id", "name", "company", "phone", "deleted_at", "restore_until", "permanently_deleted_at",
-                )
-            ) {
-                attachRegisteredDevice()
-                filter { exact("permanently_deleted_at", null) }
-            }
-            .decodeList<TrashSupplierRow>()
-            .filter { it.deletedAt != null }
+        val suppliersAsync = async {
+            client.from("suppliers")
+                .select(
+                    Columns.list(
+                        "id", "name", "company", "phone", "deleted_at", "restore_until", "permanently_deleted_at",
+                    )
+                ) {
+                    attachRegisteredDevice()
+                    filter { exact("permanently_deleted_at", null) }
+                }
+                .decodeList<TrashSupplierRow>()
+                .filter { it.deletedAt != null }
+        }
 
-        val entries = client.from("entries")
-            .select(
-                Columns.list(
-                    "id", "supplier_id", "effective_at", "deleted_at", "restore_until", "permanently_deleted_at",
-                )
-            ) {
-                attachRegisteredDevice()
-                filter { exact("permanently_deleted_at", null) }
-            }
-            .decodeList<TrashEntryRow>()
-            .filter { it.deletedAt != null }
+        val entriesAsync = async {
+            client.from("entries")
+                .select(
+                    Columns.list(
+                        "id", "supplier_id", "effective_at", "deleted_at", "restore_until", "permanently_deleted_at",
+                    )
+                ) {
+                    attachRegisteredDevice()
+                    filter { exact("permanently_deleted_at", null) }
+                }
+                .decodeList<TrashEntryRow>()
+                .filter { it.deletedAt != null }
+        }
 
-        val conferences = client.from("conferences")
-            .select(
-                Columns.list(
-                    "id", "scope_type", "category_id", "scope_product_id", "effective_at",
-                    "physical_responsible", "deleted_at", "restore_until", "permanently_deleted_at",
-                )
-            ) {
-                attachRegisteredDevice()
-                filter { exact("permanently_deleted_at", null) }
-            }
-            .decodeList<TrashConferenceRow>()
-            .filter { it.deletedAt != null }
+        val conferencesAsync = async {
+            client.from("conferences")
+                .select(
+                    Columns.list(
+                        "id", "scope_type", "category_id", "scope_product_id", "effective_at",
+                        "physical_responsible", "deleted_at", "restore_until", "permanently_deleted_at",
+                    )
+                ) {
+                    attachRegisteredDevice()
+                    filter { exact("permanently_deleted_at", null) }
+                }
+                .decodeList<TrashConferenceRow>()
+                .filter { it.deletedAt != null }
+        }
+
+        val products = productsAsync.await()
+        val categories = categoriesAsync.await()
+        val suppliers = suppliersAsync.await()
+        val entries = entriesAsync.await()
+        val conferences = conferencesAsync.await()
 
         val supplierNames = loadNames("suppliers", entries.map { it.supplierId })
         val categoryNames = loadNames("categories", conferences.mapNotNull { it.categoryId })
         val productNames = loadNames("products", conferences.mapNotNull { it.scopeProductId })
 
-        return buildRestorableTrash(
+        buildRestorableTrash(
             TrashSourceRows(
                 products = products,
                 categories = categories,

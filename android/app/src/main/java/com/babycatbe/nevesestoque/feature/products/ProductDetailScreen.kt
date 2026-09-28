@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,9 +49,7 @@ fun ProductDetailRoute(
         factory = ProductDetailViewModel.Factory(productId),
     )
     val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     LaunchedEffect(state.deleted) {
         if (state.deleted) {
             onDeleted("Produto enviado para a Lixeira. Ele pode ser restaurado por 7 dias.")

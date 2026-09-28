@@ -4,6 +4,10 @@ import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
 import com.babycatbe.nevesestoque.data.supabase.fetchAllByKeyset
 import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.SerialName
@@ -94,42 +98,61 @@ class ReportsRepository {
         }
     }
 
-    suspend fun loadFacts(): MonthlyStockReportFacts {
-        val products = readAll<ReportProductRow, String>(
-            "products",
-            listOf(
-                "id", "name", "unit", "created_at", "deleted_at", "initial_stock_quantity",
-                "initial_stock_at", "initial_price", "initial_price_at",
-            ),
-            keyOf = ReportProductRow::id,
-        )
-        val entries = readAll<ReportHeaderRow, String>(
-            "entries", listOf("id", "effective_at", "created_at"), ReportHeaderRow::id, onlyActive = true,
-        )
-        val entryItems = readAll<ReportEntryItemRow, String>(
-            "entry_items",
-            listOf("id", "entry_id", "product_id", "quantity", "unit_price", "position"),
-            ReportEntryItemRow::id,
-        )
-        val conferences = readAll<ReportHeaderRow, String>(
-            "conferences", listOf("id", "effective_at", "created_at"), ReportHeaderRow::id, onlyActive = true,
-        )
-        val conferenceItems = readAll<ReportConferenceItemRow, String>(
-            "conference_items", listOf("id", "conference_id", "product_id", "quantity"),
-            ReportConferenceItemRow::id,
-        )
-        val audits = readAll<ReportProductAuditRow, Long>(
-            "audit_log", listOf("id", "entity_id", "action", "created_at"),
-            ReportProductAuditRow::id, entityType = "products",
-        )
+    suspend fun loadFacts(): MonthlyStockReportFacts = coroutineScope {
+        val products = async {
+            readAll<ReportProductRow, String>(
+                "products",
+                listOf(
+                    "id", "name", "unit", "created_at", "deleted_at", "initial_stock_quantity",
+                    "initial_stock_at", "initial_price", "initial_price_at",
+                ),
+                keyOf = ReportProductRow::id,
+            )
+        }
+        val entries = async {
+            readAll<ReportHeaderRow, String>(
+                "entries", listOf("id", "effective_at", "created_at"), ReportHeaderRow::id, onlyActive = true,
+            )
+        }
+        val entryItems = async {
+            readAll<ReportEntryItemRow, String>(
+                "entry_items",
+                listOf("id", "entry_id", "product_id", "quantity", "unit_price", "position"),
+                ReportEntryItemRow::id,
+            )
+        }
+        val conferences = async {
+            readAll<ReportHeaderRow, String>(
+                "conferences", listOf("id", "effective_at", "created_at"), ReportHeaderRow::id, onlyActive = true,
+            )
+        }
+        val conferenceItems = async {
+            readAll<ReportConferenceItemRow, String>(
+                "conference_items", listOf("id", "conference_id", "product_id", "quantity"),
+                ReportConferenceItemRow::id,
+            )
+        }
+        val audits = async {
+            readAll<ReportProductAuditRow, Long>(
+                "audit_log", listOf("id", "entity_id", "action", "created_at"),
+                ReportProductAuditRow::id, entityType = "products",
+            )
+        }
 
-        return assembleReportFacts(products, entries, entryItems, conferences, conferenceItems, audits)
+        assembleReportFacts(
+            products.await(), entries.await(), entryItems.await(),
+            conferences.await(), conferenceItems.await(), audits.await(),
+        )
     }
 
     /** Série mensal oficial: do primeiro mês com fatos até o mês atual (provisório). */
     suspend fun loadHistory(now: Instant = Instant.now()): MonthlyStockValueSeries {
-        val available = filterFactsAvailableAt(loadFacts(), now)
-        return calculateMonthlyStockValueSeries(reportCurrentDateKey(now), available)
+        val facts = loadFacts()
+        // Cálculo da série inteira fora da thread da interface.
+        return withContext(Dispatchers.Default) {
+            val available = filterFactsAvailableAt(facts, now)
+            calculateMonthlyStockValueSeries(reportCurrentDateKey(now), available)
+        }
     }
 }
 

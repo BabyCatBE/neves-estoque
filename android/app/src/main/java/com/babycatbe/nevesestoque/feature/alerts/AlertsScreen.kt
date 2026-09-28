@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.alerts
 
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -93,11 +95,12 @@ class AlertsViewModel : ViewModel() {
     private val repository = AlertsRepository()
     private val _uiState = MutableStateFlow(AlertsUiState())
     val uiState: StateFlow<AlertsUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     fun refresh() {
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             _uiState.value = _uiState.value.copy(loading = _uiState.value.counts == null, errorMessage = null)
-            runCatching { repository.loadCounts() }
+            loadCatching { repository.loadCounts() }
                 .onSuccess { _uiState.value = AlertsUiState(loading = false, counts = it) }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(loading = false, errorMessage = "Não foi possível carregar os Alertas.")

@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.reports
 
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,17 +65,17 @@ class ReportsViewModel : ViewModel() {
     private val repository = ReportsRepository()
     private val _uiState = MutableStateFlow(ReportsUiState())
     val uiState: StateFlow<ReportsUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init {
         refresh()
     }
 
     fun refresh() {
-        if (_uiState.value.refreshing) return
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.series != null
             _uiState.value = _uiState.value.copy(loading = !hasData, refreshing = hasData, errorMessage = null)
-            runCatching { repository.loadHistory() }
+            loadCatching { repository.loadHistory() }
                 .onSuccess { series -> _uiState.value = ReportsUiState(loading = false, series = series) }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(

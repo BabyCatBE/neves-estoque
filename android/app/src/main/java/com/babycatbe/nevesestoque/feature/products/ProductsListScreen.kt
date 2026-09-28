@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +20,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,9 +48,7 @@ fun ProductsListRoute(
     productsViewModel: ProductsViewModel = viewModel(),
 ) {
     val state by productsViewModel.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) productsViewModel.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { productsViewModel.refresh() }
     ProductsListScreen(
         state = state,
         categoryFilter = categoryFilter,

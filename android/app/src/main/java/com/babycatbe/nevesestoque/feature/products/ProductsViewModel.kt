@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -21,19 +23,19 @@ class ProductsViewModel : ViewModel() {
     private val repository = ProductsRepository()
     private val _uiState = MutableStateFlow(ProductsUiState())
     val uiState: StateFlow<ProductsUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing) return
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.data != null
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
                 refreshing = hasData,
                 errorMessage = null,
             )
-            runCatching { repository.loadCatalog() }
+            loadCatching { repository.loadCatalog() }
                 .onSuccess { _uiState.value = ProductsUiState(loading = false, data = it) }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(
@@ -104,19 +106,20 @@ class ProductDetailViewModel(
     private val repository = ProductsRepository()
     private val _uiState = MutableStateFlow(ProductDetailUiState())
     val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing || _uiState.value.convertingUnit) return
-        viewModelScope.launch {
+        if (_uiState.value.convertingUnit) return
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.product != null
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
                 refreshing = hasData,
                 errorMessage = null,
             )
-            runCatching { repository.loadProductDetails(productId) }
+            loadCatching { repository.loadProductDetails(productId) }
                 .onSuccess { (product, categories) ->
                     _uiState.value = ProductDetailUiState(
                         loading = false,

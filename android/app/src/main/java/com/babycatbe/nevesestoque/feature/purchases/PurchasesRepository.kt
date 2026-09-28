@@ -6,7 +6,9 @@ import com.babycatbe.nevesestoque.data.supabase.fetchAllByIdKeyset
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -35,36 +37,49 @@ class PurchasesRepository {
     private fun client() = SupabaseProvider.client
         ?: error("Supabase não está configurado nesta build.")
 
-    suspend fun loadPurchaseData(nowMillis: Long = System.currentTimeMillis()): PurchaseData {
+    suspend fun loadPurchaseData(nowMillis: Long = System.currentTimeMillis()): PurchaseData = coroutineScope {
         val client = client()
 
-        val products = client.from("products")
-            .select(Columns.list("id", "name", "unit", "category_id", "sort_order")) {
-                attachRegisteredDevice()
-                filter { exact("deleted_at", null) }
-            }
-            .decodeList<PurchaseProductRow>()
+        val productsAsync = async {
+            client.from("products")
+                .select(Columns.list("id", "name", "unit", "category_id", "sort_order")) {
+                    attachRegisteredDevice()
+                    filter { exact("deleted_at", null) }
+                }
+                .decodeList<PurchaseProductRow>()
+        }
 
-        val stock = client.from("stock_current")
-            .select(Columns.list("product_id", "current_quantity", "current_supplier_id")) { attachRegisteredDevice() }
-            .decodeList<PurchaseStockRow>()
+        val stockAsync = async {
+            client.from("stock_current")
+                .select(Columns.list("product_id", "current_quantity", "current_supplier_id")) { attachRegisteredDevice() }
+                .decodeList<PurchaseStockRow>()
+        }
 
-        val suppliers = client.from("suppliers")
-            .select(
-                Columns.list(
-                    "id", "name", "company", "phone", "deleted_at", "purchase_frequency_days",
-                    "preferred_order_weekday", "average_delivery_days", "safety_margin_days",
-                )
-            ) { attachRegisteredDevice() }
-            .decodeList<PurchaseSupplierRow>()
+        val suppliersAsync = async {
+            client.from("suppliers")
+                .select(
+                    Columns.list(
+                        "id", "name", "company", "phone", "deleted_at", "purchase_frequency_days",
+                        "preferred_order_weekday", "average_delivery_days", "safety_margin_days",
+                    )
+                ) { attachRegisteredDevice() }
+                .decodeList<PurchaseSupplierRow>()
+        }
 
-        val categories = client.from("categories")
-            .select(Columns.list("id", "name", "sort_order")) {
-                attachRegisteredDevice()
-                filter { exact("deleted_at", null) }
-            }
-            .decodeList<PurchaseCategoryRow>()
-            .sortedWith(compareBy<PurchaseCategoryRow> { it.sortOrder ?: Int.MAX_VALUE }.thenBy { it.name })
+        val categoriesAsync = async {
+            client.from("categories")
+                .select(Columns.list("id", "name", "sort_order")) {
+                    attachRegisteredDevice()
+                    filter { exact("deleted_at", null) }
+                }
+                .decodeList<PurchaseCategoryRow>()
+                .sortedWith(compareBy<PurchaseCategoryRow> { it.sortOrder ?: Int.MAX_VALUE }.thenBy { it.name })
+        }
+
+        val products = productsAsync.await()
+        val stock = stockAsync.await()
+        val suppliers = suppliersAsync.await()
+        val categories = categoriesAsync.await()
 
         val facts = coroutineScope {
             val conferences = async {
@@ -132,13 +147,16 @@ class PurchasesRepository {
             )
         }
 
-        val purchaseProducts = assemblePurchaseProducts(
-            facts = facts,
-            nowMillis = nowMillis,
-            weekday = todayWeekday(LocalDate.now().dayOfWeek),
-        )
+        // Projeções de todos os Produtos: cálculo fora da thread da interface.
+        val purchaseProducts = withContext(Dispatchers.Default) {
+            assemblePurchaseProducts(
+                facts = facts,
+                nowMillis = nowMillis,
+                weekday = todayWeekday(LocalDate.now().dayOfWeek),
+            )
+        }
 
-        return PurchaseData(
+        PurchaseData(
             products = purchaseProducts,
             suppliers = suppliers.filter { it.deletedAt == null }
                 .sortedWith { a, b -> comparePurchaseNames(a.name, b.name) },

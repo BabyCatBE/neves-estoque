@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -100,9 +101,7 @@ fun EntriesHistoryRoute(
 ) {
     val vm: EntriesHistoryViewModel = viewModel()
     val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     EntriesHistoryScreen(
         state = state,
         onBack = onBack,
@@ -266,9 +265,7 @@ fun EntryDetailRoute(
         factory = EntryDetailViewModel.Factory(entryId),
     )
     val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     LaunchedEffect(state.deleted) {
         if (state.deleted) {
             onDeleted("Entrada enviada para a Lixeira. Seus efeitos deixaram de compor o estoque e o preço atuais.")

@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.stock
 
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,7 +31,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -56,9 +56,7 @@ fun StockRoute(
     stockViewModel: StockViewModel = viewModel(),
 ) {
     val state by stockViewModel.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) stockViewModel.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { stockViewModel.refresh() }
     StockScreen(
         state = state,
         onBack = onBack,

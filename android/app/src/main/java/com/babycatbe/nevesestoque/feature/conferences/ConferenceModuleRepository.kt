@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.async
 import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
@@ -21,28 +23,40 @@ class ConferenceModuleRepository {
     private fun client() = SupabaseProvider.client
         ?: error("Supabase não está configurado nesta build.")
 
-    suspend fun loadCategorySummaries(): List<ConferenceCategorySummary> {
+    suspend fun loadCategorySummaries(): List<ConferenceCategorySummary> = coroutineScope {
         val client = client()
-        val categories = loadActiveCategories()
-        val products = loadActiveProducts()
-        val conferences = client.from("conferences")
-            .select(
-                Columns.list(
-                    "id", "effective_at", "created_at", "physical_responsible",
-                    "observation", "scope_type", "category_id", "scope_product_id",
-                    "idempotency_key", "deleted_at",
-                )
-            ) {
-                attachRegisteredDevice()
-                filter {
-                    eq("scope_type", "category")
-                    exact("deleted_at", null)
+        val categoriesAsync = async {
+            loadActiveCategories()
+        }
+
+        val productsAsync = async {
+            loadActiveProducts()
+        }
+
+        val conferencesAsync = async {
+            client.from("conferences")
+                .select(
+                    Columns.list(
+                        "id", "effective_at", "created_at", "physical_responsible",
+                        "observation", "scope_type", "category_id", "scope_product_id",
+                        "idempotency_key", "deleted_at",
+                    )
+                ) {
+                    attachRegisteredDevice()
+                    filter {
+                        eq("scope_type", "category")
+                        exact("deleted_at", null)
+                    }
                 }
-            }
-            .decodeList<ConferenceRow>()
+                .decodeList<ConferenceRow>()
+        }
+
+        val categories = categoriesAsync.await()
+        val products = productsAsync.await()
+        val conferences = conferencesAsync.await()
 
         val today = java.time.LocalDate.now().toString()
-        return categories.map { category ->
+        categories.map { category ->
             val categoryConferences = conferences
                 .filter { it.categoryId == category.id }
                 .sortedWith(conferenceHistoryComparator)

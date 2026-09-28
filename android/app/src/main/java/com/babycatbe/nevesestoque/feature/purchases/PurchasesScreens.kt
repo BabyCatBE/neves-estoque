@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.purchases
 
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -64,15 +66,16 @@ class PurchasesViewModel : ViewModel() {
     private val repository = PurchasesRepository()
     private val _uiState = MutableStateFlow(PurchasesUiState())
     val uiState: StateFlow<PurchasesUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init {
         refresh()
     }
 
     fun refresh() {
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             _uiState.value = _uiState.value.copy(loading = _uiState.value.data == null, errorMessage = null)
-            runCatching { repository.loadPurchaseData() }
+            loadCatching { repository.loadPurchaseData() }
                 .onSuccess { _uiState.value = PurchasesUiState(loading = false, data = it) }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(

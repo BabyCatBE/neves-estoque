@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -26,19 +28,19 @@ class ProductStockUpdateViewModel(
     private val repository = ProductConferenceRepository()
     private val _uiState = MutableStateFlow(ProductStockUpdateUiState())
     val uiState: StateFlow<ProductStockUpdateUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing) return
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.product != null
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
                 refreshing = hasData,
                 errorMessage = null,
             )
-            runCatching { repository.loadProduct(productId) }
+            loadCatching { repository.loadProduct(productId) }
                 .onSuccess {
                     _uiState.value = ProductStockUpdateUiState(
                         loading = false,

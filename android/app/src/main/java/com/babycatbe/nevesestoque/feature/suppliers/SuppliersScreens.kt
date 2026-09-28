@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.suppliers
 
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,9 +52,7 @@ fun SuppliersRoute(
 ) {
     val vm: SuppliersViewModel = viewModel()
     val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     SuppliersScreen(
         state = state,
         onBack = onBack,
@@ -240,9 +239,7 @@ fun SupplierDetailRoute(
         factory = SupplierDetailViewModel.Factory(supplierId),
     )
     val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     LaunchedEffect(state.deleted) {
         if (state.deleted) {
             onDeleted("Fornecedor enviado para a Lixeira. O histórico de Entradas foi preservado.")

@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -121,9 +122,7 @@ fun ConferenceCategoriesRoute(
 ) {
     val vm: ConferenceCategoriesViewModel = viewModel()
     val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     ConferenceCategoriesScreen(
         title = "Fazer conferência",
         subtitle = "Cada Categoria é uma Conferência independente. Todas as quantidades precisam ser preenchidas.",
@@ -145,9 +144,7 @@ fun ConferenceHistoryCategoriesRoute(
 ) {
     val vm: ConferenceCategoriesViewModel = viewModel(key = "conference-history-categories")
     val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     ConferenceCategoriesScreen(
         title = "Histórico de Conferências",
         subtitle = "Escolha uma Categoria para consultar as contagens salvas.",
@@ -283,9 +280,7 @@ fun CategoryConferenceHistoryRoute(
         factory = CategoryConferenceHistoryViewModel.Factory(categoryId),
     )
     val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
 
     val countsByDay = remember(state.conferences) {
         state.conferences.groupingBy { conferenceLocalDate(it.effectiveAt) }.eachCount()
@@ -391,9 +386,7 @@ fun ConferenceDetailRoute(
     val state by vm.uiState.collectAsState()
     var deleteOpen by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     LaunchedEffect(state.deleted) {
         if (state.deleted) {
             val categoryId = state.details?.categoryId ?: return@LaunchedEffect

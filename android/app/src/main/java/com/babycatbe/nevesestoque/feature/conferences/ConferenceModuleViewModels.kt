@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -22,19 +24,19 @@ class ConferenceCategoriesViewModel : ViewModel() {
     private val repository = ConferenceModuleRepository()
     private val _uiState = MutableStateFlow(ConferenceCategoriesUiState())
     val uiState: StateFlow<ConferenceCategoriesUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing) return
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.categories.isNotEmpty()
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
                 refreshing = hasData,
                 errorMessage = null,
             )
-            runCatching { repository.loadCategorySummaries() }
+            loadCatching { repository.loadCategorySummaries() }
                 .onSuccess {
                     _uiState.value = ConferenceCategoriesUiState(
                         loading = false,
@@ -332,12 +334,12 @@ class CategoryConferenceHistoryViewModel(private val categoryId: String) : ViewM
     private val repository = ConferenceModuleRepository()
     private val _uiState = MutableStateFlow(CategoryConferenceHistoryUiState())
     val uiState: StateFlow<CategoryConferenceHistoryUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing) return
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.setup != null
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
@@ -384,12 +386,13 @@ class ConferenceDetailViewModel(private val conferenceId: String) : ViewModel() 
     private val repository = ConferenceModuleRepository()
     private val _uiState = MutableStateFlow(ConferenceDetailUiState())
     val uiState: StateFlow<ConferenceDetailUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing || _uiState.value.deleting) return
-        viewModelScope.launch {
+        if (_uiState.value.deleting) return
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.details != null
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
@@ -397,7 +400,7 @@ class ConferenceDetailViewModel(private val conferenceId: String) : ViewModel() 
                 errorMessage = null,
                 actionError = null,
             )
-            runCatching { repository.loadConferenceDetails(conferenceId) }
+            loadCatching {{ repository.loadConferenceDetails(conferenceId) }
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         loading = false,
