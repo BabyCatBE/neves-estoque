@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 
-/** Casos portados dos testes Web (src/features/reports/lib/*.test.ts) para garantir paridade. */
+/** Casos portados dos testes Web (src/features/reports/lib, arquivos .test.ts) para garantir paridade. */
 class ReportsCalculationTest {
 
     private fun product(
