@@ -51,6 +51,7 @@ private const val SUPPLIER_CREATE_ROUTE = "suppliers/new"
 private const val SUPPLIER_EDIT_ROUTE = "supplier/{supplierId}/edit"
 private const val ENTRY_HISTORY_ROUTE = "entries/history"
 private const val ENTRY_CREATE_ROUTE = "entries/new"
+private const val ENTRY_CREATE_PRODUCT_ROUTE = "entries/new/product/{productId}"
 private const val ENTRY_DETAIL_ROUTE = "entry/{entryId}"
 private const val ENTRY_EDIT_ROUTE = "entry/{entryId}/edit"
 private const val REFRESH_KEY = "catalog-refresh"
@@ -221,6 +222,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     navController.popBackStack()
                 },
                 onConference = { navController.navigate("product/$productId/stock/conference") },
+                onEntry = { navController.navigate("entries/new/product/$productId") },
                 refreshKey = refreshKey,
                 noticeMessage = notice,
                 onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
@@ -316,6 +318,22 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
 
         composable(ENTRY_CREATE_ROUTE) {
             NewEntryRoute(
+                onBack = { navController.popBackStack() },
+                onSaved = { entryId, message ->
+                    navController.popBackStack()
+                    navController.navigate("entry/$entryId")
+                    navController.currentBackStackEntry?.savedStateHandle?.set(NOTICE_KEY, message)
+                },
+            )
+        }
+
+        composable(
+            ENTRY_CREATE_PRODUCT_ROUTE,
+            arguments = listOf(navArgument("productId") { type = NavType.StringType }),
+        ) { entry ->
+            val productId = entry.arguments?.getString("productId").orEmpty()
+            NewEntryRoute(
+                initialProductId = productId,
                 onBack = { navController.popBackStack() },
                 onSaved = { entryId, message ->
                     navController.popBackStack()
