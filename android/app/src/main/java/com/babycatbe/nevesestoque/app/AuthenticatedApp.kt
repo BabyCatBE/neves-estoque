@@ -9,6 +9,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.babycatbe.nevesestoque.feature.auth.AuthUiState
+import com.babycatbe.nevesestoque.feature.conferences.CategoryConferenceFormRoute
+import com.babycatbe.nevesestoque.feature.conferences.CategoryConferenceHistoryRoute
+import com.babycatbe.nevesestoque.feature.conferences.ConferenceCategoriesRoute
+import com.babycatbe.nevesestoque.feature.conferences.ConferenceDetailRoute
+import com.babycatbe.nevesestoque.feature.conferences.ConferenceHistoryCategoriesRoute
+import com.babycatbe.nevesestoque.feature.conferences.ConferencePrintRoute
+import com.babycatbe.nevesestoque.feature.conferences.ConferencesHubScreen
+import com.babycatbe.nevesestoque.feature.conferences.EditConferenceRoute
 import com.babycatbe.nevesestoque.feature.conferences.ProductConferenceRoute
 import com.babycatbe.nevesestoque.feature.conferences.ProductStockUpdateRoute
 import com.babycatbe.nevesestoque.feature.entries.EditEntryRoute
@@ -44,6 +52,13 @@ private const val PRODUCT_EDIT_ROUTE = "product/{productId}/edit"
 private const val PRODUCT_STOCK_ROUTE = "product/{productId}/stock"
 private const val PRODUCT_CONFERENCE_ROUTE = "product/{productId}/stock/conference"
 private const val PRODUCT_MERGE_ROUTE = "product/{productId}/merge"
+private const val CONFERENCE_CATEGORIES_ROUTE = "conferences/categories"
+private const val CONFERENCE_CATEGORY_CREATE_ROUTE = "conferences/categories/{categoryId}/new"
+private const val CONFERENCE_HISTORY_ROUTE = "conferences/history"
+private const val CONFERENCE_CATEGORY_HISTORY_ROUTE = "conferences/history/{categoryId}"
+private const val CONFERENCE_DETAIL_ROUTE = "conferences/detail/{conferenceId}"
+private const val CONFERENCE_EDIT_ROUTE = "conferences/detail/{conferenceId}/edit"
+private const val CONFERENCE_PRINT_ROUTE = "conferences/print"
 private const val CATEGORY_CREATE_ROUTE = "products/categories/new"
 private const val CATEGORY_EDIT_ROUTE = "products/categories/{categoryId}/edit"
 private const val SUPPLIER_DETAIL_ROUTE = "supplier/{supplierId}"
@@ -105,6 +120,12 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     onBack = { navController.popBackStack() },
                     onNewEntry = { navController.navigate(ENTRY_CREATE_ROUTE) },
                     onHistory = { navController.navigate(ENTRY_HISTORY_ROUTE) },
+                )
+                "conferencias" -> ConferencesHubScreen(
+                    onBack = { navController.popBackStack() },
+                    onPrint = { navController.navigate(CONFERENCE_PRINT_ROUTE) },
+                    onNewConference = { navController.navigate(CONFERENCE_CATEGORIES_ROUTE) },
+                    onHistory = { navController.navigate(CONFERENCE_HISTORY_ROUTE) },
                 )
                 else -> ModulePlaceholderScreen(
                     title = module?.title ?: "Módulo",
@@ -384,6 +405,109 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     navController.popBackStack()
                 },
             )
+        }
+
+        composable(CONFERENCE_CATEGORIES_ROUTE) { entry ->
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            ConferenceCategoriesRoute(
+                onBack = { navController.popBackStack() },
+                onCategoryClick = { navController.navigate("conferences/categories/$it/new") },
+                refreshKey = refreshKey,
+                noticeMessage = notice,
+                onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(
+            CONFERENCE_CATEGORY_CREATE_ROUTE,
+            arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
+        ) { entry ->
+            val categoryId = entry.arguments?.getString("categoryId").orEmpty()
+            CategoryConferenceFormRoute(
+                categoryId = categoryId,
+                onBack = { navController.popBackStack() },
+                onSaved = { message ->
+                    navController.previousBackStackEntry?.savedStateHandle?.apply {
+                        set(REFRESH_KEY, System.currentTimeMillis())
+                        set(NOTICE_KEY, message)
+                    }
+                    navController.popBackStack()
+                },
+            )
+        }
+
+        composable(CONFERENCE_HISTORY_ROUTE) { entry ->
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
+            ConferenceHistoryCategoriesRoute(
+                onBack = { navController.popBackStack() },
+                onCategoryClick = { navController.navigate("conferences/history/$it") },
+                refreshKey = refreshKey,
+            )
+        }
+
+        composable(
+            CONFERENCE_CATEGORY_HISTORY_ROUTE,
+            arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
+        ) { entry ->
+            val categoryId = entry.arguments?.getString("categoryId").orEmpty()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            CategoryConferenceHistoryRoute(
+                categoryId = categoryId,
+                onBack = { navController.popBackStack() },
+                onConferenceClick = { navController.navigate("conferences/detail/$it") },
+                refreshKey = refreshKey,
+                noticeMessage = notice,
+                onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(
+            CONFERENCE_DETAIL_ROUTE,
+            arguments = listOf(navArgument("conferenceId") { type = NavType.StringType }),
+        ) { entry ->
+            val conferenceId = entry.arguments?.getString("conferenceId").orEmpty()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            ConferenceDetailRoute(
+                conferenceId = conferenceId,
+                onBack = { navController.popBackStack() },
+                onEdit = { navController.navigate("conferences/detail/$conferenceId/edit") },
+                onDeleted = { categoryId, message ->
+                    navController.popBackStack(CONFERENCE_CATEGORY_HISTORY_ROUTE, inclusive = true)
+                    navController.navigate("conferences/history/$categoryId")
+                    navController.currentBackStackEntry?.savedStateHandle?.apply {
+                        set(REFRESH_KEY, System.currentTimeMillis())
+                        set(NOTICE_KEY, message)
+                    }
+                },
+                refreshKey = refreshKey,
+                noticeMessage = notice,
+                onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(
+            CONFERENCE_EDIT_ROUTE,
+            arguments = listOf(navArgument("conferenceId") { type = NavType.StringType }),
+        ) { entry ->
+            val conferenceId = entry.arguments?.getString("conferenceId").orEmpty()
+            EditConferenceRoute(
+                conferenceId = conferenceId,
+                onBack = { navController.popBackStack() },
+                onSaved = { message ->
+                    navController.previousBackStackEntry?.savedStateHandle?.apply {
+                        set(REFRESH_KEY, System.currentTimeMillis())
+                        set(NOTICE_KEY, message)
+                    }
+                    navController.popBackStack()
+                },
+            )
+        }
+
+        composable(CONFERENCE_PRINT_ROUTE) {
+            ConferencePrintRoute(onBack = { navController.popBackStack() })
         }
 
         composable(CATALOG_TRASH_ROUTE) {
