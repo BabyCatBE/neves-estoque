@@ -44,6 +44,7 @@ fun ProductStockUpdateRoute(
     productId: String,
     onBack: () -> Unit,
     onConference: () -> Unit,
+    onEntry: () -> Unit,
     refreshKey: Long = 0L,
     noticeMessage: String? = null,
     onDismissNotice: () -> Unit = {},
@@ -62,6 +63,7 @@ fun ProductStockUpdateRoute(
         state = state,
         onBack = onBack,
         onConference = onConference,
+        onEntry = onEntry,
         onRefresh = vm::refresh,
         noticeMessage = noticeMessage,
         onDismissNotice = onDismissNotice,
@@ -73,6 +75,7 @@ private fun ProductStockUpdateScreen(
     state: ProductStockUpdateUiState,
     onBack: () -> Unit,
     onConference: () -> Unit,
+    onEntry: () -> Unit,
     onRefresh: () -> Unit,
     noticeMessage: String?,
     onDismissNotice: () -> Unit,
@@ -193,10 +196,16 @@ private fun ProductStockUpdateScreen(
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            "O módulo de Entradas ainda não foi implementado no Android. Nenhuma ação falsa é apresentada neste bloco.",
+                            "Registrar mercadoria recebida para este Produto, já abrindo a Nova Entrada com ele selecionado.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 6.dp),
                         )
+                        Button(
+                            onClick = onEntry,
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        ) {
+                            Text("Registrar Entrada")
+                        }
                     }
                 }
             }
