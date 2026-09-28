@@ -37,6 +37,11 @@ import com.babycatbe.nevesestoque.feature.products.ProductsListRoute
 import com.babycatbe.nevesestoque.feature.stock.StockRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierDetailRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierFormRoute
+import com.babycatbe.nevesestoque.feature.purchases.PurchaseCategorySelectRoute
+import com.babycatbe.nevesestoque.feature.purchases.PurchaseListRoute
+import com.babycatbe.nevesestoque.feature.purchases.PurchaseMode
+import com.babycatbe.nevesestoque.feature.purchases.PurchaseSupplierSelectRoute
+import com.babycatbe.nevesestoque.feature.purchases.PurchasesHubScreen
 import com.babycatbe.nevesestoque.feature.reports.ReportsRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SuppliersRoute
 import com.babycatbe.nevesestoque.feature.trash.TrashScreen
@@ -48,6 +53,11 @@ private const val PRODUCTS_CATEGORY_ROUTE = "products/list/category/{categoryId}
 private const val CATEGORIES_ROUTE = "products/categories"
 private const val TRASH_ROUTE = "trash?filter={filter}"
 private const val REPORTS_ROUTE = "stock/reports"
+private const val PURCHASE_SUPPLIERS_ROUTE = "purchases/suppliers"
+private const val PURCHASE_SUPPLIER_ROUTE = "purchases/supplier/{supplierId}"
+private const val PURCHASE_STOCK_ROUTE = "purchases/stock"
+private const val PURCHASE_CATEGORIES_ROUTE = "purchases/categories"
+private const val PURCHASE_CATEGORY_ROUTE = "purchases/category/{categoryId}"
 private const val PRODUCT_DETAIL_ROUTE = "product/{productId}"
 private const val PRODUCT_CREATE_ROUTE = "products/new"
 private const val PRODUCT_EDIT_ROUTE = "product/{productId}/edit"
@@ -131,6 +141,12 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     onNewConference = { navController.navigate(CONFERENCE_CATEGORIES_ROUTE) },
                     onHistory = { navController.navigate(CONFERENCE_HISTORY_ROUTE) },
                     onTrash = { navController.navigate("trash?filter=conference") },
+                )
+                "compras" -> PurchasesHubScreen(
+                    onBack = { navController.popBackStack() },
+                    onSupplier = { navController.navigate(PURCHASE_SUPPLIERS_ROUTE) },
+                    onStock = { navController.navigate(PURCHASE_STOCK_ROUTE) },
+                    onCategory = { navController.navigate(PURCHASE_CATEGORIES_ROUTE) },
                 )
                 else -> ModulePlaceholderScreen(
                     title = module?.title ?: "Módulo",
@@ -513,6 +529,46 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
 
         composable(CONFERENCE_PRINT_ROUTE) {
             ConferencePrintRoute(onBack = { navController.popBackStack() })
+        }
+
+        composable(PURCHASE_SUPPLIERS_ROUTE) {
+            PurchaseSupplierSelectRoute(
+                onBack = { navController.popBackStack() },
+                onSelect = { navController.navigate("purchases/supplier/$it") },
+            )
+        }
+
+        composable(
+            PURCHASE_SUPPLIER_ROUTE,
+            arguments = listOf(navArgument("supplierId") { type = NavType.StringType }),
+        ) { entry ->
+            PurchaseListRoute(
+                mode = PurchaseMode.Supplier,
+                targetId = entry.arguments?.getString("supplierId"),
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(PURCHASE_STOCK_ROUTE) {
+            PurchaseListRoute(mode = PurchaseMode.Stock, targetId = null, onBack = { navController.popBackStack() })
+        }
+
+        composable(PURCHASE_CATEGORIES_ROUTE) {
+            PurchaseCategorySelectRoute(
+                onBack = { navController.popBackStack() },
+                onSelect = { navController.navigate("purchases/category/$it") },
+            )
+        }
+
+        composable(
+            PURCHASE_CATEGORY_ROUTE,
+            arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
+        ) { entry ->
+            PurchaseListRoute(
+                mode = PurchaseMode.Category,
+                targetId = entry.arguments?.getString("categoryId"),
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(REPORTS_ROUTE) {

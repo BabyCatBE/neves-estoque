@@ -145,7 +145,7 @@ private fun SuppliersScreen(
             item {
                 Card {
                     Text(
-                        "Próxima compra recomendada continuará como “Aguardando Entradas” até existir histórico real suficiente. Este bloco não antecipa a Inteligência de Compras.",
+                        "Próxima compra recomendada continuará como “Aguardando Entradas” até existir histórico real suficiente. A sugestão de compra fica em Compras → Por fornecedor.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.fillMaxWidth().padding(14.dp),
