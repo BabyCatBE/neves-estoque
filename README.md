@@ -2,56 +2,76 @@
 
 Aplicativo interno de controle de estoque da **Panificadora Neves — Nordestina**.
 
-## Estado
+## Contexto obrigatório para agentes
 
-**EM IMPLEMENTAÇÃO**
+Antes de realizar alterações técnicas relevantes neste projeto, leia os arquivos aplicáveis em `docs/contexto/`:
 
-O planejamento funcional e a arquitetura principal estão aprovados. A base técnica, o núcleo inicial do banco e o fluxo frontend de autenticação Google já foram implementados. O único projeto Supabase do Neves Estoque será usado primeiro com dados de teste e só passará a operar dados reais após validação completa, auditoria de segurança e preparação para produção.
+- `prd.md` — produto e escopo atual;
+- `architecture.md` — arquitetura real;
+- `rules.md` — restrições obrigatórias;
+- `design.md` — padrões visuais atuais;
+- `task.md` — trabalho operacional vigente;
+- `memory.md` — decisões e aprendizados que precisam sobreviver entre sessões.
 
-### Marco atual
-- schema inicial, RLS, auditoria e RPCs operacionais aplicados no Supabase;
-- Google OAuth configurado no Google Cloud e Supabase;
-- duas contas V1 autorizadas em `app_users`;
-- frontend de login Google, autorização interna, registro de dispositivo, proteção de rotas e logout implementado em `develop`;
-- CI validando typecheck, lint, testes unitários e build;
-- login OAuth real ainda precisa ser testado de ponta a ponta em um ambiente com URL de redirecionamento configurada.
+O **Contexto Mestre no Google Drive** continua sendo a fonte consolidada de continuidade geral. GitHub é autoridade para código, CI e migrations versionadas; Supabase é autoridade para o estado operacional real do banco.
 
-## Stack aprovada
+## Estado atual
+
+**EM IMPLEMENTAÇÃO / TESTES**.
+
+- Web: `0.26.0`;
+- Android: `0.21.0-alpha01` (versionCode 21);
+- branch operacional: `fix/audit-device-id`;
+- Bloco Android 11 de 13 em andamento;
+- sub-blocos 11.1 e 11.2 concluídos;
+- próximo trabalho: definir/executar 11.3 a partir do diagnóstico;
+- testes funcionais, Offline e performance em aparelho continuam `A VERIFICAR`.
+
+Para o estado mais recente, use `docs/contexto/task.md` e o cabeçalho do Contexto Mestre; não use snapshots históricos deste README como substituto.
+
+## Stack
+
+### Web/PWA
 
 - React + TypeScript + Vite
-- Tailwind CSS + shadcn/ui
+- Tailwind CSS
 - React Router
 - TanStack Query
 - React Hook Form + Zod
 - Supabase + PostgreSQL
-- PWA com vite-plugin-pwa
 - IndexedDB + Dexie
 - Vitest + Playwright
 - Netlify
 
+### Android
+
+- Kotlin + Jetpack Compose + Material 3
+- Navigation Compose
+- Supabase Kotlin + Ktor Android
+- armazenamento Offline atual em arquivos JSON internos privados
+
 ## Branches
 
-- `develop`: integração e validação durante o desenvolvimento
-- `main`: linha aprovada para produção
+- `fix/audit-device-id`: branch operacional atual;
+- `develop`: integração/DEV;
+- `main`: produção.
+
+Não fazer merge ou release sem seguir o estado consolidado e a instrução explícita da etapa.
 
 ## Segurança
 
-- O frontend nunca é autoridade de autorização.
-- RLS existe desde a primeira migration exposta ao cliente.
-- Segredos, tokens, service role e senhas nunca entram no Git.
-- Apenas variáveis públicas apropriadas ao navegador podem usar prefixo `VITE_`.
-- Entradas e Conferências oficiais são gravadas por operações transacionais seguras.
-- O login Google autentica a identidade; `app_users` decide se a conta pode acessar o app.
-- Antes de produção haverá auditoria completa de segurança, correções e retestes.
+- cliente Web/Android não é autoridade final de autorização;
+- as proteções de acesso do backend devem permanecer preservadas;
+- segredos e credenciais privadas nunca entram no Git;
+- pendências Offline são revalidadas online e não são enviadas automaticamente;
+- antes de produção haverá auditoria final de segurança e retestes.
 
-## Ambiente local
+## Ambiente Web local
 
 1. Copie `.env.example` para `.env.local`.
-2. Preencha apenas os valores públicos do projeto Supabase `Neves Estoque`.
-3. Instale as dependências com `npm ci`.
-4. Execute `npm run dev`.
-
-O `package-lock.json` está versionado e o CI usa `npm ci`.
+2. Preencha somente os valores públicos do projeto Supabase **Neves Estoque**.
+3. Rode `npm ci`.
+4. Use `npm run local` para o fluxo local padronizado ou `npm run dev` quando apropriado.
 
 ## Regra central do estoque
 
