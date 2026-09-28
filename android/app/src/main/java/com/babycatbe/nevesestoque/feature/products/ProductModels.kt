@@ -147,6 +147,28 @@ data class ProductCatalogData(
     val products: List<ProductListItem>,
 )
 
+data class ProductMutationInput(
+    val name: String,
+    val categoryId: String,
+    val unit: String,
+    val initialStockQuantity: Double?,
+    val initialPrice: Double?,
+)
+
+@Serializable
+data class CreateCategoryPayload(
+    val id: String,
+    val name: String,
+    @SerialName("sort_order") val sortOrder: Int,
+    @SerialName("illustration_source") val illustrationSource: String? = null,
+    @SerialName("illustration_key") val illustrationKey: String? = null,
+    @SerialName("illustration_position_x") val illustrationPositionX: Int = 50,
+    @SerialName("illustration_position_y") val illustrationPositionY: Int = 50,
+)
+
+@Serializable
+data class CategoryNamePayload(val name: String)
+
 data class CategoryListItem(
     val id: String,
     val name: String,

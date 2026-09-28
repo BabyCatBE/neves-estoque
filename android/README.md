@@ -5,7 +5,7 @@ Aplicativo Android nativo do Neves Estoque, no mesmo repositório da Web.
 ## Estado atual
 
 - applicationId: `com.babycatbe.nevesestoque`.
-- Android: `0.4.0-alpha01`.
+- Android: `0.5.0-alpha01`.
 - Sistema: `0.26.0`.
 - Kotlin + Jetpack Compose.
 - Supabase Kotlin 3.8.0 + Ktor Android 3.5.1.
@@ -15,7 +15,7 @@ Aplicativo Android nativo do Neves Estoque, no mesmo repositório da Web.
 - O helper PostgREST adiciona `x-device-id` às operações funcionais.
 - Home possui seis rotas reais.
 - **Estoque atual** já possui consulta funcional ao backend, pesquisa, organização por categoria/fornecedor/alfabética, valores e atualização manual.
-- Produtos/Categorias agora possuem Hub, listagem real, filtro por Categoria e Detalhe de Produto com estoque/preço/valor, histórico de preços e duração estimada do estoque. CRUD e ações avançadas ainda permanecem EM IMPLEMENTAÇÃO.
+- Produtos/Categorias possuem Hub, listagens e Detalhe de Produto, além da primeira etapa do CRUD Android: criar Produto, editar nome/Categoria de Produto, criar Categoria e editar nome de Categoria. Ilustrações e ações avançadas permanecem EM IMPLEMENTAÇÃO.
 - Os demais módulos continuam como placeholders e permanecem EM IMPLEMENTAÇÃO.
 - Testes manuais Offline continuam deferidos.
 

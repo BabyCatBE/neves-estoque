@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -30,20 +31,30 @@ import java.util.Locale
 fun ProductDetailRoute(
     productId: String,
     onBack: () -> Unit,
+    onEdit: () -> Unit,
+    refreshKey: Long = 0L,
+    noticeMessage: String? = null,
+    onDismissNotice: () -> Unit = {},
 ) {
     val vm: ProductDetailViewModel = viewModel(
         key = "product-detail-$productId",
         factory = ProductDetailViewModel.Factory(productId),
     )
     val state by vm.uiState.collectAsState()
-    ProductDetailScreen(state, onBack, vm::refresh)
+    LaunchedEffect(refreshKey) {
+        if (refreshKey > 0L) vm.refresh()
+    }
+    ProductDetailScreen(state, onBack, onEdit, vm::refresh, noticeMessage, onDismissNotice)
 }
 
 @Composable
 private fun ProductDetailScreen(
     state: ProductDetailUiState,
     onBack: () -> Unit,
+    onEdit: () -> Unit,
     onRefresh: () -> Unit,
+    noticeMessage: String?,
+    onDismissNotice: () -> Unit,
 ) {
     val product = state.product
     val categoryName = state.categories.firstOrNull { it.id == product?.categoryId }?.name ?: "Sem categoria"
@@ -59,6 +70,7 @@ private fun ProductDetailScreen(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
+                    TextButton(onClick = onEdit, enabled = product != null && !state.loading) { Text("Editar") }
                     TextButton(onClick = onRefresh, enabled = !state.refreshing) {
                         Text(if (state.refreshing) "Atualizando…" else "Atualizar")
                     }
@@ -70,6 +82,21 @@ private fun ProductDetailScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
         ) {
+            noticeMessage?.let { message ->
+                item {
+                    Card {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                message,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f).padding(top = 8.dp),
+                            )
+                            TextButton(onClick = onDismissNotice) { Text("Fechar") }
+                        }
+                    }
+                }
+            }
             if (state.loading) {
                 item { Card { Text("Carregando Produto…", modifier = Modifier.padding(18.dp)) } }
             }
@@ -237,7 +264,7 @@ private fun ProductDetailScreen(
                 item {
                     Card {
                         Text(
-                            "Ações de edição, alteração de unidade, mescla, exclusão e atualização de estoque serão conectadas ao backend nos próximos blocos. Nenhuma ação destrutiva foi simulada aqui.",
+                            "Alteração de Unidade, mescla, exclusão e atualização de estoque continuam reservadas para os próximos blocos. Nenhuma ação destrutiva foi simulada aqui.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(16.dp),

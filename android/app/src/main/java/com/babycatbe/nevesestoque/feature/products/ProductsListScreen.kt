@@ -19,6 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,16 +37,26 @@ import java.util.Locale
 fun ProductsListRoute(
     onBack: () -> Unit,
     onProductClick: (String) -> Unit,
+    onCreateProduct: () -> Unit,
     categoryFilter: String? = null,
+    refreshKey: Long = 0L,
+    noticeMessage: String? = null,
+    onDismissNotice: () -> Unit = {},
     productsViewModel: ProductsViewModel = viewModel(),
 ) {
     val state by productsViewModel.uiState.collectAsState()
+    LaunchedEffect(refreshKey) {
+        if (refreshKey > 0L) productsViewModel.refresh()
+    }
     ProductsListScreen(
         state = state,
         categoryFilter = categoryFilter,
         onBack = onBack,
         onRefresh = productsViewModel::refresh,
         onProductClick = onProductClick,
+        onCreateProduct = onCreateProduct,
+        noticeMessage = noticeMessage,
+        onDismissNotice = onDismissNotice,
     )
 }
 
@@ -56,6 +67,9 @@ private fun ProductsListScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onProductClick: (String) -> Unit,
+    onCreateProduct: () -> Unit,
+    noticeMessage: String?,
+    onDismissNotice: () -> Unit,
 ) {
     var search by rememberSaveable { mutableStateOf("") }
     var mode by rememberSaveable { mutableStateOf("alphabetical") }
@@ -87,6 +101,7 @@ private fun ProductsListScreen(
                             )
                         }
                     }
+                    TextButton(onClick = onCreateProduct) { Text("Novo") }
                     TextButton(onClick = onRefresh, enabled = !state.refreshing) {
                         Text(if (state.refreshing) "Atualizando…" else "Atualizar")
                     }
@@ -98,6 +113,21 @@ private fun ProductsListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
         ) {
+            noticeMessage?.let { message ->
+                item {
+                    Card {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                message,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f).padding(top = 8.dp),
+                            )
+                            TextButton(onClick = onDismissNotice) { Text("Fechar") }
+                        }
+                    }
+                }
+            }
             item {
                 OutlinedTextField(
                     value = search,

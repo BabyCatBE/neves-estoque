@@ -3,7 +3,11 @@ package com.babycatbe.nevesestoque.feature.products
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import java.util.UUID
 
 class ProductsRepository {
     private fun client() = SupabaseProvider.client
@@ -77,6 +81,54 @@ class ProductsRepository {
                 illustrationSource = category.illustrationSource,
                 illustrationKey = category.illustrationKey,
             )
+        }
+    }
+
+    suspend fun createProduct(input: ProductMutationInput): String {
+        val parameters = buildJsonObject {
+            put("p_name", input.name)
+            put("p_category_id", input.categoryId)
+            put("p_unit", input.unit)
+            input.initialStockQuantity?.let { put("p_initial_stock_quantity", it) }
+            input.initialPrice?.let { put("p_initial_price", it) }
+        }
+
+        return client().postgrest.rpc(
+            function = "create_product",
+            parameters = parameters,
+        ) { attachRegisteredDevice() }.decodeAs()
+    }
+
+    suspend fun updateProduct(productId: String, name: String, categoryId: String) {
+        client().postgrest.rpc(
+            function = "update_product_details",
+            parameters = buildJsonObject {
+                put("p_product_id", productId)
+                put("p_name", name)
+                put("p_category_id", categoryId)
+            },
+        ) { attachRegisteredDevice() }
+    }
+
+    suspend fun createCategory(name: String, sortOrder: Int): String {
+        val categoryId = UUID.randomUUID().toString()
+        client().from("categories").insert(
+            CreateCategoryPayload(
+                id = categoryId,
+                name = name,
+                sortOrder = sortOrder,
+            )
+        ) { attachRegisteredDevice() }
+        return categoryId
+    }
+
+    suspend fun updateCategory(categoryId: String, name: String) {
+        client().from("categories").update(CategoryNamePayload(name)) {
+            attachRegisteredDevice()
+            filter {
+                eq("id", categoryId)
+                exact("deleted_at", null)
+            }
         }
     }
 

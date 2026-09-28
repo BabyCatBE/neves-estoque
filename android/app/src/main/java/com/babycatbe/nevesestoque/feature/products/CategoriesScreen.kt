@@ -30,6 +30,11 @@ import kotlinx.coroutines.launch
 fun CategoriesScreen(
     onBack: () -> Unit,
     onCategoryClick: (String) -> Unit,
+    onCreateCategory: () -> Unit,
+    onEditCategory: (String) -> Unit,
+    refreshKey: Long = 0L,
+    noticeMessage: String? = null,
+    onDismissNotice: () -> Unit = {},
 ) {
     var loading by remember { mutableStateOf(true) }
     var refreshing by remember { mutableStateOf(false) }
@@ -54,7 +59,7 @@ fun CategoriesScreen(
         refreshing = false
     }
 
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(refreshKey) { load() }
 
     Scaffold(
         topBar = {
@@ -67,6 +72,7 @@ fun CategoriesScreen(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
+                    TextButton(onClick = onCreateCategory) { Text("Nova") }
                     TextButton(
                         onClick = { scope.launch { load() } },
                         enabled = !refreshing,
@@ -81,6 +87,21 @@ fun CategoriesScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
         ) {
+            noticeMessage?.let { message ->
+                item {
+                    Card {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                message,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f).padding(top = 8.dp),
+                            )
+                            TextButton(onClick = onDismissNotice) { Text("Fechar") }
+                        }
+                    }
+                }
+            }
             item {
                 Text(
                     "A ordem abaixo é a base usada no Estoque e nas Conferências.",
@@ -104,8 +125,9 @@ fun CategoriesScreen(
             }
 
             items(categories, key = { it.id }) { category ->
-                Card(onClick = { onCategoryClick(category.id) }) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp)) {
+                Card {
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Row(Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
                             Text(category.name, fontWeight = FontWeight.Bold)
                             Text(
@@ -128,6 +150,14 @@ fun CategoriesScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelSmall,
                         )
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                        ) {
+                            TextButton(onClick = { onCategoryClick(category.id) }) { Text("Ver Produtos") }
+                            TextButton(onClick = { onEditCategory(category.id) }) { Text("Editar") }
+                        }
                     }
                 }
             }
