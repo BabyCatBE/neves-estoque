@@ -152,6 +152,63 @@ class ProductsRepository {
         ) { attachRegisteredDevice() }
     }
 
+    suspend fun mergeProducts(input: ProductMergeDraft): ProductMergeResult {
+        val deviceId = DeviceIdentityStore.registeredDeviceId()
+            ?: error("Dispositivo não autorizado.")
+
+        val response = client().postgrest.rpc(
+            function = "merge_products",
+            parameters = buildJsonObject {
+                put("p_product_a_id", input.productAId)
+                put("p_product_b_id", input.productBId)
+                put("p_final_name", input.finalName)
+                put("p_final_category_id", input.finalCategoryId)
+                put("p_final_unit", input.finalUnit)
+                put(
+                    "p_survivor_equivalent_quantity",
+                    input.survivorEquivalentQuantity?.let(::JsonPrimitive) ?: JsonNull,
+                )
+                put(
+                    "p_absorbed_equivalent_quantity",
+                    input.absorbedEquivalentQuantity?.let(::JsonPrimitive) ?: JsonNull,
+                )
+                put("p_initial_price_source", input.initialPriceSource.wireValue)
+                put("p_device_id", deviceId)
+            },
+        ) { attachRegisteredDevice() }.decodeAs<ProductMergeRpcResponse>()
+
+        if (response.survivorProductId.isBlank() || response.absorbedProductId.isBlank()) {
+            error("A mescla foi concluída, mas o resultado retornado é inválido.")
+        }
+
+        return response.toResult()
+    }
+
+    suspend fun reconcileProductMerge(
+        input: ProductMergeDraft,
+        pair: ProductMergePair,
+    ): ProductMergeResult? {
+        val catalog = loadCatalog()
+        if (catalog.products.any { it.id == pair.absorbed.id }) return null
+
+        val survivorList = catalog.products.firstOrNull { it.id == pair.survivor.id } ?: return null
+        val survivorDetails = runCatching {
+            loadProductDetails(pair.survivor.id).first
+        }.getOrNull() ?: return null
+
+        if (!isMergeAppliedSnapshot(input, pair, catalog.products, survivorDetails)) return null
+        if (survivorList.id != survivorDetails.id) return null
+
+        return ProductMergeResult(
+            survivorProductId = pair.survivor.id,
+            absorbedProductId = pair.absorbed.id,
+            entryItemsCount = null,
+            conferenceItemsCount = null,
+            overlapConferenceCount = null,
+            reconciledAfterAmbiguousFailure = true,
+        )
+    }
+
     suspend fun createCategory(name: String, sortOrder: Int): String {
         val categoryId = UUID.randomUUID().toString()
         createCategory(

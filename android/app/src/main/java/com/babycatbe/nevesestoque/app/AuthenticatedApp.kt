@@ -19,6 +19,7 @@ import com.babycatbe.nevesestoque.feature.products.CategoriesScreen
 import com.babycatbe.nevesestoque.feature.products.CategoryFormRoute
 import com.babycatbe.nevesestoque.feature.products.ProductDetailRoute
 import com.babycatbe.nevesestoque.feature.products.ProductFormRoute
+import com.babycatbe.nevesestoque.feature.products.ProductMergeRoute
 import com.babycatbe.nevesestoque.feature.products.ProductsHubScreen
 import com.babycatbe.nevesestoque.feature.products.ProductsListRoute
 import com.babycatbe.nevesestoque.feature.stock.StockRoute
@@ -34,6 +35,7 @@ private const val PRODUCT_CREATE_ROUTE = "products/new"
 private const val PRODUCT_EDIT_ROUTE = "product/{productId}/edit"
 private const val PRODUCT_STOCK_ROUTE = "product/{productId}/stock"
 private const val PRODUCT_CONFERENCE_ROUTE = "product/{productId}/stock/conference"
+private const val PRODUCT_MERGE_ROUTE = "product/{productId}/merge"
 private const val CATEGORY_CREATE_ROUTE = "products/categories/new"
 private const val CATEGORY_EDIT_ROUTE = "products/categories/{categoryId}/edit"
 private const val REFRESH_KEY = "catalog-refresh"
@@ -139,6 +141,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 },
                 onEdit = { navController.navigate("product/$productId/edit") },
                 onUpdateStock = { navController.navigate("product/$productId/stock") },
+                onMerge = { navController.navigate("product/$productId/merge") },
                 onDeleted = { message ->
                     navController.previousBackStackEntry?.savedStateHandle?.apply {
                         set(REFRESH_KEY, System.currentTimeMillis())
@@ -149,6 +152,22 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 refreshKey = refreshKey,
                 noticeMessage = notice,
                 onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(
+            PRODUCT_MERGE_ROUTE,
+            arguments = listOf(navArgument("productId") { type = NavType.StringType }),
+        ) { entry ->
+            val productId = entry.arguments?.getString("productId").orEmpty()
+            ProductMergeRoute(
+                productId = productId,
+                onBack = { navController.popBackStack() },
+                onMerged = { survivorProductId, message ->
+                    navController.popBackStack(PRODUCT_DETAIL_ROUTE, inclusive = true)
+                    navController.navigate("product/$survivorProductId")
+                    navController.currentBackStackEntry?.savedStateHandle?.set(NOTICE_KEY, message)
+                },
             )
         }
 

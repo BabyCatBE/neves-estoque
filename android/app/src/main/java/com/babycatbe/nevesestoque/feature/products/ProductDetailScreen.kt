@@ -37,6 +37,7 @@ fun ProductDetailRoute(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onUpdateStock: () -> Unit,
+    onMerge: () -> Unit,
     onDeleted: (String) -> Unit,
     refreshKey: Long = 0L,
     noticeMessage: String? = null,
@@ -60,6 +61,7 @@ fun ProductDetailRoute(
         onBack = onBack,
         onEdit = onEdit,
         onUpdateStock = onUpdateStock,
+        onMerge = onMerge,
         onDelete = vm::deleteProduct,
         onConvertUnit = vm::convertUnit,
         onClearConversionError = vm::clearConversionError,
@@ -76,6 +78,7 @@ private fun ProductDetailScreen(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onUpdateStock: () -> Unit,
+    onMerge: () -> Unit,
     onDelete: () -> Unit,
     onConvertUnit: (ProductUnitConversionDraft) -> Unit,
     onClearConversionError: () -> Unit,
@@ -395,12 +398,26 @@ private fun ProductDetailScreen(
 
                 item {
                     Card {
-                        Text(
-                            "Mescla de Produtos permanece reservada para o próximo bloco Android.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(16.dp),
-                        )
+                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text("Mesclar Produtos", fontWeight = FontWeight.Bold)
+                            Text(
+                                if (product.categoryId == null) {
+                                    "Complete o cadastro deste Produto antes de mesclar."
+                                } else {
+                                    "Una um cadastro duplicado preservando o ID mais antigo, o histórico real e a auditoria."
+                                },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                            TextButton(
+                                onClick = onMerge,
+                                enabled = product.categoryId != null && !state.convertingUnit && !state.deleting,
+                                modifier = Modifier.padding(top = 6.dp),
+                            ) {
+                                Text("Mesclar Produto")
+                            }
+                        }
                     }
                 }
             }
