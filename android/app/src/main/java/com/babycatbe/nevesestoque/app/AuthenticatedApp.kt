@@ -27,7 +27,6 @@ import com.babycatbe.nevesestoque.feature.entries.NewEntryRoute
 import com.babycatbe.nevesestoque.feature.home.HomeScreen
 import com.babycatbe.nevesestoque.feature.home.homeModules
 import com.babycatbe.nevesestoque.feature.module.ModulePlaceholderScreen
-import com.babycatbe.nevesestoque.feature.products.CatalogTrashScreen
 import com.babycatbe.nevesestoque.feature.products.CategoriesScreen
 import com.babycatbe.nevesestoque.feature.products.CategoryFormRoute
 import com.babycatbe.nevesestoque.feature.products.ProductDetailRoute
@@ -39,13 +38,14 @@ import com.babycatbe.nevesestoque.feature.stock.StockRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierDetailRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SupplierFormRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SuppliersRoute
+import com.babycatbe.nevesestoque.feature.trash.TrashScreen
 
 private const val HOME_ROUTE = "home"
 private const val MODULE_ROUTE = "module/{route}"
 private const val PRODUCTS_LIST_ROUTE = "products/list"
 private const val PRODUCTS_CATEGORY_ROUTE = "products/list/category/{categoryId}"
 private const val CATEGORIES_ROUTE = "products/categories"
-private const val CATALOG_TRASH_ROUTE = "products/trash"
+private const val TRASH_ROUTE = "trash?filter={filter}"
 private const val PRODUCT_DETAIL_ROUTE = "product/{productId}"
 private const val PRODUCT_CREATE_ROUTE = "products/new"
 private const val PRODUCT_EDIT_ROUTE = "product/{productId}/edit"
@@ -101,7 +101,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     onBack = { navController.popBackStack() },
                     onProducts = { navController.navigate(PRODUCTS_LIST_ROUTE) },
                     onCategories = { navController.navigate(CATEGORIES_ROUTE) },
-                    onTrash = { navController.navigate(CATALOG_TRASH_ROUTE) },
+                    onTrash = { navController.navigate("trash") },
                 )
                 "fornecedores" -> {
                     val notice by entry.savedStateHandle
@@ -120,12 +120,14 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     onBack = { navController.popBackStack() },
                     onNewEntry = { navController.navigate(ENTRY_CREATE_ROUTE) },
                     onHistory = { navController.navigate(ENTRY_HISTORY_ROUTE) },
+                    onTrash = { navController.navigate("trash?filter=entry") },
                 )
                 "conferencias" -> ConferencesHubScreen(
                     onBack = { navController.popBackStack() },
                     onPrint = { navController.navigate(CONFERENCE_PRINT_ROUTE) },
                     onNewConference = { navController.navigate(CONFERENCE_CATEGORIES_ROUTE) },
                     onHistory = { navController.navigate(CONFERENCE_HISTORY_ROUTE) },
+                    onTrash = { navController.navigate("trash?filter=conference") },
                 )
                 else -> ModulePlaceholderScreen(
                     title = module?.title ?: "Módulo",
@@ -510,9 +512,25 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             ConferencePrintRoute(onBack = { navController.popBackStack() })
         }
 
-        composable(CATALOG_TRASH_ROUTE) {
-            CatalogTrashScreen(
+        composable(
+            TRASH_ROUTE,
+            arguments = listOf(
+                navArgument("filter") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            ),
+        ) { entry ->
+            TrashScreen(
                 onBack = { navController.popBackStack() },
+                initialFilter = entry.arguments?.getString("filter"),
+                onDataChanged = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        REFRESH_KEY,
+                        System.currentTimeMillis(),
+                    )
+                },
             )
         }
 

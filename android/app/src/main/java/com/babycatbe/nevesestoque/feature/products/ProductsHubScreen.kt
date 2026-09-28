@@ -61,7 +61,7 @@ fun ProductsHubScreen(
             )
             HubCard(
                 title = "Lixeira",
-                description = "Restaurar Produtos e Categorias excluídos dentro da janela de 7 dias.",
+                description = "Lixeira Universal: restaure ou exclua definitivamente Produtos, Categorias, Fornecedores, Entradas e Conferências dos últimos 7 dias.",
                 onClick = onTrash,
             )
         }

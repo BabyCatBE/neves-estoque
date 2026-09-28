@@ -36,6 +36,7 @@ fun ConferencesHubScreen(
     onPrint: () -> Unit,
     onNewConference: () -> Unit,
     onHistory: () -> Unit,
+    onTrash: () -> Unit = {},
 ) {
     Scaffold(topBar = { ConferenceTopBar("Conferência", onBack) }) { padding ->
         Column(
@@ -69,6 +70,12 @@ fun ConferencesHubScreen(
                 title = "Histórico",
                 description = "Consulte as Conferências salvas por Categoria e corrija um registro quando necessário.",
                 onClick = onHistory,
+            )
+            ConferenceHubCard(
+                eyebrow = "RECUPERAÇÃO",
+                title = "Lixeira",
+                description = "Restaure ou exclua definitivamente Conferências excluídas nos últimos 7 dias.",
+                onClick = onTrash,
             )
         }
     }

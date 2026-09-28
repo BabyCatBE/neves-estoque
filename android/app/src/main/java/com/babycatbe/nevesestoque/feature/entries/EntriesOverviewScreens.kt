@@ -36,6 +36,7 @@ fun EntriesHubScreen(
     onBack: () -> Unit,
     onNewEntry: () -> Unit,
     onHistory: () -> Unit,
+    onTrash: () -> Unit = {},
 ) {
     Scaffold(topBar = { EntryTopBar("Entradas", onBack) }) { padding ->
         Column(
@@ -68,6 +69,17 @@ fun EntriesHubScreen(
                     Text("Histórico de Entradas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 5.dp))
                     Text(
                         "Consulte Entradas salvas e pesquise por Fornecedor ou Produto.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+            Card(onClick = onTrash) {
+                Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                    Text("RECUPERAÇÃO", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    Text("Lixeira", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 5.dp))
+                    Text(
+                        "Restaure ou exclua definitivamente Entradas excluídas nos últimos 7 dias.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp),
                     )
