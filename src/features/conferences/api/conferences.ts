@@ -1,3 +1,4 @@
+import { fetchAllByIdKeyset } from "../../../shared/lib/keysetPagination";
 import { supabase } from "../../../shared/lib/supabase";
 import {
   OFFLINE_CACHE_KEYS,
@@ -248,51 +249,58 @@ export async function reviewConferenceConsumption(
   const productIds = [...new Set(input.items.map((item) => item.productId))];
   if (!productIds.length) return [];
 
-  const [
-    conferenceItemsResult,
-    conferencesResult,
-    entryItemsResult,
-    entriesResult
-  ] = await Promise.all([
-    client
-      .from("conference_items")
-      .select("conference_id,product_id,quantity")
-      .in("product_id", productIds),
-    client
-      .from("conferences")
-      .select("id,effective_at,created_at")
-      .is("deleted_at", null)
-      .lt("effective_at", input.effectiveAt),
-    client
-      .from("entry_items")
-      .select("entry_id,product_id,quantity")
-      .in("product_id", productIds),
-    client
-      .from("entries")
-      .select("id,effective_at")
-      .is("deleted_at", null)
-      .lte("effective_at", input.effectiveAt)
+  // Históricos: leitura completa por cursor (ver shared/lib/keysetPagination).
+  const [conferenceItems, conferences, entryItems, entries] = await Promise.all([
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("conference_items")
+        .select("id,conference_id,product_id,quantity")
+        .in("product_id", productIds);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("conferences")
+        .select("id,effective_at,created_at")
+        .is("deleted_at", null)
+        .lt("effective_at", input.effectiveAt);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("entry_items")
+        .select("id,entry_id,product_id,quantity")
+        .in("product_id", productIds);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("entries")
+        .select("id,effective_at")
+        .is("deleted_at", null)
+        .lte("effective_at", input.effectiveAt);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    })
   ]);
 
-  if (conferenceItemsResult.error) throw conferenceItemsResult.error;
-  if (conferencesResult.error) throw conferencesResult.error;
-  if (entryItemsResult.error) throw entryItemsResult.error;
-  if (entriesResult.error) throw entriesResult.error;
-
   const conferenceById = new Map(
-    (conferencesResult.data ?? [])
+    conferences
       .filter((conference) => conference.id !== input.excludeConferenceId)
       .map((conference) => [conference.id, conference] as const)
   );
   const entryById = new Map(
-    (entriesResult.data ?? []).map((entry) => [entry.id, entry] as const)
+    entries.map((entry) => [entry.id, entry] as const)
   );
 
   const conferencePointsByProduct = new Map<
     string,
     Array<{ effectiveAt: string; createdAt: string; quantity: number }>
   >();
-  for (const item of conferenceItemsResult.data ?? []) {
+  for (const item of conferenceItems) {
     const conference = conferenceById.get(item.conference_id);
     if (!conference) continue;
     const points = conferencePointsByProduct.get(item.product_id) ?? [];
@@ -308,7 +316,7 @@ export async function reviewConferenceConsumption(
     string,
     Array<{ effectiveAt: string; quantity: number }>
   >();
-  for (const item of entryItemsResult.data ?? []) {
+  for (const item of entryItems) {
     const entry = entryById.get(item.entry_id);
     if (!entry) continue;
     const points = entriesByProduct.get(item.product_id) ?? [];
