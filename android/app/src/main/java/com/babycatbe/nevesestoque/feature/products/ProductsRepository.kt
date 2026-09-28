@@ -5,6 +5,8 @@ import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
@@ -130,6 +132,46 @@ class ProductsRepository {
                 exact("deleted_at", null)
             }
         }
+    }
+
+    suspend fun reorderCategories(categoryIds: List<String>) {
+        client().postgrest.rpc(
+            function = "reorder_categories",
+            parameters = buildJsonObject {
+                put(
+                    "p_category_ids",
+                    buildJsonArray {
+                        categoryIds.forEach { add(JsonPrimitive(it)) }
+                    },
+                )
+            },
+        ) { attachRegisteredDevice() }
+    }
+
+    suspend fun reorderProducts(orders: List<ProductOrderChange>) {
+        client().postgrest.rpc(
+            function = "reorder_products",
+            parameters = buildJsonObject {
+                put(
+                    "p_orders",
+                    buildJsonArray {
+                        orders.forEach { order ->
+                            add(
+                                buildJsonObject {
+                                    put("category_id", order.categoryId)
+                                    put(
+                                        "product_ids",
+                                        buildJsonArray {
+                                            order.productIds.forEach { add(JsonPrimitive(it)) }
+                                        },
+                                    )
+                                }
+                            )
+                        }
+                    },
+                )
+            },
+        ) { attachRegisteredDevice() }
     }
 
     suspend fun loadProductDetails(productId: String): Pair<ProductDetails, List<ProductCategoryRow>> {

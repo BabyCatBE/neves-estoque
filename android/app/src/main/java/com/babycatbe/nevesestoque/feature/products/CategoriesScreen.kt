@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
@@ -36,10 +37,17 @@ fun CategoriesScreen(
     noticeMessage: String? = null,
     onDismissNotice: () -> Unit = {},
 ) {
+    val repository = remember { ProductsRepository() }
     var loading by remember { mutableStateOf(true) }
     var refreshing by remember { mutableStateOf(false) }
     var categories by remember { mutableStateOf<List<CategoryListItem>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
+    var actionNotice by remember { mutableStateOf<String?>(null) }
+    var actionError by remember { mutableStateOf<String?>(null) }
+    var reordering by remember { mutableStateOf(false) }
+    var reorderSaving by remember { mutableStateOf(false) }
+    var originalOrder by remember { mutableStateOf<List<CategoryListItem>>(emptyList()) }
+    var draftOrder by remember { mutableStateOf<List<CategoryListItem>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
@@ -47,37 +55,111 @@ fun CategoriesScreen(
         loading = !hasData
         refreshing = hasData
         error = null
-        runCatching { ProductsRepository().loadCategories() }
-            .onSuccess {
-                categories = it.sortedWith(
-                    compareBy<CategoryListItem> { category -> category.sortOrder ?: Int.MAX_VALUE }
-                        .thenBy { category -> category.name.lowercase() }
-                )
-            }
-            .onFailure { error = "Não foi possível carregar as Categorias." }
+        try {
+            categories = orderedCategories(repository.loadCategories())
+        } catch (failure: Throwable) {
+            if (failure is CancellationException) throw failure
+            error = "Não foi possível carregar as Categorias."
+        }
         loading = false
         refreshing = false
     }
 
+    fun cancelReordering() {
+        if (reorderSaving) return
+        reordering = false
+        originalOrder = emptyList()
+        draftOrder = emptyList()
+        actionError = null
+    }
+
+    fun beginReordering() {
+        if (categories.size < 2) return
+        actionNotice = null
+        actionError = null
+        originalOrder = orderedCategories(categories)
+        draftOrder = originalOrder
+        reordering = true
+    }
+
+    fun saveReordering() {
+        if (reorderSaving) return
+
+        if (!categoryOrderChanged(originalOrder, draftOrder)) {
+            reordering = false
+            originalOrder = emptyList()
+            draftOrder = emptyList()
+            actionNotice = "A ordem das Categorias não foi alterada."
+            actionError = null
+            return
+        }
+
+        reorderSaving = true
+        actionNotice = null
+        actionError = null
+        scope.launch {
+            var reloaded = true
+            try {
+                repository.reorderCategories(draftOrder.map { it.id })
+                categories = orderedCategories(repository.loadCategories())
+                actionNotice = "Ordem das Categorias atualizada com sucesso."
+            } catch (failure: Throwable) {
+                if (failure is CancellationException) throw failure
+
+                reloaded = try {
+                    categories = orderedCategories(repository.loadCategories())
+                    true
+                } catch (reloadFailure: Throwable) {
+                    if (reloadFailure is CancellationException) throw reloadFailure
+                    false
+                }
+
+                actionError = if (reloaded) {
+                    "Não foi possível salvar a nova ordem. A ordem oficial do backend foi recarregada."
+                } else {
+                    "Não foi possível salvar a nova ordem nem recarregar agora. Use Atualizar para buscar a ordem oficial."
+                }
+            } finally {
+                reorderSaving = false
+                reordering = false
+                originalOrder = emptyList()
+                draftOrder = emptyList()
+            }
+        }
+    }
+
     LaunchedEffect(refreshKey) { load() }
+
+    val visibleCategories = if (reordering) draftOrder else categories
 
     Scaffold(
         topBar = {
             Surface(shadowElevation = 2.dp) {
                 Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(
+                        onClick = { if (reordering) cancelReordering() else onBack() },
+                        enabled = !reorderSaving,
+                    ) {
+                        Text(if (reordering) "Cancelar" else "Voltar")
+                    }
                     Text(
-                        "Categorias",
+                        if (reordering) "Reordenar Categorias" else "Categorias",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
-                    TextButton(onClick = onCreateCategory) { Text("Nova") }
-                    TextButton(
-                        onClick = { scope.launch { load() } },
-                        enabled = !refreshing,
-                    ) {
-                        Text(if (refreshing) "Atualizando…" else "Atualizar")
+                    if (reordering) {
+                        TextButton(onClick = { saveReordering() }, enabled = !reorderSaving) {
+                            Text(if (reorderSaving) "Salvando…" else "Salvar")
+                        }
+                    } else {
+                        TextButton(onClick = onCreateCategory) { Text("Nova") }
+                        TextButton(
+                            onClick = { scope.launch { load() } },
+                            enabled = !refreshing,
+                        ) {
+                            Text(if (refreshing) "Atualizando…" else "Atualizar")
+                        }
                     }
                 }
             }
@@ -102,61 +184,156 @@ fun CategoriesScreen(
                     }
                 }
             }
-            item {
-                Text(
-                    "A ordem abaixo é a base usada no Estoque e nas Conferências.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-            }
 
-            if (loading) item { Card { Text("Carregando Categorias…", modifier = Modifier.padding(18.dp)) } }
-
-            error?.let {
+            actionNotice?.let { message ->
                 item {
                     Card {
-                        Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp))
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                message,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f).padding(top = 8.dp),
+                            )
+                            TextButton(onClick = { actionNotice = null }) { Text("Fechar") }
+                        }
                     }
                 }
             }
 
-            if (!loading && error == null && categories.isEmpty()) {
+            actionError?.let { message ->
+                item {
+                    Card {
+                        Text(
+                            message,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        )
+                    }
+                }
+            }
+
+            item {
+                Column(Modifier.padding(top = 12.dp)) {
+                    Text(
+                        if (reordering) {
+                            "Use Subir/Descer para montar o rascunho. A nova ordem só vira oficial ao Salvar."
+                        } else {
+                            "A ordem abaixo é a base usada no Estoque e nas Conferências."
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (!reordering) {
+                        TextButton(
+                            onClick = { beginReordering() },
+                            enabled = categories.size >= 2 && !refreshing,
+                        ) {
+                            Text("Reordenar Categorias")
+                        }
+                    }
+                }
+            }
+
+            if (loading) {
+                item { Card { Text("Carregando Categorias…", modifier = Modifier.padding(18.dp)) } }
+            }
+
+            error?.let {
+                item {
+                    Card {
+                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text(it, color = MaterialTheme.colorScheme.error)
+                            TextButton(onClick = { scope.launch { load() } }) {
+                                Text("Tentar novamente")
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!loading && error == null && visibleCategories.isEmpty()) {
                 item { Card { Text("Nenhuma Categoria cadastrada.", modifier = Modifier.padding(18.dp)) } }
             }
 
-            items(categories, key = { it.id }) { category ->
+            items(visibleCategories, key = { it.id }) { category ->
+                val index = visibleCategories.indexOfFirst { it.id == category.id }
                 Card {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Row(Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) {
-                            Text(category.name, fontWeight = FontWeight.Bold)
-                            Text(
-                                if (category.productCount == 1) "1 Produto" else "${category.productCount} Produtos",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 3.dp),
-                            )
-                            if (category.illustrationSource != null) {
+                            Column(Modifier.weight(1f)) {
+                                if (reordering) {
+                                    Text(
+                                        "Posição ${index + 1}",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
+                                Text(category.name, fontWeight = FontWeight.Bold)
                                 Text(
-                                    "Ilustração configurada",
-                                    color = MaterialTheme.colorScheme.primary,
+                                    if (category.productCount == 1) {
+                                        "1 Produto"
+                                    } else {
+                                        "${category.productCount} Produtos"
+                                    },
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(top = 3.dp),
+                                )
+                                if (!reordering && category.illustrationSource != null) {
+                                    Text(
+                                        "Ilustração configurada",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(top = 4.dp),
+                                    )
+                                }
+                            }
+                            if (!reordering) {
+                                Text(
+                                    "Pos. ${category.sortOrder ?: "—"}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(top = 4.dp),
                                 )
                             }
                         }
-                        Text(
-                            "Pos. ${category.sortOrder ?: "—"}",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                        }
+
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                         ) {
-                            TextButton(onClick = { onCategoryClick(category.id) }) { Text("Ver Produtos") }
-                            TextButton(onClick = { onEditCategory(category.id) }) { Text("Editar") }
+                            if (reordering) {
+                                TextButton(
+                                    onClick = {
+                                        draftOrder = moveCategoryOrder(
+                                            draftOrder,
+                                            category.id,
+                                            -1,
+                                        )
+                                    },
+                                    enabled = index > 0 && !reorderSaving,
+                                ) {
+                                    Text("↑ Subir")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        draftOrder = moveCategoryOrder(
+                                            draftOrder,
+                                            category.id,
+                                            1,
+                                        )
+                                    },
+                                    enabled = index < visibleCategories.lastIndex && !reorderSaving,
+                                ) {
+                                    Text("↓ Descer")
+                                }
+                            } else {
+                                TextButton(onClick = { onCategoryClick(category.id) }) {
+                                    Text("Ver Produtos")
+                                }
+                                TextButton(onClick = { onEditCategory(category.id) }) {
+                                    Text("Editar")
+                                }
+                            }
                         }
                     }
                 }

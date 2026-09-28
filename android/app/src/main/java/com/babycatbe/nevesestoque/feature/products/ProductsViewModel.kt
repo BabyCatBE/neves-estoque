@@ -3,6 +3,7 @@ package com.babycatbe.nevesestoque.feature.products
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,6 +41,44 @@ class ProductsViewModel : ViewModel() {
                         errorMessage = "Não foi possível carregar os Produtos.",
                     )
                 }
+        }
+    }
+
+    suspend fun saveProductOrder(changes: List<ProductOrderChange>): Boolean {
+        if (changes.isEmpty()) return true
+
+        _uiState.value = _uiState.value.copy(
+            loading = false,
+            refreshing = true,
+            errorMessage = null,
+        )
+
+        return try {
+            repository.reorderProducts(changes)
+            val official = repository.loadCatalog()
+            _uiState.value = ProductsUiState(loading = false, data = official)
+            true
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+
+            val official = try {
+                repository.loadCatalog()
+            } catch (reloadError: Throwable) {
+                if (reloadError is CancellationException) throw reloadError
+                null
+            }
+
+            _uiState.value = _uiState.value.copy(
+                loading = false,
+                refreshing = false,
+                data = official ?: _uiState.value.data,
+                errorMessage = if (official == null) {
+                    "Não foi possível recarregar os Produtos após a falha ao salvar a ordem."
+                } else {
+                    null
+                },
+            )
+            false
         }
     }
 }

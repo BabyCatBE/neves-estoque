@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProductsListRoute(
@@ -53,6 +55,7 @@ fun ProductsListRoute(
         categoryFilter = categoryFilter,
         onBack = onBack,
         onRefresh = productsViewModel::refresh,
+        onSaveProductOrder = productsViewModel::saveProductOrder,
         onProductClick = onProductClick,
         onCreateProduct = onCreateProduct,
         noticeMessage = noticeMessage,
@@ -66,6 +69,7 @@ private fun ProductsListScreen(
     categoryFilter: String?,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
+    onSaveProductOrder: suspend (List<ProductOrderChange>) -> Boolean,
     onProductClick: (String) -> Unit,
     onCreateProduct: () -> Unit,
     noticeMessage: String?,
@@ -73,7 +77,19 @@ private fun ProductsListScreen(
 ) {
     var search by rememberSaveable { mutableStateOf("") }
     var mode by rememberSaveable { mutableStateOf("alphabetical") }
+    var reordering by rememberSaveable { mutableStateOf(false) }
+    var reorderSaving by remember { mutableStateOf(false) }
+    var originalOrder by remember { mutableStateOf<List<ProductOrderGroup>>(emptyList()) }
+    var draftOrder by remember { mutableStateOf<List<ProductOrderGroup>>(emptyList()) }
+    var reorderNotice by remember { mutableStateOf<String?>(null) }
+    var reorderError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
     val data = state.data
+    val officialOrder = remember(data) {
+        buildProductOrderGroups(data?.categories.orEmpty(), data?.products.orEmpty())
+    }
+    val canReorder = categoryFilter == null && officialOrder.any { it.items.size >= 2 }
     val filtered = remember(data, search, categoryFilter) {
         filterAndSortProducts(data?.products.orEmpty(), search, categoryFilter)
     }
@@ -82,18 +98,74 @@ private fun ProductsListScreen(
     }
     val categoryName = data?.categories?.firstOrNull { it.id == categoryFilter }?.name
 
+    fun cancelReordering() {
+        if (reorderSaving) return
+        reordering = false
+        originalOrder = emptyList()
+        draftOrder = emptyList()
+        reorderError = null
+    }
+
+    fun beginReordering() {
+        if (!canReorder) return
+        search = ""
+        mode = "category"
+        reorderNotice = null
+        reorderError = null
+        originalOrder = officialOrder
+        draftOrder = officialOrder
+        reordering = true
+    }
+
+    fun saveReordering() {
+        if (reorderSaving) return
+
+        val changes = changedProductOrders(originalOrder, draftOrder)
+        if (changes.isEmpty()) {
+            reordering = false
+            originalOrder = emptyList()
+            draftOrder = emptyList()
+            reorderNotice = "A ordem dos Produtos não foi alterada."
+            reorderError = null
+            return
+        }
+
+        reorderSaving = true
+        reorderNotice = null
+        reorderError = null
+        scope.launch {
+            val saved = onSaveProductOrder(changes)
+            reorderSaving = false
+            reordering = false
+            originalOrder = emptyList()
+            draftOrder = emptyList()
+
+            if (saved) {
+                reorderNotice = "Ordem dos Produtos atualizada com sucesso."
+            } else {
+                reorderError =
+                    "Não foi possível salvar a nova ordem. A ordem oficial do backend foi recarregada."
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             Surface(shadowElevation = 2.dp) {
                 Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(
+                        onClick = { if (reordering) cancelReordering() else onBack() },
+                        enabled = !reorderSaving,
+                    ) {
+                        Text(if (reordering) "Cancelar" else "Voltar")
+                    }
                     Column(modifier = Modifier.weight(1f).padding(top = 8.dp)) {
                         Text(
-                            categoryName ?: "Produtos",
+                            if (reordering) "Reordenar Produtos" else categoryName ?: "Produtos",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        if (categoryName != null) {
+                        if (!reordering && categoryName != null) {
                             Text(
                                 "Produtos da Categoria",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -101,9 +173,15 @@ private fun ProductsListScreen(
                             )
                         }
                     }
-                    TextButton(onClick = onCreateProduct) { Text("Novo") }
-                    TextButton(onClick = onRefresh, enabled = !state.refreshing) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                    if (reordering) {
+                        TextButton(onClick = { saveReordering() }, enabled = !reorderSaving) {
+                            Text(if (reorderSaving) "Salvando…" else "Salvar")
+                        }
+                    } else {
+                        TextButton(onClick = onCreateProduct) { Text("Novo") }
+                        TextButton(onClick = onRefresh, enabled = !state.refreshing) {
+                            Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        }
                     }
                 }
             }
@@ -128,34 +206,84 @@ private fun ProductsListScreen(
                     }
                 }
             }
-            item {
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    label = { Text("Pesquisar") },
-                    placeholder = { Text("Digite qualquer trecho do nome") },
-                    trailingIcon = {
-                        if (search.isNotEmpty()) {
-                            TextButton(onClick = { search = "" }) { Text("Limpar") }
+
+            reorderNotice?.let { message ->
+                item {
+                    Card {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                message,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f).padding(top = 8.dp),
+                            )
+                            TextButton(onClick = { reorderNotice = null }) { Text("Fechar") }
                         }
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                )
+                    }
+                }
             }
 
-            if (categoryFilter == null) {
+            reorderError?.let { message ->
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = mode == "alphabetical",
-                            onClick = { mode = "alphabetical" },
-                            label = { Text("A–Z") },
+                    Card {
+                        Text(
+                            message,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
                         )
-                        FilterChip(
-                            selected = mode == "category",
-                            onClick = { mode = "category" },
-                            label = { Text("Categoria") },
+                    }
+                }
+            }
+
+            if (!reordering) {
+                item {
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        label = { Text("Pesquisar") },
+                        placeholder = { Text("Digite qualquer trecho do nome") },
+                        trailingIcon = {
+                            if (search.isNotEmpty()) {
+                                TextButton(onClick = { search = "" }) { Text("Limpar") }
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                    )
+                }
+
+                if (categoryFilter == null) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(
+                                    selected = mode == "alphabetical",
+                                    onClick = { mode = "alphabetical" },
+                                    label = { Text("A–Z") },
+                                )
+                                FilterChip(
+                                    selected = mode == "category",
+                                    onClick = { mode = "category" },
+                                    label = { Text("Categoria") },
+                                )
+                            }
+                            TextButton(
+                                onClick = { beginReordering() },
+                                enabled = canReorder && !state.refreshing,
+                            ) {
+                                Text("Reordenar Produtos")
+                            }
+                        }
+                    }
+                }
+            } else {
+                item {
+                    Card {
+                        Text(
+                            "Use Subir/Descer somente dentro da própria Categoria. " +
+                                "A nova ordem só vira oficial depois de Salvar.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
                         )
                     }
                 }
@@ -177,9 +305,33 @@ private fun ProductsListScreen(
             }
 
             if (!state.loading && state.errorMessage == null && data != null) {
-                if (categoryFilter != null || mode == "alphabetical") {
+                if (reordering) {
+                    if (draftOrder.isEmpty()) {
+                        item { StatusCard("Não há Produtos categorizados para reordenar.") }
+                    } else {
+                        items(draftOrder, key = { "reorder-${it.categoryId}" }) { group ->
+                            ProductOrderGroupCard(
+                                group = group,
+                                saving = reorderSaving,
+                                onMove = { productId, direction ->
+                                    draftOrder = moveProductOrder(
+                                        groups = draftOrder,
+                                        categoryId = group.categoryId,
+                                        productId = productId,
+                                        direction = direction,
+                                    )
+                                },
+                            )
+                        }
+                    }
+                } else if (categoryFilter != null || mode == "alphabetical") {
                     if (filtered.isEmpty()) {
-                        item { StatusCard(if (search.isBlank()) "Nenhum Produto para exibir." else "Nenhum Produto encontrado.") }
+                        item {
+                            StatusCard(
+                                if (search.isBlank()) "Nenhum Produto para exibir."
+                                else "Nenhum Produto encontrado."
+                            )
+                        }
                     } else {
                         items(filtered, key = { it.id }) { product ->
                             ProductCard(product, data.categories, onProductClick)
@@ -187,16 +339,74 @@ private fun ProductsListScreen(
                     }
                 } else {
                     if (groups.isEmpty()) {
-                        item { StatusCard(if (search.isBlank()) "Nenhum Produto para exibir." else "Nenhum Produto encontrado.") }
+                        item {
+                            StatusCard(
+                                if (search.isBlank()) "Nenhum Produto para exibir."
+                                else "Nenhum Produto encontrado."
+                            )
+                        }
                     } else {
                         items(groups, key = { it.id }) { group ->
-                            ProductGroupCard(group, data.categories, search.isNotBlank(), onProductClick)
+                            ProductGroupCard(
+                                group,
+                                data.categories,
+                                search.isNotBlank(),
+                                onProductClick,
+                            )
                         }
                     }
                 }
             }
 
             item { androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 8.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun ProductOrderGroupCard(
+    group: ProductOrderGroup,
+    saving: Boolean,
+    onMove: (String, Int) -> Unit,
+) {
+    Card {
+        Column(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                Text(group.categoryName, fontWeight = FontWeight.Bold)
+                Text(
+                    if (group.items.size == 1) "1 Produto" else "${group.items.size} Produtos",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            group.items.forEachIndexed { index, product ->
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    Text("Posição ${index + 1}", style = MaterialTheme.typography.labelSmall)
+                    Text(product.name, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        product.unit,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    ) {
+                        TextButton(
+                            onClick = { onMove(product.id, -1) },
+                            enabled = index > 0 && !saving,
+                        ) {
+                            Text("↑ Subir")
+                        }
+                        TextButton(
+                            onClick = { onMove(product.id, 1) },
+                            enabled = index < group.items.lastIndex && !saving,
+                        ) {
+                            Text("↓ Descer")
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -285,14 +495,24 @@ private fun ProductSummary(product: ProductListItem, categories: List<ProductCat
 @Composable
 private fun MetricSmall(label: String, value: String) {
     Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
     }
 }
 
 @Composable
 private fun StatusCard(text: String) {
-    Card { Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(18.dp)) }
+    Card {
+        Text(
+            text,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
+        )
+    }
 }
 
 private fun formatQuantity(value: Double?, unit: String): String {
