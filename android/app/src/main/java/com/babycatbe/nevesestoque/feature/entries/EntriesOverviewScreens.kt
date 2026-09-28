@@ -250,7 +250,7 @@ fun EntryDetailRoute(
     onDismissNotice: () -> Unit = {},
 ) {
     val vm: EntryDetailViewModel = viewModel(
-        key = "entry-detail-\${entryId}",
+        key = "entry-detail-${entryId}",
         factory = EntryDetailViewModel.Factory(entryId),
     )
     val state by vm.uiState.collectAsState()
@@ -438,7 +438,7 @@ private fun EntryDetailScreen(
             title = { Text("Excluir Entrada?") },
             text = {
                 Text(
-                    "Excluir esta Entrada de “\${entry.supplierName}”? Ela sairá imediatamente do Histórico ativo e poderá ser restaurada por 7 dias."
+                    "Excluir esta Entrada de “${entry.supplierName}”? Ela sairá imediatamente do Histórico ativo e poderá ser restaurada por 7 dias."
                 )
             },
             confirmButton = {

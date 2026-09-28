@@ -411,9 +411,9 @@ private fun NewEntryScreen(
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Row(Modifier.fillMaxWidth()) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("ITEM \${index + 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("ITEM ${index + 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text(line.product.name, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 3.dp))
-                                    Text("Unidade: \${line.product.unit}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                                    Text("Unidade: ${line.product.unit}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                                 }
                                 TextButton(onClick = {
                                     items = items.filterNot { it.localId == line.localId }
@@ -597,7 +597,7 @@ private fun NewEntryScreen(
                     } else {
                         val draft = validation.product
                         val option = EntryProductOption(
-                            id = "draft:\${draft.clientId}",
+                            id = "draft:${draft.clientId}",
                             name = draft.name,
                             categoryId = draft.categoryId,
                             unit = draft.unit,
@@ -623,7 +623,7 @@ private fun NewEntryScreen(
             title = { Text("Cadastro pendente") },
             text = {
                 Column {
-                    Text("“\${product.name}” está sem Categoria. Escolha uma Categoria para concluir o cadastro e adicioná-lo à Entrada.")
+                    Text("“${product.name}” está sem Categoria. Escolha uma Categoria para concluir o cadastro e adicioná-lo à Entrada.")
                     Text("Categoria *", modifier = Modifier.padding(top = 10.dp))
                     Box {
                         OutlinedButton(onClick = { pendingCategoryMenuOpen = true }, enabled = !pendingBusy, modifier = Modifier.fillMaxWidth()) {
@@ -678,7 +678,7 @@ private fun NewEntryScreen(
         AlertDialog(
             onDismissRequest = { duplicateProduct = null },
             title = { Text("Produto já adicionado") },
-            text = { Text("“\${product.name}” já está nesta Entrada. Deseja adicionar uma nova linha do mesmo Produto?") },
+            text = { Text("“${product.name}” já está nesta Entrada. Deseja adicionar uma nova linha do mesmo Produto?") },
             confirmButton = {
                 Button(onClick = { addProduct(product, draft, forceDuplicate = true) }) { Text("Adicionar novamente") }
             },
@@ -722,7 +722,7 @@ fun EditEntryRoute(
     onSaved: (String) -> Unit,
 ) {
     val vm: EditEntryViewModel = viewModel(
-        key = "edit-entry-\${entryId}",
+        key = "edit-entry-${entryId}",
         factory = EditEntryViewModel.Factory(entryId),
     )
     val state by vm.uiState.collectAsState()
@@ -976,9 +976,9 @@ private fun EditEntryScreen(
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Row(Modifier.fillMaxWidth()) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("ITEM \${index + 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("ITEM ${index + 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text(line.productName, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 3.dp))
-                                    Text("Unidade: \${line.unit}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                                    Text("Unidade: ${line.unit}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                                 }
                                 TextButton(onClick = {
                                     items = items.filterNot { it.localId == line.localId }
@@ -1050,7 +1050,7 @@ private fun EditEntryScreen(
         AlertDialog(
             onDismissRequest = { duplicateProduct = null },
             title = { Text("Produto já adicionado") },
-            text = { Text("“\${product.name}” já está nesta Entrada. Deseja adicionar uma nova linha?") },
+            text = { Text("“${product.name}” já está nesta Entrada. Deseja adicionar uma nova linha?") },
             confirmButton = { Button(onClick = { addProduct(product, true) }) { Text("Adicionar novamente") } },
             dismissButton = { TextButton(onClick = { duplicateProduct = null }) { Text("Usar linha existente") } },
         )
@@ -1122,9 +1122,9 @@ private fun buildEditChangeSummary(
     if (entryLocalDate(original.effectiveAt) != date) changes += "Data alterada."
     if (original.observation.orEmpty().trim() != observation.trim()) changes += "Observação alterada."
     val oldItems = original.items.map {
-        "\${it.productId}|\${formatEntryNumber(it.quantity)}|\${it.unitPrice?.let(::formatEntryNumber).orEmpty()}"
+        "${it.productId}|${formatEntryNumber(it.quantity)}|${it.unitPrice?.let(::formatEntryNumber).orEmpty()}"
     }
-    val newItems = items.map { "\${it.productId}|\${it.quantity.trim()}|\${it.unitPrice.trim()}" }
-    if (oldItems != newItems) changes += "Itens recebidos alterados (\${original.items.size} → \${items.size} linhas)."
+    val newItems = items.map { "${it.productId}|${it.quantity.trim()}|${it.unitPrice.trim()}" }
+    if (oldItems != newItems) changes += "Itens recebidos alterados (${original.items.size} → ${items.size} linhas)."
     return changes.ifEmpty { listOf("Nenhuma alteração detectada.") }
 }
