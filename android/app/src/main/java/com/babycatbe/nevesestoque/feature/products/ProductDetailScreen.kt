@@ -61,6 +61,9 @@ fun ProductDetailRoute(
         onEdit = onEdit,
         onUpdateStock = onUpdateStock,
         onDelete = vm::deleteProduct,
+        onConvertUnit = vm::convertUnit,
+        onClearConversionError = vm::clearConversionError,
+        onConsumeConversionNotice = vm::consumeConversionNotice,
         onRefresh = vm::refresh,
         noticeMessage = noticeMessage,
         onDismissNotice = onDismissNotice,
@@ -74,13 +77,21 @@ private fun ProductDetailScreen(
     onEdit: () -> Unit,
     onUpdateStock: () -> Unit,
     onDelete: () -> Unit,
+    onConvertUnit: (ProductUnitConversionDraft) -> Unit,
+    onClearConversionError: () -> Unit,
+    onConsumeConversionNotice: () -> Unit,
     onRefresh: () -> Unit,
     noticeMessage: String?,
     onDismissNotice: () -> Unit,
 ) {
     var deleteOpen by rememberSaveable { mutableStateOf(false) }
+    var unitConversionOpen by rememberSaveable { mutableStateOf(false) }
     val product = state.product
     val categoryName = state.categories.firstOrNull { it.id == product?.categoryId }?.name ?: "Sem categoria"
+
+    LaunchedEffect(state.conversionNotice) {
+        if (state.conversionNotice != null) unitConversionOpen = false
+    }
 
     Scaffold(
         topBar = {
@@ -116,6 +127,21 @@ private fun ProductDetailScreen(
                                 modifier = Modifier.weight(1f).padding(top = 8.dp),
                             )
                             TextButton(onClick = onDismissNotice) { Text("Fechar") }
+                        }
+                    }
+                }
+            }
+            state.conversionNotice?.let { message ->
+                item {
+                    Card {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                message,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f).padding(top = 8.dp),
+                            )
+                            TextButton(onClick = onConsumeConversionNotice) { Text("Fechar") }
                         }
                     }
                 }
@@ -339,8 +365,32 @@ private fun ProductDetailScreen(
 
                 item {
                     Card {
+                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text("Alterar unidade", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Informe uma equivalência real. O backend protegido converte retroativamente quantidades, preços, Entradas e Conferências.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                            TextButton(
+                                onClick = {
+                                    onClearConversionError()
+                                    unitConversionOpen = true
+                                },
+                                enabled = !state.convertingUnit && !state.deleting,
+                                modifier = Modifier.padding(top = 6.dp),
+                            ) {
+                                Text(if (state.convertingUnit) "Convertendo…" else "Alterar unidade")
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Card {
                         Text(
-                            "Alteração de Unidade e mescla continuam reservadas para os próximos blocos.",
+                            "Mescla de Produtos permanece reservada para o próximo bloco Android.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(16.dp),
@@ -351,6 +401,21 @@ private fun ProductDetailScreen(
 
             item { androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 8.dp)) }
         }
+    }
+
+    if (unitConversionOpen && product != null) {
+        ProductUnitConversionDialog(
+            product = product,
+            converting = state.convertingUnit,
+            backendError = state.conversionError,
+            onDismiss = {
+                if (!state.convertingUnit) {
+                    unitConversionOpen = false
+                    onClearConversionError()
+                }
+            },
+            onConfirm = onConvertUnit,
+        )
     }
 
     if (deleteOpen && product != null) {

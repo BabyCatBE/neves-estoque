@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
 import io.github.jan.supabase.postgrest.from
@@ -131,6 +132,22 @@ class ProductsRepository {
                 put("p_product_id", productId)
                 put("p_name", name)
                 put("p_category_id", categoryId)
+            },
+        ) { attachRegisteredDevice() }
+    }
+
+    suspend fun convertProductUnit(input: ProductUnitConversionDraft) {
+        val deviceId = DeviceIdentityStore.registeredDeviceId()
+            ?: error("Dispositivo não autorizado.")
+
+        client().postgrest.rpc(
+            function = "convert_product_unit",
+            parameters = buildJsonObject {
+                put("p_product_id", input.productId)
+                put("p_new_unit", input.newUnit)
+                put("p_old_quantity", input.oldQuantity)
+                put("p_new_quantity", input.newQuantity)
+                put("p_device_id", deviceId)
             },
         ) { attachRegisteredDevice() }
     }

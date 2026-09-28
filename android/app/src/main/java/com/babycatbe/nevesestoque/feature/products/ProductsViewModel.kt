@@ -89,10 +89,13 @@ data class ProductDetailUiState(
     val refreshing: Boolean = false,
     val deleting: Boolean = false,
     val deleted: Boolean = false,
+    val convertingUnit: Boolean = false,
     val product: ProductDetails? = null,
     val categories: List<ProductCategoryRow> = emptyList(),
     val errorMessage: String? = null,
     val actionError: String? = null,
+    val conversionError: String? = null,
+    val conversionNotice: String? = null,
 )
 
 class ProductDetailViewModel(
@@ -132,7 +135,7 @@ class ProductDetailViewModel(
     }
 
     fun deleteProduct() {
-        if (_uiState.value.deleting || _uiState.value.deleted) return
+        if (_uiState.value.deleting || _uiState.value.deleted || _uiState.value.convertingUnit) return
         _uiState.value = _uiState.value.copy(deleting = true, actionError = null)
 
         viewModelScope.launch {
@@ -150,6 +153,81 @@ class ProductDetailViewModel(
                     )
                 }
         }
+    }
+
+    fun convertUnit(input: ProductUnitConversionDraft) {
+        val state = _uiState.value
+        if (state.convertingUnit || state.deleting || state.deleted) return
+
+        _uiState.value = state.copy(
+            convertingUnit = true,
+            conversionError = null,
+            conversionNotice = null,
+        )
+
+        viewModelScope.launch {
+            try {
+                repository.convertProductUnit(input)
+                val refreshed = try {
+                    repository.loadProductDetails(productId)
+                } catch (error: Throwable) {
+                    if (error is CancellationException) throw error
+                    null
+                }
+
+                _uiState.value = if (refreshed != null) {
+                    _uiState.value.copy(
+                        convertingUnit = false,
+                        product = refreshed.first,
+                        categories = refreshed.second,
+                        conversionError = null,
+                        conversionNotice = "Unidade alterada com sucesso. Histórico e valores foram convertidos.",
+                    )
+                } else {
+                    _uiState.value.copy(
+                        convertingUnit = false,
+                        conversionError = null,
+                        conversionNotice = "Unidade alterada com sucesso. Use Atualizar para recarregar os valores convertidos.",
+                    )
+                }
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+
+                val refreshed = try {
+                    repository.loadProductDetails(productId)
+                } catch (reloadError: Throwable) {
+                    if (reloadError is CancellationException) throw reloadError
+                    null
+                }
+
+                if (refreshed?.first?.unit == input.newUnit) {
+                    _uiState.value = _uiState.value.copy(
+                        convertingUnit = false,
+                        product = refreshed.first,
+                        categories = refreshed.second,
+                        conversionError = null,
+                        conversionNotice = "Unidade alterada com sucesso. Histórico e valores foram convertidos.",
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        convertingUnit = false,
+                        product = refreshed?.first ?: _uiState.value.product,
+                        categories = refreshed?.second ?: _uiState.value.categories,
+                        conversionError = productUnitConversionErrorMessage(error),
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearConversionError() {
+        if (!_uiState.value.convertingUnit) {
+            _uiState.value = _uiState.value.copy(conversionError = null)
+        }
+    }
+
+    fun consumeConversionNotice() {
+        _uiState.value = _uiState.value.copy(conversionNotice = null)
     }
 
     class Factory(private val productId: String) : ViewModelProvider.Factory {
