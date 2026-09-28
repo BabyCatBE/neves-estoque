@@ -12,7 +12,7 @@ Aplicativo Android nativo do Neves Estoque, no mesmo repositório da Web.
 - Autenticação nativa preparada para usuário/senha e Google.
 - Sessão persistente e auto-refresh pelo Auth do Supabase.
 - Android reutiliza `claim_app_access`, `app_users` e `register_device` da Web.
-- `x-device-id` é adicionado após o registro do aparelho.
+- Um helper PostgREST público está preparado para adicionar `x-device-id` às operações funcionais após o registro do aparelho; os repositórios de cada módulo devem usá-lo para preservar a auditoria por dispositivo.
 - Home navega de verdade para os seis módulos; as telas dos módulos ainda são placeholders.
 - Testes manuais Offline continuam deferidos.
 
