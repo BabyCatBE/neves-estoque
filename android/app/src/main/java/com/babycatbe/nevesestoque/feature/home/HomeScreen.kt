@@ -27,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -104,7 +106,13 @@ private fun NevesHeader(
     alertCount: Int?,
     onAlerts: () -> Unit,
 ) {
-    Surface(tonalElevation = 1.dp, shadowElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        color = NEVES_HEADER_BACKGROUND,
+        contentColor = NEVES_HEADER_TEXT,
+        tonalElevation = 0.dp,
+        shadowElevation = 4.dp,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
@@ -121,24 +129,38 @@ private fun NevesHeader(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Controle de Estoque", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Controle de Estoque",
+                    color = NEVES_HEADER_TEXT,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 if (!displayName.isNullOrBlank()) {
                     Text(
                         listOfNotNull(displayName, roleName?.takeIf { it.isNotBlank() }).joinToString(" • "),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = NEVES_HEADER_MUTED,
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }
             val hasAlerts = (alertCount ?: 0) > 0
-            TextButton(onClick = onAlerts) {
+            TextButton(
+                onClick = onAlerts,
+                colors = TextButtonDefaults.textButtonColors(
+                    contentColor = if (hasAlerts) ALERT_AMBER else NEVES_HEADER_ACTION,
+                ),
+            ) {
                 Text(
                     if (hasAlerts) "Alertas ($alertCount)" else "Alertas",
-                    color = if (hasAlerts) ALERT_AMBER else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (hasAlerts) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (hasAlerts) FontWeight.Bold else FontWeight.SemiBold,
                 )
             }
-            TextButton(onClick = onSignOut) { Text("Sair") }
+            TextButton(
+                onClick = onSignOut,
+                colors = TextButtonDefaults.textButtonColors(contentColor = NEVES_HEADER_ACTION),
+            ) {
+                Text("Sair", fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -173,4 +195,8 @@ private fun ModuleCard(module: HomeModule, onClick: () -> Unit) {
     }
 }
 
-private val ALERT_AMBER = androidx.compose.ui.graphics.Color(0xFFB45309)
+private val NEVES_HEADER_BACKGROUND = Color(0xFF09090B)
+private val NEVES_HEADER_TEXT = Color.White
+private val NEVES_HEADER_MUTED = Color(0xFFA1A1AA)
+private val NEVES_HEADER_ACTION = Color(0xFFEF4444)
+private val ALERT_AMBER = Color(0xFFF59E0B)
