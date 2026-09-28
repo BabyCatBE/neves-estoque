@@ -142,7 +142,11 @@ private fun ProductDetailScreen(
                 item {
                     ProductMetricCard(
                         "Valor atual",
-                        product.currentValue?.let(::formatMoney) ?: "Sem dados",
+                        when {
+                            product.stockRequiresConference -> "Conferência necessária"
+                            product.currentValue != null -> formatMoney(product.currentValue)
+                            else -> "Sem dados"
+                        },
                         Modifier.fillMaxWidth(),
                     )
                 }
