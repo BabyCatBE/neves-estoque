@@ -59,6 +59,7 @@ class ProductConferenceRepository {
         productId: String,
         candidateQuantity: Double,
         effectiveAt: String,
+        excludeConferenceId: String? = null,
     ): ConferenceConsumptionWarning? {
         val client = client()
         val candidateTime = epoch(effectiveAt) ?: return null
@@ -80,7 +81,7 @@ class ProductConferenceRepository {
                 }
             }
             .decodeList<ProductConferenceRow>()
-            .filter { it.id in conferenceIds }
+            .filter { it.id in conferenceIds && it.id != excludeConferenceId }
 
         val conferenceById = conferences.associateBy { it.id }
         val conferencePoints = conferenceItems.mapNotNull { item ->
