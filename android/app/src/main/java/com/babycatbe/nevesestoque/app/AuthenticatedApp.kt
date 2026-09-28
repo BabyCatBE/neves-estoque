@@ -9,6 +9,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.babycatbe.nevesestoque.feature.auth.AuthUiState
+import com.babycatbe.nevesestoque.feature.conferences.ProductConferenceRoute
+import com.babycatbe.nevesestoque.feature.conferences.ProductStockUpdateRoute
 import com.babycatbe.nevesestoque.feature.home.HomeScreen
 import com.babycatbe.nevesestoque.feature.home.homeModules
 import com.babycatbe.nevesestoque.feature.module.ModulePlaceholderScreen
@@ -30,6 +32,8 @@ private const val CATALOG_TRASH_ROUTE = "products/trash"
 private const val PRODUCT_DETAIL_ROUTE = "product/{productId}"
 private const val PRODUCT_CREATE_ROUTE = "products/new"
 private const val PRODUCT_EDIT_ROUTE = "product/{productId}/edit"
+private const val PRODUCT_STOCK_ROUTE = "product/{productId}/stock"
+private const val PRODUCT_CONFERENCE_ROUTE = "product/{productId}/stock/conference"
 private const val CATEGORY_CREATE_ROUTE = "products/categories/new"
 private const val CATEGORY_EDIT_ROUTE = "products/categories/{categoryId}/edit"
 private const val REFRESH_KEY = "catalog-refresh"
@@ -126,8 +130,15 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
             ProductDetailRoute(
                 productId = productId,
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        REFRESH_KEY,
+                        System.currentTimeMillis(),
+                    )
+                    navController.popBackStack()
+                },
                 onEdit = { navController.navigate("product/$productId/edit") },
+                onUpdateStock = { navController.navigate("product/$productId/stock") },
                 onDeleted = { message ->
                     navController.previousBackStackEntry?.savedStateHandle?.apply {
                         set(REFRESH_KEY, System.currentTimeMillis())
@@ -138,6 +149,47 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 refreshKey = refreshKey,
                 noticeMessage = notice,
                 onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(
+            PRODUCT_STOCK_ROUTE,
+            arguments = listOf(navArgument("productId") { type = NavType.StringType }),
+        ) { entry ->
+            val productId = entry.arguments?.getString("productId").orEmpty()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            ProductStockUpdateRoute(
+                productId = productId,
+                onBack = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        REFRESH_KEY,
+                        System.currentTimeMillis(),
+                    )
+                    navController.popBackStack()
+                },
+                onConference = { navController.navigate("product/$productId/stock/conference") },
+                refreshKey = refreshKey,
+                noticeMessage = notice,
+                onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(
+            PRODUCT_CONFERENCE_ROUTE,
+            arguments = listOf(navArgument("productId") { type = NavType.StringType }),
+        ) { entry ->
+            val productId = entry.arguments?.getString("productId").orEmpty()
+            ProductConferenceRoute(
+                productId = productId,
+                onBack = { navController.popBackStack() },
+                onSaved = { message ->
+                    navController.previousBackStackEntry?.savedStateHandle?.apply {
+                        set(REFRESH_KEY, System.currentTimeMillis())
+                        set(NOTICE_KEY, message)
+                    }
+                    navController.popBackStack()
+                },
             )
         }
 

@@ -36,6 +36,7 @@ fun ProductDetailRoute(
     productId: String,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onUpdateStock: () -> Unit,
     onDeleted: (String) -> Unit,
     refreshKey: Long = 0L,
     noticeMessage: String? = null,
@@ -58,6 +59,7 @@ fun ProductDetailRoute(
         state = state,
         onBack = onBack,
         onEdit = onEdit,
+        onUpdateStock = onUpdateStock,
         onDelete = vm::deleteProduct,
         onRefresh = vm::refresh,
         noticeMessage = noticeMessage,
@@ -70,6 +72,7 @@ private fun ProductDetailScreen(
     state: ProductDetailUiState,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onUpdateStock: () -> Unit,
     onDelete: () -> Unit,
     onRefresh: () -> Unit,
     noticeMessage: String?,
@@ -213,6 +216,26 @@ private fun ProductDetailScreen(
                 item {
                     Card {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text("Atualizar estoque", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Registre uma nova contagem física deste Produto.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                            TextButton(
+                                onClick = onUpdateStock,
+                                modifier = Modifier.padding(top = 6.dp),
+                            ) {
+                                Text("Atualizar estoque")
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Card {
+                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text("Dados do Produto", fontWeight = FontWeight.Bold)
                             DetailLine("Categoria", categoryName)
                             DetailLine("Unidade", product.unit)
@@ -317,7 +340,7 @@ private fun ProductDetailScreen(
                 item {
                     Card {
                         Text(
-                            "Alteração de Unidade, mescla e atualização de estoque continuam reservadas para os próximos blocos.",
+                            "Alteração de Unidade e mescla continuam reservadas para os próximos blocos.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(16.dp),
