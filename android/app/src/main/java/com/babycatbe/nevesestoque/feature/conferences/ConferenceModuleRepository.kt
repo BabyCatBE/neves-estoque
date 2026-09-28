@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
 import com.babycatbe.nevesestoque.feature.products.ProductsRepository
@@ -299,11 +300,13 @@ class ConferenceModuleRepository {
     }
 
     private suspend fun loadActiveCategories(): List<ConferenceCategoryRow> =
-        client().from("categories")
+        offlineCachedList<ConferenceCategoryRow>("conference-categories") {
+            client().from("categories")
             .select(Columns.list("id", "name", "sort_order", "illustration_source", "illustration_key", "deleted_at")) {
                 attachRegisteredDevice()
             }
             .decodeList<ConferenceCategoryRow>()
+        }
             .filter { it.deletedAt == null }
             .sortedWith(
                 compareBy<ConferenceCategoryRow> { it.sortOrder ?: Int.MAX_VALUE }
@@ -311,11 +314,13 @@ class ConferenceModuleRepository {
             )
 
     private suspend fun loadActiveProducts(): List<ConferenceProductRow> =
-        client().from("products")
+        offlineCachedList<ConferenceProductRow>("conference-products") {
+            client().from("products")
             .select(Columns.list("id", "name", "category_id", "unit", "sort_order", "deleted_at")) {
                 attachRegisteredDevice()
             }
             .decodeList<ConferenceProductRow>()
+        }
             .filter { it.deletedAt == null }
 
     private fun conferenceItemsJson(items: List<CategoryConferenceWriteItem>) = buildJsonArray {

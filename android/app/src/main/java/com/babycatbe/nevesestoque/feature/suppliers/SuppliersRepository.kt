@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.suppliers
 
+import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
 import io.github.jan.supabase.postgrest.from
@@ -15,7 +16,8 @@ class SuppliersRepository {
         ?: error("Supabase não está configurado nesta build.")
 
     suspend fun loadActiveSuppliers(): List<SupplierDetails> =
-        client().from("suppliers")
+        offlineCachedList<SupplierRow>("suppliers-suppliers") {
+            client().from("suppliers")
             .select(
                 Columns.list(
                     "id",
@@ -31,6 +33,7 @@ class SuppliersRepository {
                 )
             ) { attachRegisteredDevice() }
             .decodeList<SupplierRow>()
+        }
             .filter { it.deletedAt == null }
             .map { it.toDetails() }
             .sortedBy { normalizeSupplierSearchText(it.name) }

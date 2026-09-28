@@ -14,6 +14,25 @@ data class AuthUiState(
     val username: String? = null,
     val authMethod: String? = null,
     val errorMessage: String? = null,
+    /** true quando o acesso foi reconhecido localmente por falta de internet (sem validação online agora). */
+    val offlineMode: Boolean = false,
+)
+
+/**
+ * Mínimo necessário para reconhecer, sem internet, o MESMO usuário no MESMO aparelho já validados online.
+ * Não concede acesso novo: ao reconectar, a validação online é refeita e o banco decide.
+ */
+@Serializable
+data class OfflineAccessRecord(
+    val authUserId: String,
+    val deviceKey: String,
+    val appUserId: String,
+    val roleName: String,
+    val deviceId: String,
+    val displayName: String,
+    val username: String? = null,
+    val authMethod: String,
+    val validatedAt: Long,
 )
 
 @Serializable

@@ -1,6 +1,10 @@
 package com.babycatbe.nevesestoque.app
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import com.babycatbe.nevesestoque.data.offline.OfflineBanner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -95,7 +99,9 @@ private const val NOTICE_KEY = "catalog-notice"
 fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = HOME_ROUTE) {
+    Column(Modifier.fillMaxSize()) {
+    OfflineBanner(offlineMode = authState.offlineMode)
+    NavHost(navController = navController, startDestination = HOME_ROUTE, modifier = Modifier.weight(1f)) {
         composable(HOME_ROUTE) {
             val alertsViewModel: AlertsViewModel = viewModel()
             val alertsState by alertsViewModel.uiState.collectAsState()
@@ -701,5 +707,6 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 },
             )
         }
+    }
     }
 }

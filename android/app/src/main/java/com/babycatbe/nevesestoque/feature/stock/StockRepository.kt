@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.stock
 
+import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
 import io.github.jan.supabase.postgrest.from
@@ -10,20 +11,25 @@ class StockRepository {
         val client = SupabaseProvider.client
             ?: error("Supabase não está configurado nesta build.")
 
-        val categories = client.from("categories")
+        val categories = offlineCachedList<StockCategoryRow>("stock-categories") {
+            client.from("categories")
             .select(Columns.list("id", "name", "sort_order", "deleted_at")) {
                 attachRegisteredDevice()
             }
             .decodeList<StockCategoryRow>()
+        }
             .filter { it.deletedAt == null }
 
-        val suppliers = client.from("suppliers")
+        val suppliers = offlineCachedList<StockSupplierRow>("stock-suppliers") {
+            client.from("suppliers")
             .select(Columns.list("id", "name")) {
                 attachRegisteredDevice()
             }
             .decodeList<StockSupplierRow>()
+        }
 
-        val items = client.from("stock_current")
+        val items = offlineCachedList<CurrentStockRow>("stock-stock_current") {
+            client.from("stock_current")
             .select(
                 Columns.list(
                     "product_id",
@@ -41,6 +47,7 @@ class StockRepository {
                 attachRegisteredDevice()
             }
             .decodeList<CurrentStockRow>()
+        }
             .filter { it.productId.isNotBlank() && it.productName.isNotBlank() && it.unit.isNotBlank() }
 
         return CurrentStockData(

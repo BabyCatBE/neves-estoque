@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
@@ -19,11 +20,13 @@ class EntriesRepository {
 
     suspend fun loadFormOptions(): EntryFormOptions {
         val client = client()
-        val suppliers = client.from("suppliers")
+        val suppliers = offlineCachedList<EntrySupplierRow>("entry-options-suppliers") {
+            client.from("suppliers")
             .select(Columns.list("id", "name", "company", "phone", "deleted_at")) {
                 attachRegisteredDevice()
             }
             .decodeList<EntrySupplierRow>()
+        }
             .filter { it.deletedAt == null }
             .map {
                 EntrySupplierOption(
@@ -37,7 +40,8 @@ class EntriesRepository {
             }
             .sortedBy { normalizeEntrySearchText(it.name) }
 
-        val products = client.from("products")
+        val products = offlineCachedList<EntryProductRow>("entry-options-products") {
+            client.from("products")
             .select(
                 Columns.list(
                     "id", "name", "category_id", "unit", "sort_order",
@@ -45,6 +49,7 @@ class EntriesRepository {
                 )
             ) { attachRegisteredDevice() }
             .decodeList<EntryProductRow>()
+        }
             .filter { it.deletedAt == null }
             .map {
                 EntryProductOption(
@@ -58,11 +63,13 @@ class EntriesRepository {
             }
             .sortedBy { normalizeEntrySearchText(it.name) }
 
-        val categories = client.from("categories")
+        val categories = offlineCachedList<EntryCategoryRow>("entry-options-categories") {
+            client.from("categories")
             .select(Columns.list("id", "name", "sort_order", "deleted_at")) {
                 attachRegisteredDevice()
             }
             .decodeList<EntryCategoryRow>()
+        }
             .filter { it.deletedAt == null }
             .map { EntryCategoryOption(it.id, it.name, it.sortOrder) }
             .sortedWith(

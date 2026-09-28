@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.data.offline.OfflineStore
+import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
@@ -25,7 +27,8 @@ class ProductsRepository {
     suspend fun loadCatalog(): ProductCatalogData {
         val client = client()
 
-        val categories = client.from("categories")
+        val categories = offlineCachedList<ProductCategoryRow>("catalog-categories") {
+            client.from("categories")
             .select(
                 Columns.list(
                     "id", "name", "sort_order", "deleted_at",
@@ -34,9 +37,11 @@ class ProductsRepository {
                 )
             ) { attachRegisteredDevice() }
             .decodeList<ProductCategoryRow>()
+        }
             .filter { it.deletedAt == null }
 
-        val productRows = client.from("products")
+        val productRows = offlineCachedList<ProductRow>("catalog-products") {
+            client.from("products")
             .select(
                 Columns.list(
                     "id", "name", "category_id", "unit", "sort_order",
@@ -44,9 +49,11 @@ class ProductsRepository {
                 )
             ) { attachRegisteredDevice() }
             .decodeList<ProductRow>()
+        }
             .filter { it.deletedAt == null }
 
-        val stocks = client.from("stock_current")
+        val stocks = offlineCachedList<ProductStockRow>("catalog-stock_current") {
+            client.from("stock_current")
             .select(
                 Columns.list(
                     "product_id", "current_quantity", "current_price",
@@ -54,6 +61,7 @@ class ProductsRepository {
                 )
             ) { attachRegisteredDevice() }
             .decodeList<ProductStockRow>()
+        }
             .associateBy { it.productId }
 
         return ProductCatalogData(
@@ -86,11 +94,14 @@ class ProductsRepository {
         return catalog.categories.map { category ->
             val illustrationBytes =
                 if (category.illustrationSource == "upload" && category.illustrationKey != null) {
+                    val key = category.illustrationKey
                     try {
                         client.storage[categoryIllustrationsBucket]
-                            .downloadAuthenticated(category.illustrationKey)
+                            .downloadAuthenticated(key)
+                            .also { bytes -> runCatching { OfflineStore.writeCacheBytes("illustration:$key", bytes) } }
                     } catch (_: Throwable) {
-                        null
+                        // Sem internet (ou falha no Storage): usa a cópia local da ilustração, se existir.
+                        OfflineStore.readCacheBytes("illustration:$key")
                     }
                 } else {
                     null
