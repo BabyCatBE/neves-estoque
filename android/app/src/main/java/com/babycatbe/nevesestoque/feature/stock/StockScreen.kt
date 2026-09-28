@@ -420,14 +420,14 @@ private fun EmptyStock(search: String) {
 
 private fun formatQuantity(value: Double?, unit: String): String {
     if (value == null) return "Sem dados"
-    val number = NumberFormat.getNumberInstance(Locale("pt", "BR")).apply {
+    val number = NumberFormat.getNumberInstance(Locale.forLanguageTag("pt-BR")).apply {
         maximumFractionDigits = 2
     }.format(value)
     return "$number $unit"
 }
 
 private fun formatMoney(value: Double): String =
-    NumberFormat.getCurrencyInstance(Locale("pt", "BR")).format(value)
+    NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(value)
 
 private fun formatItemValue(item: CurrentStockRow): String {
     if (item.stockRequiresConference) return "Conferência necessária"
