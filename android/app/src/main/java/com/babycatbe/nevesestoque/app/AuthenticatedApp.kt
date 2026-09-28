@@ -33,7 +33,6 @@ import com.babycatbe.nevesestoque.feature.entries.EntryDetailRoute
 import com.babycatbe.nevesestoque.feature.entries.NewEntryRoute
 import com.babycatbe.nevesestoque.feature.home.HomeScreen
 import com.babycatbe.nevesestoque.feature.home.homeModules
-import com.babycatbe.nevesestoque.feature.module.ModulePlaceholderScreen
 import com.babycatbe.nevesestoque.feature.products.CategoriesScreen
 import com.babycatbe.nevesestoque.feature.products.CategoryFormRoute
 import com.babycatbe.nevesestoque.feature.products.ProductDetailRoute
@@ -228,10 +227,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     onStock = { navController.navigate(PURCHASE_STOCK_ROUTE) },
                     onCategory = { navController.navigate(PURCHASE_CATEGORIES_ROUTE) },
                 )
-                else -> ModulePlaceholderScreen(
-                    title = module?.title ?: "Módulo",
-                    onBack = { navController.popBackStack() },
-                )
+                else -> LaunchedEffect(route) { navController.popBackStack() }
             }
         }
 
