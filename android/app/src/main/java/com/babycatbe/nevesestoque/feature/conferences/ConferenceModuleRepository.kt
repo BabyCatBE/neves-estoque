@@ -2,6 +2,7 @@ package com.babycatbe.nevesestoque.feature.conferences
 
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
+import com.babycatbe.nevesestoque.feature.products.ProductsRepository
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
@@ -14,6 +15,7 @@ import java.time.OffsetDateTime
 
 class ConferenceModuleRepository {
     private val productConferenceRepository = ProductConferenceRepository()
+    private val productsRepository = ProductsRepository()
 
     private fun client() = SupabaseProvider.client
         ?: error("Supabase não está configurado nesta build.")
@@ -187,14 +189,21 @@ class ConferenceModuleRepository {
     suspend fun loadPrintData(): ConferencePrintData {
         val categories = loadActiveCategories()
         val products = loadActiveProducts()
+        val visualCategories = runCatching { productsRepository.loadCategories() }
+            .getOrDefault(emptyList())
+            .associateBy { it.id }
 
         return ConferencePrintData(
             categories = categories.map { category ->
+                val visual = visualCategories[category.id]
                 ConferencePrintCategory(
                     id = category.id,
                     name = category.name,
-                    illustrationSource = category.illustrationSource,
-                    illustrationKey = category.illustrationKey,
+                    illustrationSource = visual?.illustrationSource ?: category.illustrationSource,
+                    illustrationKey = visual?.illustrationKey ?: category.illustrationKey,
+                    illustrationPositionX = visual?.illustrationPositionX ?: 50,
+                    illustrationPositionY = visual?.illustrationPositionY ?: 50,
+                    illustrationBytes = visual?.illustrationBytes,
                     products = products
                         .filter { it.categoryId == category.id }
                         .sortedWith(
