@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.foundation.layout.Arrangement
@@ -227,9 +229,11 @@ fun ProductConferenceRoute(
     var quantity by rememberSaveable { mutableStateOf("") }
     var observation by rememberSaveable { mutableStateOf("") }
 
+    val haptic = LocalHapticFeedback.current
     LaunchedEffect(state.savedMessage) {
         state.savedMessage?.let { message ->
             vm.consumeSavedMessage()
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
             onSaved(message)
         }
     }

@@ -192,7 +192,7 @@ fun CategoriesScreen(
                         TextButton(onClick = onCreateCategory) { Text("Nova") }
                         TextButton(
                             onClick = { scope.launch { load() } },
-                            enabled = !refreshing,
+                            enabled = !loading && !refreshing,
                         ) {
                             Text(if (refreshing) "Atualizando…" else "Atualizar")
                         }

@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -45,11 +47,16 @@ fun CategoryConferenceFormRoute(
     )
     val state by vm.uiState.collectAsStateWithLifecycle()
 
+    val haptic = LocalHapticFeedback.current
     LaunchedEffect(state.savedPendingMessage) {
-        state.savedPendingMessage?.let { onSaved(it) }
+        state.savedPendingMessage?.let {
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+            onSaved(it)
+        }
     }
     LaunchedEffect(state.savedConferenceId) {
         state.savedConferenceId?.let {
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
             onSaved("Conferência salva com sucesso.")
         }
     }

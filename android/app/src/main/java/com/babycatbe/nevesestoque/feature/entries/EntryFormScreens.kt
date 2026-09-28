@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -72,12 +74,16 @@ fun NewEntryRoute(
 ) {
     val vm: NewEntryViewModel = viewModel()
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(state.savedEntryId) {
-        state.savedEntryId?.let { onSaved(it, "Entrada salva com sucesso.") }
+        state.savedEntryId?.let {
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+            onSaved(it, "Entrada salva com sucesso.")
+        }
     }
     LaunchedEffect(state.savedPendingId) {
-        state.savedPendingId?.let { onSavedPending(com.babycatbe.nevesestoque.feature.offline.PENDING_SAVED_MESSAGE) }
+        state.savedPendingId?.let { haptic.performHapticFeedback(HapticFeedbackType.Confirm); onSavedPending(com.babycatbe.nevesestoque.feature.offline.PENDING_SAVED_MESSAGE) }
     }
 
     NewEntryScreen(
