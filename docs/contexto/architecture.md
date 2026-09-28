@@ -156,3 +156,18 @@ Uma migration existente no Git não prova aplicação no ambiente; para isso dev
 - `android/.../ui/theme/NevesTheme.kt`;
 - `supabase/migrations/`;
 - `src/shared/types/database.types.ts`.
+
+
+## Trabalho arquitetural ainda não integrado — 11.3
+
+Existe uma evolução implementada e validada na branch isolada `feat/android-11-3-history-pagination`, HEAD `9aa118c16e5f6f91d1a0bd6482b5f5e892792c29`, que **ainda não faz parte da branch operacional**.
+
+Nessa branch:
+
+- a Web introduz helper de paginação histórica por cursor/chave primária;
+- o Android introduz `data/supabase/KeysetPagination.kt`;
+- as leituras históricas de Compras em Web/Android são paginadas por `id`;
+- a leitura termina somente em página vazia e não devolve resultado parcial em falha intermediária;
+- não houve migration nem mudança no Supabase.
+
+Até que Elias autorize e a integração seja concluída, essa solução deve ser tratada como **trabalho validado ainda não integrado**, e não como arquitetura operacional já vigente.
