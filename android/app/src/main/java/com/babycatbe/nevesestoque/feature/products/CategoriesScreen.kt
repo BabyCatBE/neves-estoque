@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -295,7 +296,21 @@ fun CategoriesScreen(
                 Card {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Row(Modifier.fillMaxWidth()) {
-                            Column(Modifier.weight(1f)) {
+                            if (!reordering) {
+                                CategoryIllustrationVisual(
+                                    source = category.illustrationSource,
+                                    key = category.illustrationKey,
+                                    imageBytes = category.illustrationBytes,
+                                    positionX = category.illustrationPositionX,
+                                    positionY = category.illustrationPositionY,
+                                    modifier = Modifier.size(54.dp),
+                                )
+                            }
+                            Column(
+                                Modifier
+                                    .weight(1f)
+                                    .padding(start = if (reordering) 0.dp else 12.dp)
+                            ) {
                                 if (reordering) {
                                     Text(
                                         "Posição ${index + 1}",
@@ -316,7 +331,11 @@ fun CategoriesScreen(
                                 )
                                 if (!reordering && category.illustrationSource != null) {
                                     Text(
-                                        "Ilustração configurada",
+                                        if (category.illustrationSource == "library") {
+                                            "Ilustração da biblioteca"
+                                        } else {
+                                            "Imagem própria"
+                                        },
                                         color = MaterialTheme.colorScheme.primary,
                                         style = MaterialTheme.typography.labelSmall,
                                         modifier = Modifier.padding(top = 4.dp),

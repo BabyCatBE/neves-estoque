@@ -11,6 +11,8 @@ data class ProductCategoryRow(
     @SerialName("deleted_at") val deletedAt: String? = null,
     @SerialName("illustration_source") val illustrationSource: String? = null,
     @SerialName("illustration_key") val illustrationKey: String? = null,
+    @SerialName("illustration_position_x") val illustrationPositionX: Int = 50,
+    @SerialName("illustration_position_y") val illustrationPositionY: Int = 50,
 )
 
 @Serializable
@@ -195,4 +197,17 @@ data class CategoryListItem(
     val productCount: Int,
     val illustrationSource: String?,
     val illustrationKey: String?,
+    val illustrationPositionX: Int = 50,
+    val illustrationPositionY: Int = 50,
+    val illustrationBytes: ByteArray? = null,
+)
+
+data class CategoryMutationInput(
+    val id: String,
+    val name: String,
+    val sortOrder: Int,
+    val illustrationSource: String?,
+    val illustrationKey: String?,
+    val illustrationPositionX: Int,
+    val illustrationPositionY: Int,
 )

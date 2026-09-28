@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class ProductsUiState(
     val loading: Boolean = true,
@@ -279,6 +280,7 @@ data class CategoryFormUiState(
     val category: CategoryListItem? = null,
     val nextSortOrder: Int = 1,
     val nameError: String? = null,
+    val illustrationError: String? = null,
     val errorMessage: String? = null,
     val savedMessage: String? = null,
 )
@@ -319,24 +321,80 @@ class CategoryFormViewModel(
         }
     }
 
-    fun save(name: String) {
+    fun save(name: String, illustration: CategoryIllustrationDraft) {
         if (_uiState.value.saving) return
+
         val nameError = validateCategoryName(name)
-        if (nameError != null) {
-            _uiState.value = _uiState.value.copy(nameError = nameError, errorMessage = null)
+        val illustrationError = validateCategoryIllustrationDraft(illustration)
+        if (nameError != null || illustrationError != null) {
+            _uiState.value = _uiState.value.copy(
+                nameError = nameError,
+                illustrationError = illustrationError,
+                errorMessage = null,
+            )
             return
         }
 
         val normalizedName = normalizeCategoryName(name)
-        _uiState.value = _uiState.value.copy(saving = true, nameError = null, errorMessage = null)
+        val currentCategory = _uiState.value.category
+        val targetCategoryId = categoryId ?: UUID.randomUUID().toString()
+        val oldUploadPath = currentCategory
+            ?.takeIf { it.illustrationSource == "upload" }
+            ?.illustrationKey
+
+        _uiState.value = _uiState.value.copy(
+            saving = true,
+            nameError = null,
+            illustrationError = null,
+            errorMessage = null,
+        )
+
         viewModelScope.launch {
-            runCatching {
-                if (categoryId == null) {
-                    repository.createCategory(normalizedName, _uiState.value.nextSortOrder)
-                } else {
-                    repository.updateCategory(categoryId, normalizedName)
+            var uploadedPath: String? = null
+            try {
+                if (
+                    illustration.source == "upload" &&
+                    illustration.key == null &&
+                    illustration.imageBytes != null &&
+                    illustration.mimeType != null
+                ) {
+                    uploadedPath = repository.uploadCategoryIllustration(
+                        categoryId = targetCategoryId,
+                        bytes = illustration.imageBytes,
+                        mimeType = illustration.mimeType,
+                    )
                 }
-            }.onSuccess {
+
+                val metadata = resolveCategoryIllustrationMetadata(
+                    draft = illustration,
+                    uploadedKey = uploadedPath,
+                )
+                val input = CategoryMutationInput(
+                    id = targetCategoryId,
+                    name = normalizedName,
+                    sortOrder = currentCategory?.sortOrder ?: _uiState.value.nextSortOrder,
+                    illustrationSource = metadata.source,
+                    illustrationKey = metadata.key,
+                    illustrationPositionX = metadata.positionX,
+                    illustrationPositionY = metadata.positionY,
+                )
+
+                if (categoryId == null) {
+                    repository.createCategory(input)
+                } else {
+                    repository.updateCategory(input)
+                }
+
+                if (
+                    shouldRemovePreviousCategoryUpload(
+                        oldSource = currentCategory?.illustrationSource,
+                        oldKey = oldUploadPath,
+                        newKey = metadata.key,
+                    )
+                ) {
+                    runCatching { repository.removeCategoryIllustration(oldUploadPath!!) }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     saving = false,
                     savedMessage = if (categoryId == null) {
@@ -345,13 +403,27 @@ class CategoryFormViewModel(
                         "Categoria atualizada com sucesso."
                     },
                 )
-            }.onFailure { error ->
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+
+                if (uploadedPath != null) {
+                    runCatching { repository.removeCategoryIllustration(uploadedPath) }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     saving = false,
                     errorMessage = categoryErrorMessage(error),
                 )
             }
         }
+    }
+
+    fun save(name: String) {
+        save(
+            name = name,
+            illustration = _uiState.value.category?.toIllustrationDraft()
+                ?: emptyCategoryIllustrationDraft(),
+        )
     }
 
     fun consumeSavedMessage() {

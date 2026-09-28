@@ -27,11 +27,11 @@ android {
         applicationId = "com.babycatbe.nevesestoque"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "0.7.0-alpha01"
+        versionCode = 8
+        versionName = "0.8.0-alpha01"
 
         buildConfigField("String", "SYSTEM_VERSION", "\"0.26.0\"")
-        buildConfigField("String", "ANDROID_VERSION", "\"0.7.0-alpha01\"")
+        buildConfigField("String", "ANDROID_VERSION", "\"0.8.0-alpha01\"")
         buildConfigField("String", "SUPABASE_URL", quotedBuildConfig(appConfig("SUPABASE_URL")))
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", quotedBuildConfig(appConfig("SUPABASE_PUBLISHABLE_KEY")))
     }
@@ -73,6 +73,7 @@ dependencies {
 
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
     implementation("io.ktor:ktor-client-android:3.5.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

@@ -1,5 +1,10 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,13 +31,18 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ProductFormRoute(
@@ -247,12 +257,38 @@ fun CategoryFormRoute(
         factory = CategoryFormViewModel.Factory(categoryId),
     )
     val state by vm.uiState.collectAsState()
-    var name by rememberSaveable(categoryId) { mutableStateOf("") }
-    var initialized by rememberSaveable(categoryId) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var name by remember(categoryId) { mutableStateOf("") }
+    var illustration by remember(categoryId) { mutableStateOf(emptyCategoryIllustrationDraft()) }
+    var fileError by remember(categoryId) { mutableStateOf<String?>(null) }
+    var initialized by remember(categoryId) { mutableStateOf(false) }
+
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            fileError = null
+            try {
+                val selected = readCategoryIllustrationSelection(context, uri)
+                illustration = CategoryIllustrationDraft(
+                    source = "upload",
+                    key = null,
+                    imageBytes = selected.bytes,
+                    mimeType = selected.mimeType,
+                    positionX = 50,
+                    positionY = 50,
+                )
+            } catch (error: Throwable) {
+                fileError = error.message ?: "Não foi possível ler a imagem selecionada."
+            }
+        }
+    }
 
     LaunchedEffect(state.loading, state.category?.id) {
         if (!state.loading && !initialized) {
             name = state.category?.name.orEmpty()
+            illustration = state.category?.toIllustrationDraft()
+                ?: emptyCategoryIllustrationDraft()
             initialized = true
         }
     }
@@ -280,7 +316,8 @@ fun CategoryFormRoute(
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
                 Card { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
@@ -306,24 +343,65 @@ fun CategoryFormRoute(
                 )
 
                 Card {
-                    Text(
-                        if (categoryId == null) {
-                            "A nova Categoria será criada sem ilustração. A configuração de ilustrações continua em implementação no Android."
-                        } else {
-                            "A ilustração atual será preservada. A edição de ilustrações continua em implementação no Android."
-                        },
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(16.dp),
-                    )
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        CategoryIllustrationEditor(
+                            value = illustration,
+                            categoryName = name,
+                            fileError = fileError ?: state.illustrationError,
+                            enabled = !state.saving,
+                            onChange = {
+                                illustration = it
+                                fileError = null
+                            },
+                            onPickUpload = { imagePicker.launch("image/*") },
+                        )
+                    }
                 }
 
                 Button(
-                    onClick = { vm.save(name) },
+                    onClick = { vm.save(name, illustration) },
                     enabled = !state.saving,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(if (state.saving) "Salvando…" else "Salvar Categoria") }
             }
         }
     }
+}
+
+
+private data class SelectedCategoryIllustration(
+    val bytes: ByteArray,
+    val mimeType: String,
+)
+
+private suspend fun readCategoryIllustrationSelection(
+    context: Context,
+    uri: Uri,
+): SelectedCategoryIllustration = withContext(Dispatchers.IO) {
+    val resolver = context.contentResolver
+    val mimeType = resolver.getType(uri)?.lowercase()
+    val declaredSize = resolver.query(
+        uri,
+        arrayOf(OpenableColumns.SIZE),
+        null,
+        null,
+        null,
+    )?.use { cursor ->
+        val index = cursor.getColumnIndex(OpenableColumns.SIZE)
+        if (index >= 0 && cursor.moveToFirst() && !cursor.isNull(index)) {
+            cursor.getLong(index)
+        } else {
+            null
+        }
+    }
+
+    if (declaredSize != null && declaredSize > MAX_CATEGORY_ILLUSTRATION_SIZE) {
+        error("A imagem pode ter no máximo 5 MB.")
+    }
+
+    val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+        ?: error("Não foi possível ler a imagem selecionada.")
+
+    validateCategoryIllustrationFile(mimeType, bytes.size)?.let(::error)
+    SelectedCategoryIllustration(bytes = bytes, mimeType = mimeType!!)
 }

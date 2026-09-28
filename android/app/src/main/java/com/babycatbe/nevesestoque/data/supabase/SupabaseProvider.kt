@@ -6,6 +6,7 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
 
 object SupabaseProvider {
     val isConfigured: Boolean
@@ -28,6 +29,7 @@ object SupabaseProvider {
             install(Postgrest) {
                 requireValidSession = true
             }
+            install(Storage)
         }
     }
 }
