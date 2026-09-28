@@ -133,6 +133,9 @@ data class ConferencePrintCategory(
     val name: String,
     val illustrationSource: String?,
     val illustrationKey: String?,
+    val illustrationPositionX: Int = 50,
+    val illustrationPositionY: Int = 50,
+    val illustrationBytes: ByteArray? = null,
     val products: List<ConferenceProduct>,
 )
 
