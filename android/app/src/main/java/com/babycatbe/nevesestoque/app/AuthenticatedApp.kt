@@ -11,6 +11,11 @@ import androidx.navigation.navArgument
 import com.babycatbe.nevesestoque.feature.auth.AuthUiState
 import com.babycatbe.nevesestoque.feature.conferences.ProductConferenceRoute
 import com.babycatbe.nevesestoque.feature.conferences.ProductStockUpdateRoute
+import com.babycatbe.nevesestoque.feature.entries.EditEntryRoute
+import com.babycatbe.nevesestoque.feature.entries.EntriesHistoryRoute
+import com.babycatbe.nevesestoque.feature.entries.EntriesHubScreen
+import com.babycatbe.nevesestoque.feature.entries.EntryDetailRoute
+import com.babycatbe.nevesestoque.feature.entries.NewEntryRoute
 import com.babycatbe.nevesestoque.feature.home.HomeScreen
 import com.babycatbe.nevesestoque.feature.home.homeModules
 import com.babycatbe.nevesestoque.feature.module.ModulePlaceholderScreen
@@ -44,6 +49,10 @@ private const val CATEGORY_EDIT_ROUTE = "products/categories/{categoryId}/edit"
 private const val SUPPLIER_DETAIL_ROUTE = "supplier/{supplierId}"
 private const val SUPPLIER_CREATE_ROUTE = "suppliers/new"
 private const val SUPPLIER_EDIT_ROUTE = "supplier/{supplierId}/edit"
+private const val ENTRY_HISTORY_ROUTE = "entries/history"
+private const val ENTRY_CREATE_ROUTE = "entries/new"
+private const val ENTRY_DETAIL_ROUTE = "entry/{entryId}"
+private const val ENTRY_EDIT_ROUTE = "entry/{entryId}/edit"
 private const val REFRESH_KEY = "catalog-refresh"
 private const val NOTICE_KEY = "catalog-notice"
 
@@ -91,6 +100,11 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                         onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
                     )
                 }
+                "entradas" -> EntriesHubScreen(
+                    onBack = { navController.popBackStack() },
+                    onNewEntry = { navController.navigate(ENTRY_CREATE_ROUTE) },
+                    onHistory = { navController.navigate(ENTRY_HISTORY_ROUTE) },
+                )
                 else -> ModulePlaceholderScreen(
                     title = module?.title ?: "Módulo",
                     onBack = { navController.popBackStack() },
@@ -276,6 +290,73 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             val supplierId = entry.arguments?.getString("supplierId").orEmpty()
             SupplierFormRoute(
                 supplierId = supplierId,
+                onBack = { navController.popBackStack() },
+                onSaved = { message ->
+                    navController.previousBackStackEntry?.savedStateHandle?.apply {
+                        set(REFRESH_KEY, System.currentTimeMillis())
+                        set(NOTICE_KEY, message)
+                    }
+                    navController.popBackStack()
+                },
+            )
+        }
+
+        composable(ENTRY_HISTORY_ROUTE) { entry ->
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            EntriesHistoryRoute(
+                onBack = { navController.popBackStack() },
+                onNewEntry = { navController.navigate(ENTRY_CREATE_ROUTE) },
+                onEntryClick = { navController.navigate("entry/$it") },
+                refreshKey = refreshKey,
+                noticeMessage = notice,
+                onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(ENTRY_CREATE_ROUTE) {
+            NewEntryRoute(
+                onBack = { navController.popBackStack() },
+                onSaved = { entryId, message ->
+                    navController.popBackStack()
+                    navController.navigate("entry/$entryId")
+                    navController.currentBackStackEntry?.savedStateHandle?.set(NOTICE_KEY, message)
+                },
+            )
+        }
+
+        composable(
+            ENTRY_DETAIL_ROUTE,
+            arguments = listOf(navArgument("entryId") { type = NavType.StringType }),
+        ) { entry ->
+            val entryId = entry.arguments?.getString("entryId").orEmpty()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            EntryDetailRoute(
+                entryId = entryId,
+                onBack = { navController.popBackStack() },
+                onEdit = { navController.navigate("entry/$entryId/edit") },
+                onDeleted = { message ->
+                    navController.popBackStack(MODULE_ROUTE, inclusive = false)
+                    navController.navigate(ENTRY_HISTORY_ROUTE)
+                    navController.currentBackStackEntry?.savedStateHandle?.apply {
+                        set(REFRESH_KEY, System.currentTimeMillis())
+                        set(NOTICE_KEY, message)
+                    }
+                },
+                refreshKey = refreshKey,
+                noticeMessage = notice,
+                onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
+            )
+        }
+
+        composable(
+            ENTRY_EDIT_ROUTE,
+            arguments = listOf(navArgument("entryId") { type = NavType.StringType }),
+        ) { entry ->
+            val entryId = entry.arguments?.getString("entryId").orEmpty()
+            EditEntryRoute(
+                entryId = entryId,
                 onBack = { navController.popBackStack() },
                 onSaved = { message ->
                     navController.previousBackStackEntry?.savedStateHandle?.apply {
