@@ -10,6 +10,7 @@ import com.babycatbe.nevesestoque.feature.auth.AuthUiState
 import com.babycatbe.nevesestoque.feature.home.HomeScreen
 import com.babycatbe.nevesestoque.feature.home.homeModules
 import com.babycatbe.nevesestoque.feature.module.ModulePlaceholderScreen
+import com.babycatbe.nevesestoque.feature.stock.StockRoute
 
 private const val HOME_ROUTE = "home"
 private const val MODULE_ROUTE = "module/{route}"
@@ -33,10 +34,15 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         ) { entry ->
             val route = entry.arguments?.getString("route")
             val module = homeModules.firstOrNull { it.route == route }
-            ModulePlaceholderScreen(
-                title = module?.title ?: "Módulo",
-                onBack = { navController.popBackStack() },
-            )
+
+            if (route == "estoque") {
+                StockRoute(onBack = { navController.popBackStack() })
+            } else {
+                ModulePlaceholderScreen(
+                    title = module?.title ?: "Módulo",
+                    onBack = { navController.popBackStack() },
+                )
+            }
         }
     }
 }
