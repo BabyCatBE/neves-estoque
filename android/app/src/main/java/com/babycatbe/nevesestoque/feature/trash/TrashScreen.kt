@@ -130,7 +130,7 @@ fun TrashScreen(
                     )
                     TextButton(
                         onClick = { scope.launch { load() } },
-                        enabled = !refreshing && !working,
+                        enabled = !loading && !refreshing && !working,
                     ) {
                         Text(if (refreshing) "Atualizando…" else "Atualizar")
                     }

@@ -1,13 +1,14 @@
 package com.babycatbe.nevesestoque.app
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.babycatbe.nevesestoque.data.offline.OfflineBanner
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -53,6 +54,7 @@ import com.babycatbe.nevesestoque.feature.purchases.PurchaseListRoute
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseMode
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseSupplierSelectRoute
 import com.babycatbe.nevesestoque.feature.purchases.PurchasesHubScreen
+import com.babycatbe.nevesestoque.feature.purchases.PurchasesViewModel
 import com.babycatbe.nevesestoque.feature.reports.ReportsRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SuppliersRoute
 import com.babycatbe.nevesestoque.feature.trash.TrashScreen
@@ -109,8 +111,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
     NavHost(navController = navController, startDestination = HOME_ROUTE, modifier = Modifier.weight(1f)) {
         composable(HOME_ROUTE) {
             val alertsViewModel: AlertsViewModel = viewModel()
-            val alertsState by alertsViewModel.uiState.collectAsState()
-            val localPending by PendingStore.pending.collectAsState()
+            val alertsState by alertsViewModel.uiState.collectAsStateWithLifecycle()
+            val localPending by PendingStore.pending.collectAsStateWithLifecycle()
             LaunchedEffect(Unit) { alertsViewModel.refresh() }
             HomeScreen(
                 displayName = authState.displayName,
@@ -133,7 +135,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         }
 
         composable(PENDING_LOCAL_ROUTE) { entry ->
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             PendingListRoute(
                 onBack = { navController.popBackStack() },
                 onEdit = { navController.navigate("offline/pending/$it/edit") },
@@ -178,7 +180,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         composable(MODULE_ROUTE, arguments = listOf(navArgument("route") { type = NavType.StringType })) { entry ->
             val route = entry.arguments?.getString("route")
             val module = homeModules.firstOrNull { it.route == route }
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
 
             when (route) {
                 "estoque" -> StockRoute(
@@ -196,7 +198,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 "fornecedores" -> {
                     val notice by entry.savedStateHandle
                         .getStateFlow<String?>(NOTICE_KEY, null)
-                        .collectAsState()
+                        .collectAsStateWithLifecycle()
                     SuppliersRoute(
                         onBack = { navController.popBackStack() },
                         onSupplierClick = { navController.navigate("supplier/$it") },
@@ -234,8 +236,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         }
 
         composable(PRODUCTS_LIST_ROUTE) { entry ->
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             ProductsListRoute(
                 onBack = { navController.popBackStack() },
                 onProductClick = { navController.navigate("product/$it") },
@@ -250,8 +252,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             PRODUCTS_CATEGORY_ROUTE,
             arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
         ) { entry ->
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             ProductsListRoute(
                 categoryFilter = entry.arguments?.getString("categoryId"),
                 onBack = { navController.popBackStack() },
@@ -264,8 +266,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         }
 
         composable(CATEGORIES_ROUTE) { entry ->
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             CategoriesScreen(
                 onBack = { navController.popBackStack() },
                 onCategoryClick = { navController.navigate("products/list/category/$it") },
@@ -282,8 +284,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             arguments = listOf(navArgument("productId") { type = NavType.StringType }),
         ) { entry ->
             val productId = entry.arguments?.getString("productId").orEmpty()
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             ProductDetailRoute(
                 productId = productId,
                 onBack = {
@@ -330,8 +332,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             arguments = listOf(navArgument("productId") { type = NavType.StringType }),
         ) { entry ->
             val productId = entry.arguments?.getString("productId").orEmpty()
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             ProductStockUpdateRoute(
                 productId = productId,
                 onBack = {
@@ -372,8 +374,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             arguments = listOf(navArgument("supplierId") { type = NavType.StringType }),
         ) { entry ->
             val supplierId = entry.arguments?.getString("supplierId").orEmpty()
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             SupplierDetailRoute(
                 supplierId = supplierId,
                 onBack = { navController.popBackStack() },
@@ -424,8 +426,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         }
 
         composable(ENTRY_HISTORY_ROUTE) { entry ->
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             EntriesHistoryRoute(
                 onBack = { navController.popBackStack() },
                 onNewEntry = { navController.navigate(ENTRY_CREATE_ROUTE) },
@@ -478,8 +480,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             arguments = listOf(navArgument("entryId") { type = NavType.StringType }),
         ) { entry ->
             val entryId = entry.arguments?.getString("entryId").orEmpty()
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             EntryDetailRoute(
                 entryId = entryId,
                 onBack = { navController.popBackStack() },
@@ -517,8 +519,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         }
 
         composable(CONFERENCE_CATEGORIES_ROUTE) { entry ->
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             ConferenceCategoriesRoute(
                 onBack = { navController.popBackStack() },
                 onCategoryClick = { navController.navigate("conferences/categories/$it/new") },
@@ -547,7 +549,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         }
 
         composable(CONFERENCE_HISTORY_ROUTE) { entry ->
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
             ConferenceHistoryCategoriesRoute(
                 onBack = { navController.popBackStack() },
                 onCategoryClick = { navController.navigate("conferences/history/$it") },
@@ -560,8 +562,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
         ) { entry ->
             val categoryId = entry.arguments?.getString("categoryId").orEmpty()
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             CategoryConferenceHistoryRoute(
                 categoryId = categoryId,
                 onBack = { navController.popBackStack() },
@@ -577,8 +579,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             arguments = listOf(navArgument("conferenceId") { type = NavType.StringType }),
         ) { entry ->
             val conferenceId = entry.arguments?.getString("conferenceId").orEmpty()
-            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsState()
-            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsState()
+            val refreshKey by entry.savedStateHandle.getStateFlow(REFRESH_KEY, 0L).collectAsStateWithLifecycle()
+            val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             ConferenceDetailRoute(
                 conferenceId = conferenceId,
                 onBack = { navController.popBackStack() },
@@ -630,10 +632,16 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             PURCHASE_SUPPLIER_ROUTE,
             arguments = listOf(navArgument("supplierId") { type = NavType.StringType }),
         ) { entry ->
+            // Reaproveita os dados de Compras já carregados na tela de escolha (evita
+            // repetir a leitura completa do histórico ao abrir a lista).
+            val selectionEntry = remember(entry) {
+                runCatching { navController.getBackStackEntry(PURCHASE_SUPPLIERS_ROUTE) }.getOrNull()
+            }
             PurchaseListRoute(
                 mode = PurchaseMode.Supplier,
                 targetId = entry.arguments?.getString("supplierId"),
                 onBack = { navController.popBackStack() },
+                vm = if (selectionEntry != null) viewModel<PurchasesViewModel>(selectionEntry) else viewModel<PurchasesViewModel>(),
             )
         }
 
@@ -652,10 +660,16 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             PURCHASE_CATEGORY_ROUTE,
             arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
         ) { entry ->
+            // Reaproveita os dados de Compras já carregados na tela de escolha (evita
+            // repetir a leitura completa do histórico ao abrir a lista).
+            val selectionEntry = remember(entry) {
+                runCatching { navController.getBackStackEntry(PURCHASE_CATEGORIES_ROUTE) }.getOrNull()
+            }
             PurchaseListRoute(
                 mode = PurchaseMode.Category,
                 targetId = entry.arguments?.getString("categoryId"),
                 onBack = { navController.popBackStack() },
+                vm = if (selectionEntry != null) viewModel<PurchasesViewModel>(selectionEntry) else viewModel<PurchasesViewModel>(),
             )
         }
 

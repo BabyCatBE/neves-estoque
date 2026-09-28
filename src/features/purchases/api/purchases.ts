@@ -1,3 +1,4 @@
+import { fetchAllByIdKeyset } from "../../../shared/lib/keysetPagination";
 import { supabase } from "../../../shared/lib/supabase";
 import {
   calculateProductUsageInsights,
@@ -36,10 +37,10 @@ export async function listPurchaseIntelligenceProducts(): Promise<PurchaseIntell
     productsResult,
     stockResult,
     suppliersResult,
-    conferencesResult,
-    conferenceItemsResult,
-    entriesResult,
-    entryItemsResult
+    conferences,
+    conferenceItems,
+    entries,
+    entryItems
   ] = await Promise.all([
     client
       .from("products")
@@ -53,31 +54,44 @@ export async function listPurchaseIntelligenceProducts(): Promise<PurchaseIntell
       .select(
         "id,deleted_at,purchase_frequency_days,preferred_order_weekday,average_delivery_days,safety_margin_days"
       ),
-    client
-      .from("conferences")
-      .select("id,effective_at,created_at")
-      .is("deleted_at", null)
-      .lte("effective_at", now),
-    client
-      .from("conference_items")
-      .select("conference_id,product_id,quantity"),
-    client
-      .from("entries")
-      .select("id,supplier_id,effective_at")
-      .is("deleted_at", null)
-      .lte("effective_at", now),
-    client
-      .from("entry_items")
-      .select("entry_id,product_id,quantity")
+    // Históricos: leitura completa por cursor (ver shared/lib/keysetPagination).
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("conferences")
+        .select("id,effective_at,created_at")
+        .is("deleted_at", null)
+        .lte("effective_at", now);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("conference_items")
+        .select("id,conference_id,product_id,quantity");
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("entries")
+        .select("id,supplier_id,effective_at")
+        .is("deleted_at", null)
+        .lte("effective_at", now);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("entry_items")
+        .select("id,entry_id,product_id,quantity");
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    })
   ]);
 
   if (productsResult.error) throw productsResult.error;
   if (stockResult.error) throw stockResult.error;
   if (suppliersResult.error) throw suppliersResult.error;
-  if (conferencesResult.error) throw conferencesResult.error;
-  if (conferenceItemsResult.error) throw conferenceItemsResult.error;
-  if (entriesResult.error) throw entriesResult.error;
-  if (entryItemsResult.error) throw entryItemsResult.error;
 
   const stockByProduct = new Map(
     (stockResult.data ?? []).map((row) => [row.product_id, row] as const)
@@ -86,17 +100,17 @@ export async function listPurchaseIntelligenceProducts(): Promise<PurchaseIntell
     (suppliersResult.data ?? []).map((supplier) => [supplier.id, supplier] as const)
   );
   const conferenceById = new Map(
-    (conferencesResult.data ?? []).map((conference) => [conference.id, conference] as const)
+    conferences.map((conference) => [conference.id, conference] as const)
   );
   const entryById = new Map(
-    (entriesResult.data ?? []).map((entry) => [entry.id, entry] as const)
+    entries.map((entry) => [entry.id, entry] as const)
   );
 
   const conferencesByProduct = new Map<
     string,
     Array<{ effectiveAt: string; createdAt: string; quantity: number }>
   >();
-  for (const item of conferenceItemsResult.data ?? []) {
+  for (const item of conferenceItems) {
     const conference = conferenceById.get(item.conference_id);
     if (!conference) continue;
     const points = conferencesByProduct.get(item.product_id) ?? [];
@@ -110,7 +124,7 @@ export async function listPurchaseIntelligenceProducts(): Promise<PurchaseIntell
 
   const entriesByProduct = new Map<string, Array<{ effectiveAt: string; quantity: number }>>();
   const historicalSuppliersByProduct = new Map<string, Set<string>>();
-  for (const item of entryItemsResult.data ?? []) {
+  for (const item of entryItems) {
     const entry = entryById.get(item.entry_id);
     if (!entry) continue;
 

@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -120,10 +121,8 @@ fun ConferenceCategoriesRoute(
     onDismissNotice: () -> Unit = {},
 ) {
     val vm: ConferenceCategoriesViewModel = viewModel()
-    val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     ConferenceCategoriesScreen(
         title = "Fazer conferência",
         subtitle = "Cada Categoria é uma Conferência independente. Todas as quantidades precisam ser preenchidas.",
@@ -144,10 +143,8 @@ fun ConferenceHistoryCategoriesRoute(
     refreshKey: Long = 0L,
 ) {
     val vm: ConferenceCategoriesViewModel = viewModel(key = "conference-history-categories")
-    val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     ConferenceCategoriesScreen(
         title = "Histórico de Conferências",
         subtitle = "Escolha uma Categoria para consultar as contagens salvas.",
@@ -282,10 +279,8 @@ fun CategoryConferenceHistoryRoute(
         key = "category-conference-history-" + categoryId,
         factory = CategoryConferenceHistoryViewModel.Factory(categoryId),
     )
-    val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
 
     val countsByDay = remember(state.conferences) {
         state.conferences.groupingBy { conferenceLocalDate(it.effectiveAt) }.eachCount()
@@ -388,12 +383,10 @@ fun ConferenceDetailRoute(
         key = "conference-detail-" + conferenceId,
         factory = ConferenceDetailViewModel.Factory(conferenceId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     var deleteOpen by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     LaunchedEffect(state.deleted) {
         if (state.deleted) {
             val categoryId = state.details?.categoryId ?: return@LaunchedEffect
@@ -553,7 +546,7 @@ fun ConferenceDetailRoute(
 @Composable
 fun ConferencePrintRoute(onBack: () -> Unit) {
     val vm: ConferencePrintViewModel = viewModel()
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val data = state.data
     val pageCount = data?.categories?.sumOf { category ->

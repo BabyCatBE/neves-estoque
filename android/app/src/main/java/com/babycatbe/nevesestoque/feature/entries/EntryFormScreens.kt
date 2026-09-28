@@ -1,5 +1,8 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,13 +73,17 @@ fun NewEntryRoute(
     onSavedPending: (String) -> Unit = {},
 ) {
     val vm: NewEntryViewModel = viewModel()
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(state.savedEntryId) {
-        state.savedEntryId?.let { onSaved(it, "Entrada salva com sucesso.") }
+        state.savedEntryId?.let {
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+            onSaved(it, "Entrada salva com sucesso.")
+        }
     }
     LaunchedEffect(state.savedPendingId) {
-        state.savedPendingId?.let { onSavedPending(com.babycatbe.nevesestoque.feature.offline.PENDING_SAVED_MESSAGE) }
+        state.savedPendingId?.let { haptic.performHapticFeedback(HapticFeedbackType.Confirm); onSavedPending(com.babycatbe.nevesestoque.feature.offline.PENDING_SAVED_MESSAGE) }
     }
 
     NewEntryScreen(
@@ -747,7 +753,7 @@ fun EditEntryRoute(
         key = "edit-entry-${entryId}",
         factory = EditEntryViewModel.Factory(entryId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.savedMessage) {
         state.savedMessage?.let {

@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.suppliers
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,10 +51,8 @@ fun SuppliersRoute(
     onTrash: () -> Unit = {},
 ) {
     val vm: SuppliersViewModel = viewModel()
-    val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     SuppliersScreen(
         state = state,
         onBack = onBack,
@@ -239,10 +238,8 @@ fun SupplierDetailRoute(
         key = "supplier-detail-${supplierId}",
         factory = SupplierDetailViewModel.Factory(supplierId),
     )
-    val state by vm.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
     LaunchedEffect(state.deleted) {
         if (state.deleted) {
             onDeleted("Fornecedor enviado para a Lixeira. O histórico de Entradas foi preservado.")
@@ -487,7 +484,7 @@ fun SupplierFormRoute(
         key = "supplier-form-${supplierId ?: "new"}",
         factory = SupplierFormViewModel.Factory(supplierId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
 
     SupplierFormScreen(
         supplierId = supplierId,

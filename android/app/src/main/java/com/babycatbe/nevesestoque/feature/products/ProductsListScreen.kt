@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +21,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,10 +47,8 @@ fun ProductsListRoute(
     onDismissNotice: () -> Unit = {},
     productsViewModel: ProductsViewModel = viewModel(),
 ) {
-    val state by productsViewModel.uiState.collectAsState()
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) productsViewModel.refresh()
-    }
+    val state by productsViewModel.uiState.collectAsStateWithLifecycle()
+    RefreshOnKeyChange(refreshKey) { productsViewModel.refresh() }
     ProductsListScreen(
         state = state,
         categoryFilter = categoryFilter,
@@ -429,7 +427,8 @@ private fun ProductGroupCard(
     forceOpen: Boolean,
     onProductClick: (String) -> Unit,
 ) {
-    var expanded by remember(group.id) { mutableStateOf(false) }
+    // Saveable: o grupo aberto não fecha ao sair da área visível da lista nem ao voltar de um Produto.
+    var expanded by rememberSaveable(group.id) { mutableStateOf(false) }
     val open = forceOpen || expanded
 
     Card {

@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.async
 import com.babycatbe.nevesestoque.data.offline.OfflineStore
 import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
@@ -24,47 +26,57 @@ class ProductsRepository {
     private fun client() = SupabaseProvider.client
         ?: error("Supabase não está configurado nesta build.")
 
-    suspend fun loadCatalog(): ProductCatalogData {
+    suspend fun loadCatalog(): ProductCatalogData = coroutineScope {
         val client = client()
 
-        val categories = offlineCachedList<ProductCategoryRow>("catalog-categories") {
-            client.from("categories")
-            .select(
-                Columns.list(
-                    "id", "name", "sort_order", "deleted_at",
-                    "illustration_source", "illustration_key",
-                    "illustration_position_x", "illustration_position_y",
-                )
-            ) { attachRegisteredDevice() }
-            .decodeList<ProductCategoryRow>()
+        val categoriesAsync = async {
+            offlineCachedList<ProductCategoryRow>("catalog-categories") {
+                client.from("categories")
+                .select(
+                    Columns.list(
+                        "id", "name", "sort_order", "deleted_at",
+                        "illustration_source", "illustration_key",
+                        "illustration_position_x", "illustration_position_y",
+                    )
+                ) { attachRegisteredDevice() }
+                .decodeList<ProductCategoryRow>()
+            }
+                .filter { it.deletedAt == null }
         }
-            .filter { it.deletedAt == null }
 
-        val productRows = offlineCachedList<ProductRow>("catalog-products") {
-            client.from("products")
-            .select(
-                Columns.list(
-                    "id", "name", "category_id", "unit", "sort_order",
-                    "created_at", "deleted_at",
-                )
-            ) { attachRegisteredDevice() }
-            .decodeList<ProductRow>()
+        val productRowsAsync = async {
+            offlineCachedList<ProductRow>("catalog-products") {
+                client.from("products")
+                .select(
+                    Columns.list(
+                        "id", "name", "category_id", "unit", "sort_order",
+                        "created_at", "deleted_at",
+                    )
+                ) { attachRegisteredDevice() }
+                .decodeList<ProductRow>()
+            }
+                .filter { it.deletedAt == null }
         }
-            .filter { it.deletedAt == null }
 
-        val stocks = offlineCachedList<ProductStockRow>("catalog-stock_current") {
-            client.from("stock_current")
-            .select(
-                Columns.list(
-                    "product_id", "current_quantity", "current_price",
-                    "current_value", "stock_requires_conference",
-                )
-            ) { attachRegisteredDevice() }
-            .decodeList<ProductStockRow>()
+        val stocksAsync = async {
+            offlineCachedList<ProductStockRow>("catalog-stock_current") {
+                client.from("stock_current")
+                .select(
+                    Columns.list(
+                        "product_id", "current_quantity", "current_price",
+                        "current_value", "stock_requires_conference",
+                    )
+                ) { attachRegisteredDevice() }
+                .decodeList<ProductStockRow>()
+            }
+                .associateBy { it.productId }
         }
-            .associateBy { it.productId }
 
-        return ProductCatalogData(
+        val categories = categoriesAsync.await()
+        val productRows = productRowsAsync.await()
+        val stocks = stocksAsync.await()
+
+        ProductCatalogData(
             categories = categories,
             products = productRows.map { row ->
                 val stock = stocks[row.id]

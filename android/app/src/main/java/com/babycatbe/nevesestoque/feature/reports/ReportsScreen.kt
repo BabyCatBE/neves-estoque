@@ -1,5 +1,8 @@
 package com.babycatbe.nevesestoque.feature.reports
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +28,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,17 +65,17 @@ class ReportsViewModel : ViewModel() {
     private val repository = ReportsRepository()
     private val _uiState = MutableStateFlow(ReportsUiState())
     val uiState: StateFlow<ReportsUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init {
         refresh()
     }
 
     fun refresh() {
-        if (_uiState.value.refreshing) return
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.series != null
             _uiState.value = _uiState.value.copy(loading = !hasData, refreshing = hasData, errorMessage = null)
-            runCatching { repository.loadHistory() }
+            loadCatching { repository.loadHistory() }
                 .onSuccess { series -> _uiState.value = ReportsUiState(loading = false, series = series) }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(
@@ -88,7 +90,7 @@ class ReportsViewModel : ViewModel() {
 
 @Composable
 fun ReportsRoute(onBack: () -> Unit, reportsViewModel: ReportsViewModel = viewModel()) {
-    val state by reportsViewModel.uiState.collectAsState()
+    val state by reportsViewModel.uiState.collectAsStateWithLifecycle()
     ReportsScreen(state = state, onBack = onBack, onRefresh = reportsViewModel::refresh)
 }
 

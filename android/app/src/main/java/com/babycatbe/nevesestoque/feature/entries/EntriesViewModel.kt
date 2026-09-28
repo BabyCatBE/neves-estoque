@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -21,19 +23,19 @@ class EntriesHistoryViewModel : ViewModel() {
     private val repository = EntriesRepository()
     private val _uiState = MutableStateFlow(EntriesHistoryUiState())
     val uiState: StateFlow<EntriesHistoryUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing) return
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.entries.isNotEmpty()
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
                 refreshing = hasData,
                 errorMessage = null,
             )
-            runCatching { repository.loadHistory() }
+            loadCatching { repository.loadHistory() }
                 .onSuccess { _uiState.value = EntriesHistoryUiState(loading = false, entries = it) }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(
@@ -60,12 +62,13 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
     private val repository = EntriesRepository()
     private val _uiState = MutableStateFlow(EntryDetailUiState())
     val uiState: StateFlow<EntryDetailUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing || _uiState.value.deleting) return
-        viewModelScope.launch {
+        if (_uiState.value.deleting) return
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.entry != null
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
@@ -73,7 +76,7 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
                 errorMessage = null,
                 actionError = null,
             )
-            runCatching { repository.loadEntryDetails(entryId) }
+            loadCatching { repository.loadEntryDetails(entryId) }
                 .onSuccess {
                     _uiState.value = EntryDetailUiState(loading = false, entry = it)
                 }

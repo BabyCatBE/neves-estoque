@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.async
 import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
@@ -18,66 +20,76 @@ class EntriesRepository {
     private fun client() = SupabaseProvider.client
         ?: error("Supabase não está configurado nesta build.")
 
-    suspend fun loadFormOptions(): EntryFormOptions {
+    suspend fun loadFormOptions(): EntryFormOptions = coroutineScope {
         val client = client()
-        val suppliers = offlineCachedList<EntrySupplierRow>("entry-options-suppliers") {
-            client.from("suppliers")
-            .select(Columns.list("id", "name", "company", "phone", "deleted_at")) {
-                attachRegisteredDevice()
+        val suppliersAsync = async {
+            offlineCachedList<EntrySupplierRow>("entry-options-suppliers") {
+                client.from("suppliers")
+                .select(Columns.list("id", "name", "company", "phone", "deleted_at")) {
+                    attachRegisteredDevice()
+                }
+                .decodeList<EntrySupplierRow>()
             }
-            .decodeList<EntrySupplierRow>()
+                .filter { it.deletedAt == null }
+                .map {
+                    EntrySupplierOption(
+                        id = it.id,
+                        name = it.name,
+                        company = it.company,
+                        phone = it.phone,
+                        isPending = it.company.isNullOrBlank() ||
+                            it.phone.orEmpty().filter(Char::isDigit).length != 11,
+                    )
+                }
+                .sortedBy { normalizeEntrySearchText(it.name) }
         }
-            .filter { it.deletedAt == null }
-            .map {
-                EntrySupplierOption(
-                    id = it.id,
-                    name = it.name,
-                    company = it.company,
-                    phone = it.phone,
-                    isPending = it.company.isNullOrBlank() ||
-                        it.phone.orEmpty().filter(Char::isDigit).length != 11,
-                )
-            }
-            .sortedBy { normalizeEntrySearchText(it.name) }
 
-        val products = offlineCachedList<EntryProductRow>("entry-options-products") {
-            client.from("products")
-            .select(
-                Columns.list(
-                    "id", "name", "category_id", "unit", "sort_order",
-                    "created_at", "deleted_at",
-                )
-            ) { attachRegisteredDevice() }
-            .decodeList<EntryProductRow>()
+        val productsAsync = async {
+            offlineCachedList<EntryProductRow>("entry-options-products") {
+                client.from("products")
+                .select(
+                    Columns.list(
+                        "id", "name", "category_id", "unit", "sort_order",
+                        "created_at", "deleted_at",
+                    )
+                ) { attachRegisteredDevice() }
+                .decodeList<EntryProductRow>()
+            }
+                .filter { it.deletedAt == null }
+                .map {
+                    EntryProductOption(
+                        id = it.id,
+                        name = it.name,
+                        categoryId = it.categoryId,
+                        unit = it.unit,
+                        sortOrder = it.sortOrder,
+                        createdAt = it.createdAt,
+                    )
+                }
+                .sortedBy { normalizeEntrySearchText(it.name) }
         }
-            .filter { it.deletedAt == null }
-            .map {
-                EntryProductOption(
-                    id = it.id,
-                    name = it.name,
-                    categoryId = it.categoryId,
-                    unit = it.unit,
-                    sortOrder = it.sortOrder,
-                    createdAt = it.createdAt,
+
+        val categoriesAsync = async {
+            offlineCachedList<EntryCategoryRow>("entry-options-categories") {
+                client.from("categories")
+                .select(Columns.list("id", "name", "sort_order", "deleted_at")) {
+                    attachRegisteredDevice()
+                }
+                .decodeList<EntryCategoryRow>()
+            }
+                .filter { it.deletedAt == null }
+                .map { EntryCategoryOption(it.id, it.name, it.sortOrder) }
+                .sortedWith(
+                    compareBy<EntryCategoryOption> { it.sortOrder ?: Int.MAX_VALUE }
+                        .thenBy { normalizeEntrySearchText(it.name) }
                 )
-            }
-            .sortedBy { normalizeEntrySearchText(it.name) }
-
-        val categories = offlineCachedList<EntryCategoryRow>("entry-options-categories") {
-            client.from("categories")
-            .select(Columns.list("id", "name", "sort_order", "deleted_at")) {
-                attachRegisteredDevice()
-            }
-            .decodeList<EntryCategoryRow>()
         }
-            .filter { it.deletedAt == null }
-            .map { EntryCategoryOption(it.id, it.name, it.sortOrder) }
-            .sortedWith(
-                compareBy<EntryCategoryOption> { it.sortOrder ?: Int.MAX_VALUE }
-                    .thenBy { normalizeEntrySearchText(it.name) }
-            )
 
-        return EntryFormOptions(suppliers, products, categories)
+        val suppliers = suppliersAsync.await()
+        val products = productsAsync.await()
+        val categories = categoriesAsync.await()
+
+        EntryFormOptions(suppliers, products, categories)
     }
 
     suspend fun loadHistory(): List<EntryHistoryItem> {

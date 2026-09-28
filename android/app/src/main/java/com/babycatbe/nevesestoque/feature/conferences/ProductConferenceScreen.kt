@@ -1,5 +1,9 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,11 +56,9 @@ fun ProductStockUpdateRoute(
         key = "product-stock-update-$productId",
         factory = ProductStockUpdateViewModel.Factory(productId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(refreshKey) {
-        if (refreshKey > 0L) vm.refresh()
-    }
+    RefreshOnKeyChange(refreshKey) { vm.refresh() }
 
     ProductStockUpdateScreen(
         state = state,
@@ -223,14 +224,16 @@ fun ProductConferenceRoute(
         key = "product-conference-$productId",
         factory = ProductConferenceViewModel.Factory(productId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     var responsible by rememberSaveable { mutableStateOf("") }
     var quantity by rememberSaveable { mutableStateOf("") }
     var observation by rememberSaveable { mutableStateOf("") }
 
+    val haptic = LocalHapticFeedback.current
     LaunchedEffect(state.savedMessage) {
         state.savedMessage?.let { message ->
             vm.consumeSavedMessage()
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
             onSaved(message)
         }
     }

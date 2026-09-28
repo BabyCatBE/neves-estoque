@@ -1,5 +1,8 @@
 package com.babycatbe.nevesestoque.feature.alerts
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,11 +95,12 @@ class AlertsViewModel : ViewModel() {
     private val repository = AlertsRepository()
     private val _uiState = MutableStateFlow(AlertsUiState())
     val uiState: StateFlow<AlertsUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     fun refresh() {
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             _uiState.value = _uiState.value.copy(loading = _uiState.value.counts == null, errorMessage = null)
-            runCatching { repository.loadCounts() }
+            loadCatching { repository.loadCounts() }
                 .onSuccess { _uiState.value = AlertsUiState(loading = false, counts = it) }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(loading = false, errorMessage = "Não foi possível carregar os Alertas.")
@@ -115,8 +118,8 @@ fun AlertsRoute(
     onLocalPending: () -> Unit = {},
     vm: AlertsViewModel = viewModel(),
 ) {
-    val state by vm.uiState.collectAsState()
-    val localPending by com.babycatbe.nevesestoque.feature.offline.PendingStore.pending.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val localPending by com.babycatbe.nevesestoque.feature.offline.PendingStore.pending.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.refresh() }
     val counts = state.counts
 

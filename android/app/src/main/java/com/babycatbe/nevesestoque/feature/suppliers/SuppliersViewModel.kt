@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.suppliers
 
+import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -20,19 +22,19 @@ class SuppliersViewModel : ViewModel() {
     private val repository = SuppliersRepository()
     private val _uiState = MutableStateFlow(SuppliersUiState())
     val uiState: StateFlow<SuppliersUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing) return
-        viewModelScope.launch {
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.suppliers.isNotEmpty()
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
                 refreshing = hasData,
                 errorMessage = null,
             )
-            runCatching { repository.loadActiveSuppliers() }
+            loadCatching { repository.loadActiveSuppliers() }
                 .onSuccess {
                     _uiState.value = SuppliersUiState(
                         loading = false,
@@ -66,19 +68,20 @@ class SupplierDetailViewModel(
     private val repository = SuppliersRepository()
     private val _uiState = MutableStateFlow(SupplierDetailUiState())
     val uiState: StateFlow<SupplierDetailUiState> = _uiState.asStateFlow()
+    private val latestLoad = LatestLoad()
 
     init { refresh() }
 
     fun refresh() {
-        if (_uiState.value.refreshing || _uiState.value.deleting) return
-        viewModelScope.launch {
+        if (_uiState.value.deleting) return
+        latestLoad.launch(viewModelScope) {
             val hasData = _uiState.value.supplier != null
             _uiState.value = _uiState.value.copy(
                 loading = !hasData,
                 refreshing = hasData,
                 errorMessage = null,
             )
-            runCatching { repository.loadSupplier(supplierId) }
+            loadCatching { repository.loadSupplier(supplierId) }
                 .onSuccess {
                     _uiState.value = SupplierDetailUiState(
                         loading = false,

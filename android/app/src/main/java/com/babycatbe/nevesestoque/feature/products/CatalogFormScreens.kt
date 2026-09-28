@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -27,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,7 +54,7 @@ fun ProductFormRoute(
         key = "product-form-${productId ?: "new"}",
         factory = ProductFormViewModel.Factory(productId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     ProductFormScreen(productId, state, onBack, vm::save)
 
     LaunchedEffect(state.savedMessage) {
@@ -256,7 +256,7 @@ fun CategoryFormRoute(
         key = "category-form-${categoryId ?: "new"}",
         factory = CategoryFormViewModel.Factory(categoryId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var name by remember(categoryId) { mutableStateOf("") }
