@@ -14,11 +14,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.io.File
 import java.time.OffsetDateTime
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 /*
  * Pendências locais do Offline Android (etapa 10b).
@@ -299,6 +302,7 @@ sealed interface PendingLoadResult {
 }
 
 object PendingStore {
+    private val mutationMutexes = ConcurrentHashMap<String, Mutex>()
     private val _pending = MutableStateFlow<List<PendingOperation>>(emptyList())
     private val _problems = MutableStateFlow<List<PendingFileProblem>>(emptyList())
     private val _loaded = MutableStateFlow(false)
@@ -359,13 +363,15 @@ object PendingStore {
             val bytes = withContext(Dispatchers.IO) {
                 OfflineStore.json.encodeToString(PendingOperation.serializer(), operation).toByteArray(Charsets.UTF_8)
             }
-            write(target, bytes)
-            _pending.update { current ->
-                (current.filterNot { it.localId == operation.localId } + operation)
-                    .sortedByDescending { it.createdAt }
+            mutationMutex(target).withLock {
+                write(target, bytes)
+                _pending.update { current ->
+                    (current.filterNot { it.localId == operation.localId } + operation)
+                        .sortedByDescending { it.createdAt }
+                }
+                _problems.update { current -> current.filterNot { it.fileName == target.name } }
+                _loaded.value = true
             }
-            _problems.update { current -> current.filterNot { it.fileName == target.name } }
-            _loaded.value = true
             PendingMutationResult.Success
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
@@ -383,19 +389,24 @@ object PendingStore {
     ): PendingMutationResult {
         val target = file(localId)
         return try {
-            if (!remove(target)) {
-                PendingMutationResult.Failure("Não foi possível excluir a pendência deste aparelho. Tente novamente.")
-            } else {
-                _pending.update { current -> current.filterNot { it.localId == localId } }
-                _problems.update { current -> current.filterNot { it.fileName == target.name } }
-                _loaded.value = true
-                PendingMutationResult.Success
+            mutationMutex(target).withLock {
+                if (!remove(target)) {
+                    PendingMutationResult.Failure("Não foi possível excluir a pendência deste aparelho. Tente novamente.")
+                } else {
+                    _pending.update { current -> current.filterNot { it.localId == localId } }
+                    _problems.update { current -> current.filterNot { it.fileName == target.name } }
+                    _loaded.value = true
+                    PendingMutationResult.Success
+                }
             }
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
             PendingMutationResult.Failure("Não foi possível excluir a pendência deste aparelho. Tente novamente.")
         }
     }
+
+    private fun mutationMutex(target: File): Mutex =
+        mutationMutexes.computeIfAbsent(target.absoluteFile.toPath().normalize().toString()) { Mutex() }
 }
 
 /** Mesmo texto usado nos formulários ao guardar sem internet. */

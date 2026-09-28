@@ -3,6 +3,10 @@ package com.babycatbe.nevesestoque.feature.offline
 import com.babycatbe.nevesestoque.awaitSuspend
 import com.babycatbe.nevesestoque.data.offline.OfflineStore
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -122,6 +126,33 @@ class PendingStoreTest {
         assertTrue(failure.exceptionOrNull() is CancellationException)
         assertTrue(previousBytes.contentEquals(file.readBytes()))
         assertEquals("Elias", PendingStore.find(first.localId)?.actorLabel)
+        dir.deleteRecursively()
+    }
+
+    @Test
+    fun concurrentSavesOfSamePendingKeepMemoryAndDiskConsistent() {
+        val dir = setUpDirectory()
+        val versions = (1..12).map { index ->
+            operation(updatedAt = "2026-09-28T10:${index.toString().padStart(2, '0')}:00-03:00")
+                .copy(actorLabel = "Versão $index")
+        }
+
+        val results = awaitSuspend {
+            coroutineScope {
+                versions.map { candidate ->
+                    async(Dispatchers.Default) { PendingStore.save(candidate) }
+                }.awaitAll()
+            }
+        }
+
+        assertTrue(results.all { it is PendingMutationResult.Success })
+        val memory = PendingStore.find("local-1")
+        val disk = OfflineStore.json.decodeFromString(
+            PendingOperation.serializer(),
+            OfflineStore.pendingDir().resolve("local-1.json").readText(),
+        )
+        assertEquals(disk, memory)
+        assertTrue(OfflineStore.pendingDir().listFiles().orEmpty().none { it.name.endsWith(".tmp") })
         dir.deleteRecursively()
     }
 }

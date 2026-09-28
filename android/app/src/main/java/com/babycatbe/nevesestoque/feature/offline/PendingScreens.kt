@@ -157,7 +157,10 @@ fun PendingListRoute(
                                     toDelete = null
                                     notice = "Pendência excluída deste aparelho."
                                 }
-                                is PendingMutationResult.Failure -> notice = result.userMessage
+                                is PendingMutationResult.Failure -> {
+                                    toDelete = null
+                                    notice = result.userMessage
+                                }
                             }
                             deleting = false
                         }

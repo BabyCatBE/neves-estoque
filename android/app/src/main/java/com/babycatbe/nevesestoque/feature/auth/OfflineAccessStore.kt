@@ -1,6 +1,7 @@
 package com.babycatbe.nevesestoque.feature.auth
 
 import com.babycatbe.nevesestoque.data.offline.OfflineStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -13,11 +14,17 @@ import java.io.File
 object OfflineAccessStore {
     private fun file(): File = File(OfflineStore.accessDir(), "offline-access.json")
 
-    suspend fun save(record: OfflineAccessRecord) {
-        val bytes = withContext(Dispatchers.IO) {
-            OfflineStore.json.encodeToString(OfflineAccessRecord.serializer(), record).toByteArray(Charsets.UTF_8)
+    suspend fun save(record: OfflineAccessRecord): Boolean {
+        return try {
+            val bytes = withContext(Dispatchers.IO) {
+                OfflineStore.json.encodeToString(OfflineAccessRecord.serializer(), record).toByteArray(Charsets.UTF_8)
+            }
+            OfflineStore.writeAtomic(file(), bytes)
+            true
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            false
         }
-        OfflineStore.writeAtomic(file(), bytes)
     }
 
     suspend fun load(): OfflineAccessRecord? = withContext(Dispatchers.IO) {
