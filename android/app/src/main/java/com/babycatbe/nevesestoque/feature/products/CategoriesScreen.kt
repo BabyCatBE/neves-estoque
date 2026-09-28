@@ -19,10 +19,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 fun CategoriesScreen(
@@ -33,6 +35,7 @@ fun CategoriesScreen(
     var refreshing by remember { mutableStateOf(false) }
     var categories by remember { mutableStateOf<List<CategoryListItem>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     suspend fun load() {
         val hasData = categories.isNotEmpty()
@@ -65,7 +68,7 @@ fun CategoriesScreen(
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
                     TextButton(
-                        onClick = { refreshing = true },
+                        onClick = { scope.launch { load() } },
                         enabled = !refreshing,
                     ) {
                         Text(if (refreshing) "Atualizando…" else "Atualizar")
