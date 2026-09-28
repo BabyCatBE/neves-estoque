@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - fix/audit-device-id
+      - feat/android-12-release-preparation
       - develop
       - main
     paths:
@@ -46,6 +47,15 @@ jobs:
         run: |
           set -o pipefail
           gradle -p android --no-daemon --continue :app:lintDebug :app:testDebugUnitTest :app:assembleDebug 2>&1 | tee android-build.log
+
+      - name: Publish debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neves-estoque-android-debug-0.21.0-alpha01
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
 
       # Publica os erros como anotações da execução, legíveis pela API do GitHub
       # mesmo quando o log completo não está acessível.
