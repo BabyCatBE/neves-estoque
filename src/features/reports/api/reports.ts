@@ -1,5 +1,9 @@
 import { supabase } from "../../../shared/lib/supabase";
 import {
+  fetchAllByIdKeyset,
+  fetchAllByNumericIdKeyset
+} from "../../../shared/lib/keysetPagination";
+import {
   calculateMonthlyStockValueReport,
   type HistoricalProductConferenceFact,
   type HistoricalProductEntryFact,
@@ -15,13 +19,6 @@ import {
   reportCurrentDateKey,
   type MonthlyStockValueSeries
 } from "../lib/monthlyStockSeries";
-
-const PAGE_SIZE = 500;
-
-type PageResult<T> = {
-  data: T[] | null;
-  error: unknown;
-};
 
 type ProductRow = {
   id: string;
@@ -57,6 +54,7 @@ type ConferenceRow = {
 };
 
 type ConferenceItemRow = {
+  id: string;
   conference_id: string;
   product_id: string;
   quantity: number;
@@ -74,22 +72,25 @@ function requireClient() {
   return supabase;
 }
 
-async function collectPages<T>(
-  fetchPage: (from: number, to: number) => Promise<PageResult<T>>
-) {
-  const rows: T[] = [];
+function compareTimestamps(left: string, right: string) {
+  const diff = Date.parse(left) - Date.parse(right);
+  if (Number.isFinite(diff) && diff !== 0) return diff;
+  // Mesmo milissegundo: o texto ISO do PostgREST preserva os microssegundos.
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
 
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const result = await fetchPage(from, from + PAGE_SIZE - 1);
-    if (result.error) throw result.error;
-
-    const page = result.data ?? [];
-    rows.push(...page);
-
-    if (page.length < PAGE_SIZE) break;
-  }
-
-  return rows;
+/**
+ * Ordem de exibição dos produtos no relatório (antes: `order(created_at, id)` no
+ * servidor). A leitura agora é por cursor de `id`; a ordem original é
+ * reconstruída aqui para não mudar a saída.
+ */
+function sortProductsByCreation(rows: ProductRow[]) {
+  return [...rows].sort(
+    (a, b) =>
+      compareTimestamps(a.created_at, b.created_at) ||
+      (a.id === b.id ? 0 : a.id < b.id ? -1 : 1)
+  );
 }
 
 export async function loadMonthlyStockReportFacts(): Promise<MonthlyStockReportFacts> {
@@ -103,56 +104,54 @@ export async function loadMonthlyStockReportFacts(): Promise<MonthlyStockReportF
     conferenceItems,
     productAudits
   ] = await Promise.all([
-    collectPages<ProductRow>(async (from, to) =>
-      await client
+    fetchAllByIdKeyset<ProductRow>(({ afterId, limit }) => {
+      let query = client
         .from("products")
         .select(
           "id,name,unit,created_at,deleted_at,initial_stock_quantity,initial_stock_at,initial_price,initial_price_at"
-        )
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, to)
-    ),
-    collectPages<EntryRow>(async (from, to) =>
-      await client
+        );
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset<EntryRow>(({ afterId, limit }) => {
+      let query = client
         .from("entries")
         .select("id,effective_at,created_at")
-        .is("deleted_at", null)
-        .order("id", { ascending: true })
-        .range(from, to)
-    ),
-    collectPages<EntryItemRow>(async (from, to) =>
-      await client
+        .is("deleted_at", null);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset<EntryItemRow>(({ afterId, limit }) => {
+      let query = client
         .from("entry_items")
-        .select("id,entry_id,product_id,quantity,unit_price,position")
-        .order("id", { ascending: true })
-        .range(from, to)
-    ),
-    collectPages<ConferenceRow>(async (from, to) =>
-      await client
+        .select("id,entry_id,product_id,quantity,unit_price,position");
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset<ConferenceRow>(({ afterId, limit }) => {
+      let query = client
         .from("conferences")
         .select("id,effective_at,created_at")
-        .is("deleted_at", null)
-        .order("id", { ascending: true })
-        .range(from, to)
-    ),
-    collectPages<ConferenceItemRow>(async (from, to) =>
-      await client
+        .is("deleted_at", null);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByIdKeyset<ConferenceItemRow>(({ afterId, limit }) => {
+      let query = client
         .from("conference_items")
-        .select("conference_id,product_id,quantity")
-        .order("conference_id", { ascending: true })
-        .order("product_id", { ascending: true })
-        .range(from, to)
-    ),
-    collectPages<ProductAuditRow>(async (from, to) =>
-      await client
+        .select("id,conference_id,product_id,quantity");
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }),
+    fetchAllByNumericIdKeyset<ProductAuditRow>(({ afterId, limit }) => {
+      let query = client
         .from("audit_log")
         .select("id,entity_id,action,created_at")
         .eq("entity_type", "products")
-        .in("action", ["PRODUCT_MERGE", "SOFT_DELETE", "RESTORE"])
-        .order("id", { ascending: true })
-        .range(from, to)
-    )
+        .in("action", ["PRODUCT_MERGE", "SOFT_DELETE", "RESTORE"]);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    })
   ]);
 
   const entryById = new Map(entries.map((entry) => [entry.id, entry] as const));
@@ -160,7 +159,7 @@ export async function loadMonthlyStockReportFacts(): Promise<MonthlyStockReportF
     conferences.map((conference) => [conference.id, conference] as const)
   );
 
-  const mappedProducts: HistoricalReportProduct[] = products.map((product) => ({
+  const mappedProducts: HistoricalReportProduct[] = sortProductsByCreation(products).map((product) => ({
     id: product.id,
     name: product.name,
     unit: product.unit,

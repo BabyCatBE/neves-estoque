@@ -44,18 +44,22 @@ export class IncompletePaginationError extends Error {
   }
 }
 
-/**
- * Lê todas as páginas, em ordem crescente de `id`, até receber uma página vazia.
- *
- * Falha (lança erro, nunca devolve resultado parcial) quando:
- * - qualquer página devolve erro;
- * - o servidor devolve linhas fora da ordem crescente estrita de `id` (o que
- *   poderia duplicar ou perder linhas);
- * - o número de páginas passa de `maxPages` (proteção contra laço infinito).
- */
-export async function fetchAllByIdKeyset<T extends { id: string }>(
-  fetchPage: KeysetFetchPage<T>,
-  options: KeysetOptions = {}
+/** Cursor numérico (ex.: `bigint generated always as identity`). */
+export type NumericKeysetPageRequest = {
+  /** `null` na primeira página; depois, o `id` da última linha recebida. */
+  afterId: number | null;
+  /** Tamanho pedido ao servidor (o servidor pode devolver menos). */
+  limit: number;
+};
+
+export type NumericKeysetFetchPage<T> = (
+  request: NumericKeysetPageRequest
+) => PromiseLike<KeysetPageResult<T>>;
+
+async function fetchAllByKeyset<T, K extends string | number>(
+  fetchPage: (request: { afterId: K | null; limit: number }) => PromiseLike<KeysetPageResult<T>>,
+  keyOf: (row: T) => K,
+  options: KeysetOptions
 ): Promise<T[]> {
   const pageSize = options.pageSize ?? DEFAULT_KEYSET_PAGE_SIZE;
   const maxPages = options.maxPages ?? DEFAULT_KEYSET_MAX_PAGES;
@@ -68,7 +72,7 @@ export async function fetchAllByIdKeyset<T extends { id: string }>(
   }
 
   const rows: T[] = [];
-  let afterId: string | null = null;
+  let afterId: K | null = null;
 
   for (let pageIndex = 0; ; pageIndex += 1) {
     if (pageIndex >= maxPages) {
@@ -84,17 +88,43 @@ export async function fetchAllByIdKeyset<T extends { id: string }>(
     if (page.length === 0) break;
 
     for (const row of page) {
+      const key = keyOf(row);
       // UUIDs canônicos (hex minúsculo, hífens em posição fixa) comparam como
-      // texto na mesma ordem que o PostgreSQL ordena o tipo uuid.
-      if (afterId !== null && !(row.id > afterId)) {
+      // texto na mesma ordem que o PostgreSQL ordena o tipo uuid; ids numéricos
+      // comparam numericamente.
+      if (afterId !== null && !(key > afterId)) {
         throw new IncompletePaginationError(
           "Leitura interrompida: o servidor devolveu registros fora da ordem esperada."
         );
       }
       rows.push(row);
-      afterId = row.id;
+      afterId = key;
     }
   }
 
   return rows;
+}
+
+/**
+ * Lê todas as páginas, em ordem crescente de `id`, até receber uma página vazia.
+ *
+ * Falha (lança erro, nunca devolve resultado parcial) quando:
+ * - qualquer página devolve erro;
+ * - o servidor devolve linhas fora da ordem crescente estrita de `id` (o que
+ *   poderia duplicar ou perder linhas);
+ * - o número de páginas passa de `maxPages` (proteção contra laço infinito).
+ */
+export function fetchAllByIdKeyset<T extends { id: string }>(
+  fetchPage: KeysetFetchPage<T>,
+  options: KeysetOptions = {}
+): Promise<T[]> {
+  return fetchAllByKeyset<T, string>(fetchPage, (row) => row.id, options);
+}
+
+/** Mesma regra de `fetchAllByIdKeyset`, para chave primária numérica. */
+export function fetchAllByNumericIdKeyset<T extends { id: number }>(
+  fetchPage: NumericKeysetFetchPage<T>,
+  options: KeysetOptions = {}
+): Promise<T[]> {
+  return fetchAllByKeyset<T, number>(fetchPage, (row) => row.id, options);
 }
