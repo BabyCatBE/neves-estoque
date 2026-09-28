@@ -1,12 +1,12 @@
 package com.babycatbe.nevesestoque.data.offline
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,8 +22,8 @@ import java.time.format.DateTimeFormatter
  */
 @Composable
 fun OfflineBanner(offlineMode: Boolean) {
-    val online by ConnectivityMonitor.online.collectAsState()
-    val lastSnapshot by OfflineStore.lastSnapshotAt.collectAsState()
+    val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
+    val lastSnapshot by OfflineStore.lastSnapshotAt.collectAsStateWithLifecycle()
     if (online && !offlineMode) return
 
     Surface(color = Color(0xFF78350F), modifier = Modifier.fillMaxWidth()) {

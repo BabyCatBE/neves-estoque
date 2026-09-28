@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,7 +71,7 @@ fun NewEntryRoute(
     onSavedPending: (String) -> Unit = {},
 ) {
     val vm: NewEntryViewModel = viewModel()
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.savedEntryId) {
         state.savedEntryId?.let { onSaved(it, "Entrada salva com sucesso.") }
@@ -747,7 +747,7 @@ fun EditEntryRoute(
         key = "edit-entry-${entryId}",
         factory = EditEntryViewModel.Factory(entryId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.savedMessage) {
         state.savedMessage?.let {

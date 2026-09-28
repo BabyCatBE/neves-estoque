@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.reports
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.LatestLoad
 import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.compose.foundation.Canvas
@@ -27,7 +28,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,7 +90,7 @@ class ReportsViewModel : ViewModel() {
 
 @Composable
 fun ReportsRoute(onBack: () -> Unit, reportsViewModel: ReportsViewModel = viewModel()) {
-    val state by reportsViewModel.uiState.collectAsState()
+    val state by reportsViewModel.uiState.collectAsStateWithLifecycle()
     ReportsScreen(state = state, onBack = onBack, onRefresh = reportsViewModel::refresh)
 }
 

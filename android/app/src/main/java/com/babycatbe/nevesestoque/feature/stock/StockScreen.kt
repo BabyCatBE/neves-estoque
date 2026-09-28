@@ -1,5 +1,9 @@
 package com.babycatbe.nevesestoque.feature.stock
 
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.toMutableStateList
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -31,9 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,7 +57,7 @@ fun StockRoute(
     onReports: () -> Unit = {},
     stockViewModel: StockViewModel = viewModel(),
 ) {
-    val state by stockViewModel.uiState.collectAsState()
+    val state by stockViewModel.uiState.collectAsStateWithLifecycle()
     RefreshOnKeyChange(refreshKey) { stockViewModel.refresh() }
     StockScreen(
         state = state,
@@ -77,6 +79,11 @@ private fun StockScreen(
     var search by rememberSaveable { mutableStateOf("") }
     var viewMode by rememberSaveable { mutableStateOf(StockViewMode.Category) }
     var showValues by rememberSaveable { mutableStateOf(false) }
+    // Grupos abertos ficam na tela (não em cada item da lista): não fecham ao rolar
+    // para fora da área visível nem ao voltar de um Produto.
+    val expandedGroups = rememberSaveable(
+        saver = listSaver(save = { it.toList() }, restore = { it.toMutableStateList() }),
+    ) { mutableStateListOf<String>() }
 
     val data = state.data
     val categoryGroups = remember(data, search) {
@@ -274,7 +281,7 @@ private fun StockScreen(
                             item { EmptyStock(search) }
                         } else {
                             items(categoryGroups, key = { it.id }) { group ->
-                                StockGroupCard(group, showValues, search.isNotBlank(), onProductClick)
+                                StockGroupCard(group, showValues, search.isNotBlank(), expandedGroups, onProductClick)
                             }
                         }
                     }
@@ -284,7 +291,7 @@ private fun StockScreen(
                             item { EmptyStock(search) }
                         } else {
                             items(supplierGroups, key = { it.id }) { group ->
-                                StockGroupCard(group, showValues, search.isNotBlank(), onProductClick)
+                                StockGroupCard(group, showValues, search.isNotBlank(), expandedGroups, onProductClick)
                             }
                         }
                     }
@@ -323,10 +330,10 @@ private fun StockGroupCard(
     group: StockGroup,
     showValues: Boolean,
     forceOpen: Boolean,
+    expandedGroups: MutableList<String>,
     onProductClick: (String) -> Unit,
 ) {
-    val expandedState = remember { mutableStateMapOf<String, Boolean>() }
-    val expanded = forceOpen || expandedState[group.id] == true
+    val expanded = forceOpen || group.id in expandedGroups
 
     Card {
         Column {
@@ -334,7 +341,7 @@ private fun StockGroupCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { expandedState[group.id] = !expanded }
+                    .clickable { if (expanded) expandedGroups.remove(group.id) else expandedGroups.add(group.id) }
                     .padding(vertical = 14.dp),
             ) {
                 Box(

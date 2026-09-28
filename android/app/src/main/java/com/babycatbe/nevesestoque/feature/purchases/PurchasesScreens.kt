@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.purchases
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.LatestLoad
 import com.babycatbe.nevesestoque.ui.load.loadCatching
 import android.content.ClipData
@@ -33,7 +34,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -139,7 +139,7 @@ fun PurchasesHubScreen(
 
 @Composable
 fun PurchaseSupplierSelectRoute(onBack: () -> Unit, onSelect: (String) -> Unit, vm: PurchasesViewModel = viewModel()) {
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     var search by rememberSaveable { mutableStateOf("") }
     val suppliers = state.data?.suppliers.orEmpty().filter {
         matchesPurchaseSearch(listOf(it.name, it.company, it.phone), search)
@@ -182,7 +182,7 @@ fun PurchaseSupplierSelectRoute(onBack: () -> Unit, onSelect: (String) -> Unit, 
 
 @Composable
 fun PurchaseCategorySelectRoute(onBack: () -> Unit, onSelect: (String) -> Unit, vm: PurchasesViewModel = viewModel()) {
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     val counts = state.data?.products.orEmpty().groupingBy { it.categoryId }.eachCount()
 
     PurchaseScaffold(title = "Compras · Por categoria", onBack = onBack) {
@@ -217,7 +217,7 @@ fun PurchaseListRoute(
     onBack: () -> Unit,
     vm: PurchasesViewModel = viewModel(),
 ) {
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     val data = state.data
     val context = LocalContext.current
 
@@ -251,15 +251,19 @@ fun PurchaseListRoute(
         if (mode == PurchaseMode.Stock && data != null) stockPurchaseGroups(data.products) else emptyList<PurchaseListItem>() to emptyList<PurchaseListItem>()
     }
 
-    val items: List<PurchaseListItem> = when (mode) {
-        PurchaseMode.Supplier -> {
-            val manual = data?.products.orEmpty()
-                .filter { it.productId in manualIds }
-                .map { PurchaseListItem(it.productId, it.productName, it.unit, it.currentQuantity, null, isManualAddition = true) }
-            sortSupplierItems(supplierProducts.map { it.toListItem() } + manual)
+    // Recalcula só quando os dados ou a composição da lista mudam (não a cada tecla
+    // digitada nas quantidades).
+    val items: List<PurchaseListItem> = remember(mode, data, targetId, showRest, manualIds, supplierProducts, stockGroups) {
+        when (mode) {
+            PurchaseMode.Supplier -> {
+                val manual = data?.products.orEmpty()
+                    .filter { it.productId in manualIds }
+                    .map { PurchaseListItem(it.productId, it.productName, it.unit, it.currentQuantity, null, isManualAddition = true) }
+                sortSupplierItems(supplierProducts.map { it.toListItem() } + manual)
+            }
+            PurchaseMode.Stock -> if (showRest) stockGroups.first + stockGroups.second else stockGroups.first
+            PurchaseMode.Category -> if (data != null && targetId != null) categoryPurchaseItems(data.products, targetId) else emptyList()
         }
-        PurchaseMode.Stock -> if (showRest) stockGroups.first + stockGroups.second else stockGroups.first
-        PurchaseMode.Category -> if (data != null && targetId != null) categoryPurchaseItems(data.products, targetId) else emptyList()
     }
 
     val title = when (mode) {

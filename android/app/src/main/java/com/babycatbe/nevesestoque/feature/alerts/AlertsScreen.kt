@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.alerts
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.LatestLoad
 import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -118,8 +118,8 @@ fun AlertsRoute(
     onLocalPending: () -> Unit = {},
     vm: AlertsViewModel = viewModel(),
 ) {
-    val state by vm.uiState.collectAsState()
-    val localPending by com.babycatbe.nevesestoque.feature.offline.PendingStore.pending.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val localPending by com.babycatbe.nevesestoque.feature.offline.PendingStore.pending.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.refresh() }
     val counts = state.counts
 

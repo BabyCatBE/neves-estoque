@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +43,7 @@ fun CategoryConferenceFormRoute(
         key = "category-conference-form-" + categoryId,
         factory = CategoryConferenceFormViewModel.Factory(categoryId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.savedPendingMessage) {
         state.savedPendingMessage?.let { onSaved(it) }
@@ -321,7 +321,7 @@ fun EditConferenceRoute(
         key = "edit-conference-" + conferenceId,
         factory = EditConferenceViewModel.Factory(conferenceId),
     )
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.savedMessage) {
         state.savedMessage?.let {

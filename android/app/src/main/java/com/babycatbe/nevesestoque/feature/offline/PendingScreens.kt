@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.offline
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,7 +25,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,10 +58,10 @@ fun PendingListRoute(
     noticeMessage: String? = null,
     onDismissNotice: () -> Unit = {},
 ) {
-    val pending by PendingStore.pending.collectAsState()
-    val problems by PendingStore.problems.collectAsState()
-    val loaded by PendingStore.loaded.collectAsState()
-    val online by ConnectivityMonitor.online.collectAsState()
+    val pending by PendingStore.pending.collectAsStateWithLifecycle()
+    val problems by PendingStore.problems.collectAsStateWithLifecycle()
+    val loaded by PendingStore.loaded.collectAsStateWithLifecycle()
+    val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var toDelete by remember { mutableStateOf<PendingOperation?>(null) }
     var toConfirm by remember { mutableStateOf<PendingOperation?>(null) }
@@ -182,8 +182,8 @@ fun PendingListRoute(
 
 @Composable
 fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> Unit) {
-    val pending by PendingStore.pending.collectAsState()
-    val loaded by PendingStore.loaded.collectAsState()
+    val pending by PendingStore.pending.collectAsStateWithLifecycle()
+    val loaded by PendingStore.loaded.collectAsStateWithLifecycle()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val operation = pending.firstOrNull { it.localId == localId }
 
