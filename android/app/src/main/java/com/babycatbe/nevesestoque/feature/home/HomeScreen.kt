@@ -104,7 +104,7 @@ fun HomeScreen(
                 }
             }
             TextButton(onClick = onSettings, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                NevesIcon(NevesIcons.Settings, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                NevesIcon(NevesIcons.Settings, description = "Configurações", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(6.dp))
                 Text("Configurações")
             }
