@@ -144,7 +144,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: neves-estoque-android-debug-0.27.0-alpha01
+          name: neves-estoque-android-debug-0.28.0-alpha01
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
@@ -159,14 +159,14 @@ jobs:
           actual_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' SIGNATURE.txt | tr '[:upper:]' '[:lower:]')
           test "$actual_cert" = "$expected_cert" || { echo "::error::Release certificate differs from the approved permanent certificate."; exit 1; }
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app-release.apk > APK_BADGING.txt
-          grep -q "package: name='com.babycatbe.nevesestoque'.*versionCode='27'.*versionName='0.27.0-alpha01'" APK_BADGING.txt
+          grep -q "package: name='com.babycatbe.nevesestoque'.*versionCode='28'.*versionName='0.28.0-alpha01'" APK_BADGING.txt
           python3 - <<'PYTHON'
           import json
           with open("output-metadata.json") as file:
               metadata = json.load(file)
           assert metadata["applicationId"] == "com.babycatbe.nevesestoque"
-          assert all(item["versionCode"] == 27 and item["versionName"] == "0.27.0-alpha01" for item in metadata["elements"])
-          print("Release identity verified: 0.27.0-alpha01 / versionCode 27 / permanent certificate")
+          assert all(item["versionCode"] == 28 and item["versionName"] == "0.28.0-alpha01" for item in metadata["elements"])
+          print("Release identity verified: 0.28.0-alpha01 / versionCode 28 / permanent certificate")
           PYTHON
 
       - name: Checksum signed release APK
@@ -178,7 +178,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: neves-estoque-android-signed-0.27.0-alpha01-${{ github.sha }}
+          name: neves-estoque-android-signed-0.28.0-alpha01-${{ github.sha }}
           path: |
             android/app/build/outputs/apk/release/app-release.apk
             android/app/build/outputs/apk/release/SHA256SUMS
