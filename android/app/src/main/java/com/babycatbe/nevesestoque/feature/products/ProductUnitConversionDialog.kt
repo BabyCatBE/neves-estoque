@@ -1,6 +1,7 @@
 package com.babycatbe.nevesestoque.feature.products
 
-import androidx.compose.foundation.layout.Box
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -8,8 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -43,7 +42,6 @@ fun ProductUnitConversionDialog(
     var unitError by rememberSaveable { mutableStateOf<String?>(null) }
     var oldValue by rememberSaveable { mutableStateOf<Double?>(null) }
     var newValue by rememberSaveable { mutableStateOf<Double?>(null) }
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
 
     fun validatePreview() {
         unitError = if (newUnit.isBlank() || newUnit == product.unit) {
@@ -95,26 +93,12 @@ fun ProductUnitConversionDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text("Nova unidade", modifier = Modifier.padding(top = 6.dp))
-                    Box {
-                        TextButton(onClick = { menuOpen = true }) {
-                            Text(newUnit.ifBlank { "Selecionar…" })
-                        }
-                        DropdownMenu(
-                            expanded = menuOpen,
-                            onDismissRequest = { menuOpen = false },
-                        ) {
-                            PRODUCT_UNITS.filter { it != product.unit }.forEach { unit ->
-                                DropdownMenuItem(
-                                    text = { Text(unit) },
-                                    onClick = {
-                                        newUnit = unit
-                                        unitError = null
-                                        menuOpen = false
-                                    },
-                                )
-                            }
-                        }
-                    }
+                    ProductChoiceField(
+                        value = newUnit.ifBlank { "Selecionar…" },
+                        options = PRODUCT_UNITS.filter { it != product.unit }.map { it to it },
+                        enabled = !converting,
+                        onSelect = { newUnit = it; unitError = null },
+                    )
                     unitError?.let {
                         Text(it, color = MaterialTheme.colorScheme.error)
                     }
@@ -228,7 +212,7 @@ fun ProductUnitConversionDialog(
                 onClick = { if (preview) preview = false else onDismiss() },
                 enabled = !converting,
             ) {
-                Text(if (preview) "Voltar" else "Cancelar")
+                if (preview) NevesIcon(NevesIcons.Back, "Voltar") else Text("Cancelar")
             }
         },
     )

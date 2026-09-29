@@ -312,14 +312,6 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 },
                 onEdit = { navController.navigate("product/$productId/edit") },
                 onUpdateStock = { navController.navigate("product/$productId/stock") },
-                onMerge = { navController.navigate("product/$productId/merge") },
-                onDeleted = { message ->
-                    navController.previousBackStackEntry?.savedStateHandle?.apply {
-                        set(REFRESH_KEY, System.currentTimeMillis())
-                        set(NOTICE_KEY, message)
-                    }
-                    navController.popBackStack()
-                },
                 refreshKey = refreshKey,
                 noticeMessage = notice,
                 onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
@@ -736,6 +728,18 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             ProductFormRoute(
                 productId = productId,
                 onBack = { navController.popBackStack() },
+                onMerge = { navController.navigate("product/$productId/merge") },
+                onProductChanged = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(REFRESH_KEY, System.currentTimeMillis())
+                },
+                onDeleted = { message ->
+                    // Remove both edit and the deleted detail, revealing the original list/stock entry.
+                    navController.popBackStack(PRODUCT_DETAIL_ROUTE, inclusive = true)
+                    navController.currentBackStackEntry?.savedStateHandle?.apply {
+                        set(REFRESH_KEY, System.currentTimeMillis())
+                        set(NOTICE_KEY, message)
+                    }
+                },
                 onSaved = { message ->
                     navController.previousBackStackEntry?.savedStateHandle?.apply {
                         set(REFRESH_KEY, System.currentTimeMillis())

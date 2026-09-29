@@ -6,6 +6,7 @@ import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -91,8 +94,6 @@ private fun ProductMergeScreen(
     var absorbedEquivalentQuantity by rememberSaveable { mutableStateOf("") }
     var priceSourceWire by rememberSaveable { mutableStateOf(MergeInitialPriceSource.None.wireValue) }
     var formError by rememberSaveable { mutableStateOf<String?>(null) }
-    var categoryMenuOpen by rememberSaveable { mutableStateOf(false) }
-    var unitMenuOpen by rememberSaveable { mutableStateOf(false) }
     var priceMenuOpen by rememberSaveable { mutableStateOf(false) }
 
     val source = state.source
@@ -144,13 +145,13 @@ private fun ProductMergeScreen(
     Scaffold(
         topBar = {
             NevesTopBarSurface {
-                Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack, enabled = !state.merging) { NevesIcon(NevesIcons.Back, "Voltar") }
+                Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack, enabled = !state.merging) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Mesclar Produtos",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f).padding(top = 10.dp),
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -161,6 +162,7 @@ private fun ProductMergeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
@@ -298,59 +300,22 @@ private fun ProductMergeScreen(
                             )
 
                             Text("Categoria final", modifier = Modifier.padding(top = 12.dp))
-                            Box {
-                                TextButton(
-                                    onClick = { categoryMenuOpen = true },
-                                    enabled = !state.merging,
-                                ) {
-                                    Text(
-                                        catalog.categories.firstOrNull { it.id == finalCategoryId }?.name
-                                            ?: "Selecionar…"
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = categoryMenuOpen,
-                                    onDismissRequest = { categoryMenuOpen = false },
-                                ) {
-                                    catalog.categories
-                                        .sortedBy { it.name.lowercase(Locale.forLanguageTag("pt-BR")) }
-                                        .forEach { category ->
-                                            DropdownMenuItem(
-                                                text = { Text(category.name) },
-                                                onClick = {
-                                                    finalCategoryId = category.id
-                                                    categoryMenuOpen = false
-                                                    formError = null
-                                                },
-                                            )
-                                        }
-                                }
-                            }
+                            ProductChoiceField(
+                                value = catalog.categories.firstOrNull { it.id == finalCategoryId }?.name ?: "Selecionar…",
+                                options = catalog.categories
+                                    .sortedBy { it.name.lowercase(Locale.forLanguageTag("pt-BR")) }
+                                    .map { it.id to it.name },
+                                enabled = !state.merging,
+                                onSelect = { finalCategoryId = it; formError = null },
+                            )
 
                             Text("Unidade final", modifier = Modifier.padding(top = 8.dp))
-                            Box {
-                                TextButton(
-                                    onClick = { unitMenuOpen = true },
-                                    enabled = !state.merging,
-                                ) { Text(finalUnit.ifBlank { "Selecionar…" }) }
-                                DropdownMenu(
-                                    expanded = unitMenuOpen,
-                                    onDismissRequest = { unitMenuOpen = false },
-                                ) {
-                                    listOf(pair.survivor.unit, pair.absorbed.unit)
-                                        .distinct()
-                                        .forEach { unit ->
-                                            DropdownMenuItem(
-                                                text = { Text(unit) },
-                                                onClick = {
-                                                    finalUnit = unit
-                                                    unitMenuOpen = false
-                                                    formError = null
-                                                },
-                                            )
-                                        }
-                                }
-                            }
+                            ProductChoiceField(
+                                value = finalUnit.ifBlank { "Selecionar…" },
+                                options = listOf(pair.survivor.unit, pair.absorbed.unit).distinct().map { it to it },
+                                enabled = !state.merging,
+                                onSelect = { finalUnit = it; formError = null },
+                            )
 
                             Text("Referência inicial de preço", modifier = Modifier.padding(top = 8.dp))
                             Box {

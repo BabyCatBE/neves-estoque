@@ -259,6 +259,12 @@ class ProductFormViewModel(
 
     init { load() }
 
+    fun retryLoad() {
+        if (_uiState.value.saving || _uiState.value.loading) return
+        _uiState.value = _uiState.value.copy(loading = true, errorMessage = null)
+        load()
+    }
+
     private fun load() {
         viewModelScope.launch {
             runCatching {

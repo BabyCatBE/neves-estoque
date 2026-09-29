@@ -16,19 +16,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,8 +44,6 @@ fun ProductDetailRoute(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onUpdateStock: () -> Unit,
-    onMerge: () -> Unit,
-    onDeleted: (String) -> Unit,
     refreshKey: Long = 0L,
     noticeMessage: String? = null,
     onDismissNotice: () -> Unit = {},
@@ -56,21 +54,12 @@ fun ProductDetailRoute(
     )
     val state by vm.uiState.collectAsStateWithLifecycle()
     RefreshOnKeyChange(refreshKey) { vm.refresh() }
-    LaunchedEffect(state.deleted) {
-        if (state.deleted) {
-            onDeleted("Produto enviado para a Lixeira. Ele pode ser restaurado por 7 dias.")
-        }
-    }
+    BackHandler(onBack = onBack)
     ProductDetailScreen(
         state = state,
         onBack = onBack,
         onEdit = onEdit,
         onUpdateStock = onUpdateStock,
-        onMerge = onMerge,
-        onDelete = vm::deleteProduct,
-        onConvertUnit = vm::convertUnit,
-        onClearConversionError = vm::clearConversionError,
-        onConsumeConversionNotice = vm::consumeConversionNotice,
         onRefresh = vm::refresh,
         noticeMessage = noticeMessage,
         onDismissNotice = onDismissNotice,
@@ -83,40 +72,30 @@ private fun ProductDetailScreen(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onUpdateStock: () -> Unit,
-    onMerge: () -> Unit,
-    onDelete: () -> Unit,
-    onConvertUnit: (ProductUnitConversionDraft) -> Unit,
-    onClearConversionError: () -> Unit,
-    onConsumeConversionNotice: () -> Unit,
     onRefresh: () -> Unit,
     noticeMessage: String?,
     onDismissNotice: () -> Unit,
 ) {
-    var deleteOpen by rememberSaveable { mutableStateOf(false) }
-    var unitConversionOpen by rememberSaveable { mutableStateOf(false) }
     val product = state.product
     val categoryName = state.categories.firstOrNull { it.id == product?.categoryId }?.name ?: "Sem categoria"
 
-    LaunchedEffect(state.conversionNotice) {
-        if (state.conversionNotice != null) unitConversionOpen = false
-    }
-
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             NevesTopBarSurface {
-                Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
+                Row(modifier = Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Produto",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f).padding(top = 10.dp),
+                        modifier = Modifier.weight(1f),
                     )
                     TextButton(
                         onClick = onEdit,
                         enabled = product != null && !state.loading && !state.convertingUnit,
                     ) { NevesActionLabel("Editar", NevesIcons.Edit) }
-                    TextButton(
+                    IconButton(
                         onClick = onRefresh,
                         enabled = !state.refreshing && !state.convertingUnit,
                     ) {
@@ -141,21 +120,6 @@ private fun ProductDetailScreen(
                                 modifier = Modifier.weight(1f).padding(top = 8.dp),
                             )
                             TextButton(onClick = onDismissNotice) { Text("Fechar") }
-                        }
-                    }
-                }
-            }
-            state.conversionNotice?.let { message ->
-                item {
-                    Card {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                            Text(
-                                message,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.weight(1f).padding(top = 8.dp),
-                            )
-                            TextButton(onClick = onConsumeConversionNotice) { Text("Fechar") }
                         }
                     }
                 }
@@ -189,7 +153,9 @@ private fun ProductDetailScreen(
 
             if (!state.loading && state.errorMessage == null && product != null) {
                 item {
-                    Column(Modifier.padding(top = 10.dp)) {
+                    Column(Modifier.padding(top = 16.dp)) {
+                        ProductImagePlaceholder()
+                        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 16.dp))
                         Text(
                             "CADASTRO DE PRODUTO",
                             color = MaterialTheme.colorScheme.primary,
@@ -274,8 +240,9 @@ private fun ProductDetailScreen(
                 }
 
                 item {
-                    Card {
-                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Column {
+                        HorizontalDivider()
+                        Column(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
                             Text("Dados do Produto", fontWeight = FontWeight.Bold)
                             DetailLine("Categoria", categoryName)
                             DetailLine("Unidade", product.unit)
@@ -300,8 +267,9 @@ private fun ProductDetailScreen(
 
                 if (product.initialPrice != null) {
                     item {
-                        Card {
-                            Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                        Column {
+                            HorizontalDivider()
+                            Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                                 Text("Referência inicial", fontWeight = FontWeight.SemiBold)
                                 Text(
                                     listOfNotNull(
@@ -320,8 +288,9 @@ private fun ProductDetailScreen(
                     item { Card { NevesStatusMessage("Nenhum preço registrado até agora.") } }
                 } else {
                     items(product.priceHistory, key = { it.id }) { price ->
-                        Card {
-                            Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                        Column {
+                            HorizontalDivider()
+                            Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                                 Text(
                                     when {
                                         price.unitPrice == null -> "Preço não informado"
@@ -356,135 +325,18 @@ private fun ProductDetailScreen(
                     }
                 }
 
-                item {
-                    Card {
-                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                            Text("Lixeira", fontWeight = FontWeight.Bold)
-                            Text(
-                                "Excluir remove este Produto das áreas ativas. Ele ficará restaurável por 7 dias.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 6.dp),
-                            )
-                            TextButton(
-                                onClick = { deleteOpen = true },
-                                enabled = !state.deleting && !state.convertingUnit,
-                                modifier = Modifier.padding(top = 6.dp),
-                            ) {
-                                Text(if (state.deleting) "Excluindo…" else "Excluir Produto")
-                            }
-                        }
-                    }
-                }
 
-                item {
-                    Card {
-                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                            Text("Alterar unidade", fontWeight = FontWeight.Bold)
-                            Text(
-                                "Informe uma equivalência real. O backend protegido converte retroativamente quantidades, preços, Entradas e Conferências.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 6.dp),
-                            )
-                            TextButton(
-                                onClick = {
-                                    onClearConversionError()
-                                    unitConversionOpen = true
-                                },
-                                enabled = !state.convertingUnit && !state.deleting,
-                                modifier = Modifier.padding(top = 6.dp),
-                            ) {
-                                Text(if (state.convertingUnit) "Convertendo…" else "Alterar unidade")
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    Card {
-                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                            Text("Mesclar Produtos", fontWeight = FontWeight.Bold)
-                            Text(
-                                if (product.categoryId == null) {
-                                    "Complete o cadastro deste Produto antes de mesclar."
-                                } else {
-                                    "Una um cadastro duplicado preservando o ID mais antigo, o histórico real e a auditoria."
-                                },
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 6.dp),
-                            )
-                            TextButton(
-                                onClick = onMerge,
-                                enabled = product.categoryId != null && !state.convertingUnit && !state.deleting,
-                                modifier = Modifier.padding(top = 6.dp),
-                            ) {
-                                Text("Mesclar Produto")
-                            }
-                        }
-                    }
-                }
             }
 
             item { androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 8.dp)) }
         }
     }
 
-    if (unitConversionOpen && product != null) {
-        ProductUnitConversionDialog(
-            product = product,
-            converting = state.convertingUnit,
-            backendError = state.conversionError,
-            onDismiss = {
-                if (!state.convertingUnit) {
-                    unitConversionOpen = false
-                    onClearConversionError()
-                }
-            },
-            onConfirm = onConvertUnit,
-        )
-    }
-
-    if (deleteOpen && product != null) {
-        AlertDialog(
-            onDismissRequest = { if (!state.deleting) deleteOpen = false },
-            title = { Text("Excluir Produto?") },
-            text = {
-                Text(
-                    productDeleteConfirmation(
-                        name = product.name,
-                        currentQuantity = product.currentQuantity,
-                        unit = product.unit,
-                    )
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        deleteOpen = false
-                        onDelete()
-                    },
-                    enabled = !state.deleting,
-                ) {
-                    NevesActionLabel("Excluir Produto", NevesIcons.Trash)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { deleteOpen = false },
-                    enabled = !state.deleting,
-                ) {
-                    Text("Cancelar")
-                }
-            },
-        )
-    }
 }
 
 @Composable
 private fun ProductMetricCard(label: String, value: String, modifier: Modifier) {
-    Card(modifier = modifier) {
+    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.padding(14.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
@@ -498,15 +350,16 @@ private fun DetailLine(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
     ) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontWeight = FontWeight.SemiBold)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(value, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun UsageCard(insights: ProductUsageInsights, unit: String) {
-    Card {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+    Column {
+        HorizontalDivider()
+        Column(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
             Text("Duração do estoque", fontWeight = FontWeight.Bold)
 
             if (insights.status == UsageStatus.Ready) {
