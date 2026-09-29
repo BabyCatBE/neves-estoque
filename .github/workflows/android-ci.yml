@@ -11,15 +11,52 @@ on:
     paths:
       - "android/**"
       - ".github/workflows/android-ci.yml"
+      - ".github/workflows/android-release.yml"
   pull_request:
     paths:
       - "android/**"
       - ".github/workflows/android-ci.yml"
+      - ".github/workflows/android-release.yml"
 
 permissions:
   contents: read
 
 jobs:
+  validate-release-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Validate Android Release workflow contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          p = Path(".github/workflows/android-release.yml")
+          text = p.read_text()
+          required = [
+              "workflow_dispatch:",
+              "permissions:",
+              "contents: write",
+              "confirm_version:",
+              "confirm_version_code:",
+              "neves-estoque-android.apk",
+              "SHA256SUMS",
+              "versionCode: $version_code",
+              'release["draft"] is False',
+              'release["prerelease"] is False',
+              "Refuse an existing tag or Release",
+              "Verify identity and permanent signature",
+          ]
+          missing = [item for item in required if item not in text]
+          if missing:
+              raise SystemExit("Android Release workflow contract missing: " + ", ".join(missing))
+          if "pull_request:" in text or "\npush:" in text:
+              raise SystemExit("Release publishing workflow must not publish from push/pull_request.")
+          print("Android Release workflow static contract validated.")
+          PYTHON
+
   android-build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -151,8 +188,6 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      # Publica os erros como anotações da execução, legíveis pela API do GitHub
-      # mesmo quando o log completo não está acessível.
       - name: Publish build failure details
         if: failure()
         shell: bash
@@ -186,4 +221,3 @@ jobs:
         if: always()
         shell: bash
         run: rm -f "$RUNNER_TEMP/neves-estoque.jks"
-
