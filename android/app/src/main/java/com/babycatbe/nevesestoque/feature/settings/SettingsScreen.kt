@@ -3,6 +3,8 @@ package com.babycatbe.nevesestoque.feature.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
@@ -11,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import com.babycatbe.nevesestoque.ui.theme.NevesColors
 import com.babycatbe.nevesestoque.BuildConfig
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
@@ -29,14 +33,34 @@ fun SettingsRoute(onBack: () -> Unit) {
         while (state is UpdateState.Downloading) { delay(900); state = updater.poll() }
     }
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Configurações") }, navigationIcon = {
+        TopAppBar(
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = NevesColors.Header, titleContentColor = Color.White, navigationIconContentColor = Color.White),
+            title = { Text("Configurações", fontWeight = FontWeight.SemiBold) }, navigationIcon = {
             IconButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
         })
     }) { padding ->
         Column(verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
-            Text("Atualização do aplicativo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp)) {
+                        Box(contentAlignment = Alignment.Center) { NevesIcon(NevesIcons.Refresh, "Atualizações", tint = Color.White) }
+                    }
+                    Column {
+                        Text("Atualização do aplicativo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text("Mantenha o Neves Estoque seguro e atualizado.", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Versão instalada: ${BuildConfig.VERSION_NAME} (versionCode ${BuildConfig.VERSION_CODE})")
                     when (val current = state) {
@@ -58,7 +82,9 @@ fun SettingsRoute(onBack: () -> Unit) {
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(enabled = state !is UpdateState.Checking && state !is UpdateState.Downloading, onClick = {
+                        OutlinedButton(
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            enabled = state !is UpdateState.Checking && state !is UpdateState.Downloading, onClick = {
                             state = UpdateState.Checking
                             scope.launch { state = updater.check() }
                         }) { Text("Verificar atualização") }
@@ -85,8 +111,11 @@ fun SettingsRoute(onBack: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Text("A instalação só é liberada após validar o SHA-256 publicado junto à Release oficial.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f), shape = RoundedCornerShape(12.dp)) {
+                Text("Proteção de atualização • A instalação só é liberada após validar o SHA-256 publicado junto à Release oficial.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(12.dp))
+            }
         }
     }
 }
