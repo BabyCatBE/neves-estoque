@@ -78,10 +78,17 @@ Configuração atual observada em `android/app/build.gradle.kts`:
 - Ktor Android 3.5.1;
 - Java 17;
 - compileSdk 37, targetSdk 36, minSdk 26;
-- Android `0.21.0-alpha01`, versionCode 21;
+- Android `0.34.0-alpha01`, versionCode 34;
 - versão de sistema `0.26.0`.
 
 `MainActivity` inicializa o app e `AuthenticatedApp.kt` concentra o grafo de navegação autenticado.
+
+### Tema / Aparência Android
+
+- `ui/theme/NevesTheme.kt`: único ponto de tema; `NevesLightColors` e `NevesDarkColors` (Material 3) + `NevesPalette` clara/escura (`NevesColors.kt`) para cores de identidade fora do ColorScheme (header, borda de card, faixa Offline, semânticas).
+- As telas leem `MaterialTheme.colorScheme` e `NevesColors.X` (getters `@Composable` sobre `LocalNevesPalette`); não usar `if (dark)` espalhado nem cores fixas de fundo claro.
+- Troca Claro ↔ Escuro: `NevesTheme` anima um único progresso (300 ms, `FastOutSlowInEasing`) e interpola ColorScheme + paleta; nos extremos usa os esquemas exatos.
+- Preferência: `ui/theme/AppearanceStore.kt`, SharedPreferences privado `neves_estoque_appearance` / chave `theme_mode_v1` (`light`/`dark`), local ao aparelho, sem Supabase e sem vínculo com conta. Carregada de forma síncrona em `NevesApplication.onCreate`; `MainActivity` ajusta o fundo da janela ao tema salvo para evitar flash na abertura.
 
 ### Offline Android
 

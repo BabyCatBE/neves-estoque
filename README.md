@@ -20,16 +20,16 @@ O **Contexto Mestre no Google Drive** continua sendo a fonte consolidada de cont
 **IMPLEMENTAÇÃO INCREMENTAL / TESTES / PR EMPILHADO AINDA NÃO INTEGRADO À LINHA PRINCIPAL**.
 
 - Web/System: `0.26.0`;
-- Android: `0.33.0-alpha01` (versionCode 33);
+- Android: `0.34.0-alpha01` (versionCode 34);
 - linha de trabalho atual: `feat/android-17-product-maintenance-ux`;
 - PR atual: #75 — DRAFT / OPEN / NÃO INTEGRADO, base `feat/android-launcher-icon`;
 - o HEAD atual deve ser consultado diretamente no GitHub; commits documentais posteriores ao último commit funcional não alteram o estado funcional;
-- último commit funcional: `e2b980dc4d412a91e528a88efcdd75898eb65f35`;
-- Android CI funcional #118: SUCCESS;
+- último commit funcional: `e7928813f757c45f19454f0fd9ac460b76c1aacd`;
+- Android CI funcional #122: SUCCESS;
 - commits exclusivamente documentais também podem disparar Android CI; a referência funcional permanece a CI do último commit funcional;
 - Android 32: busca de Produto da Nova Entrada APROVADA EM APARELHO;
 - Android 33: seletor visual de data `DD/MM/AAAA` IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR;
-- próximo bloco aprovado: **Modo Escuro Android**, ainda NÃO IMPLEMENTADO.
+- Android 34: **Modo Escuro** (Configurações → Aparência, seletor Sol/Lua, transição de ~300 ms, preferência local) IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR.
 
 A cadeia atual é empilhada: PRs #69–#75 permanecem abertos/em rascunho em suas bases sucessivas. Não confundir “presente na branch atual” com “integrado em main/develop”.
 

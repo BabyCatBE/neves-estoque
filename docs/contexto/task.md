@@ -10,13 +10,12 @@
 
 - linha de trabalho: `feat/android-17-product-maintenance-ux`;
 - PR #75: DRAFT / OPEN / NÃO INTEGRADO; base `feat/android-launcher-icon`;
-- HEAD atual: `85ef0f11c7eda95a6b12eafe325eaec4328dfc72` — somente documentação de consolidação;
-- último commit funcional: `e2b980dc4d412a91e528a88efcdd75898eb65f35`;
+- HEAD atual: consultar o GitHub; commits documentais posteriores não alteram o estado funcional;
+- último commit funcional: `e7928813f757c45f19454f0fd9ac460b76c1aacd` — Android 34 / Modo Escuro;
 - Web/System: `0.26.0`;
-- Android: `0.33.0-alpha01` / versionCode 33;
-- Android CI #118: SUCCESS no último commit funcional;
-- Android CI #119: SUCCESS no HEAD documental;
-- nenhuma alteração de Web, Supabase, migrations ou dados nos refinamentos Android 31–33.
+- Android: `0.34.0-alpha01` / versionCode 34;
+- Android CI #122: SUCCESS no último commit funcional;
+- nenhuma alteração de Web, Supabase, migrations ou dados nos refinamentos Android 31–34.
 
 ## O que já está comprovado em aparelho
 
@@ -24,23 +23,15 @@
 - Android 31: Elias informou que os fluxos exercitados de abertura/fluidez e operação de Conferência/Entrada funcionaram corretamente.
 - Android 32: correção da busca de Produto na Nova Entrada, mantendo campo e sugestões acima do teclado, **APROVADA EM APARELHO**.
 - Android 33: calendário visual e formato `DD/MM/AAAA` ainda **A VERIFICAR EM APARELHO**.
+- Android 34: Modo Escuro **IMPLEMENTADO / CI APROVADA / A VERIFICAR EM APARELHO**.
 
 ## Trabalho vigente e próximo bloco
 
-1. instalar/testar o APK 33 e validar o seletor de calendário;
-2. corrigir somente achados reais, se houver;
-3. iniciar o bloco de **Modo Escuro Android**, já APROVADO e ainda NÃO IMPLEMENTADO;
-4. preservar o tema claro atual;
-5. Configurações deve oferecer seletor manual Claro/Escuro, com troca imediata e persistência local por aparelho.
+1. instalar/testar o APK 34 em aparelho: Claro, Escuro, troca com transição de ~300 ms, persistência após fechar/reabrir, ausência de flash, contraste e módulos principais;
+2. validar também o calendário visual do Android 33, ainda pendente em aparelho;
+3. corrigir somente achados reais, se houver.
 
-Paleta Dark aprovada:
-- `#181614` background;
-- `#211E1B` cards/surface;
-- `#2A2622` secondary surface;
-- `#302B27` elevated;
-- `#F4F1ED` texto principal;
-- `#B8B0A7` texto secundário;
-- vermelho Neves como destaque.
+Referência do Modo Escuro: `design.md` (seção Android — Modo Escuro) e `architecture.md` (Tema / Aparência Android).
 
 ## Cadeia de PRs Android
 
@@ -70,7 +61,8 @@ Referências antigas abaixo devem ser lidas como histórico do momento em que fo
 ## Pendências conhecidas
 
 - Android 33 calendário visual: `A VERIFICAR EM APARELHO`;
-- Dark Mode: `APROVADO / NÃO IMPLEMENTADO`;
+- Dark Mode (Android 34): `IMPLEMENTADO / CI APROVADA / A VERIFICAR EM APARELHO`;
+- tela de abertura do sistema (splash Android 12+) segue o tema claro do manifesto mesmo com Escuro salvo: `LIMITAÇÃO CONHECIDA / A VERIFICAR EM APARELHO`;
 - comportamento das pendências Offline ao trocar de usuário no mesmo aparelho: `A DEFINIR`;
 - PRs empilhados #69–#75 ainda não integrados à linha principal;
 - CI aprovada não substitui teste funcional em aparelho.

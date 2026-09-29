@@ -9,14 +9,13 @@ Leia primeiro os arquivos aplicáveis em `../docs/contexto/`, especialmente `arc
 ## Estado atual — 29/09/2026
 
 - applicationId: `com.babycatbe.nevesestoque`;
-- Android: `0.33.0-alpha01` (versionCode 33);
+- Android: `0.34.0-alpha01` (versionCode 34);
 - Sistema/Web: `0.26.0`;
 - linha de trabalho atual: `feat/android-17-product-maintenance-ux`;
 - PR #75: DRAFT / OPEN / NÃO INTEGRADO;
-- HEAD documental: `85ef0f11c7eda95a6b12eafe325eaec4328dfc72`;
-- último commit funcional: `e2b980dc4d412a91e528a88efcdd75898eb65f35`;
-- Android CI #118: SUCCESS no estado funcional Android 33;
-- Android CI #119: SUCCESS no commit documental;
+- HEAD atual: consultar o GitHub;
+- último commit funcional: `e7928813f757c45f19454f0fd9ac460b76c1aacd` (Android 34 / Modo Escuro);
+- Android CI #122: SUCCESS no estado funcional Android 34;
 - Kotlin + Jetpack Compose + Material 3;
 - Supabase Kotlin 3.8.0 + Ktor Android 3.5.1.
 
@@ -25,7 +24,7 @@ Leia primeiro os arquivos aplicáveis em `../docs/contexto/`, especialmente `arc
 - Android 31: abertura imediata por acesso local previamente validado, revalidação em segundo plano, preload somente de Estoque Atual/Produtos, teclado numérico próprio e fluxo rápido de Conferência/Entrada. Elias testou os fluxos exercitados com resultado positivo.
 - Android 32: campo “Adicionar Produto” da Nova Entrada mantém campo e sugestões visíveis acima do teclado. **APROVADO EM APARELHO**.
 - Android 33: datas visíveis em `DD/MM/AAAA`, valor interno ISO, ícone de calendário e seletor visual Material/Android. **IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR**.
-- Próximo bloco aprovado: **Modo Escuro**, seletor Claro/Escuro em Configurações, persistência local e paleta quente aprovada; ainda **NÃO IMPLEMENTADO**.
+- Android 34: **Modo Escuro** — Configurações → Aparência com seletor Sol/Lua, troca imediata com transição de paleta de ~300 ms, preferência local por aparelho e paleta grafite quente aprovada. **IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR**.
 
 ## Módulos
 

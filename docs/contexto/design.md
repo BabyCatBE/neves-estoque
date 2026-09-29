@@ -198,9 +198,9 @@ Padrão implementado:
 
 Estado: **IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR**.
 
-## Android — Modo Escuro APROVADO para o próximo bloco (29/09/2026)
+## Android — Modo Escuro (Android 34, 29/09/2026)
 
-Elias aprovou visualmente a proposta de Dark Mode e definiu que o próximo bloco deve implementá-la.
+Elias aprovou visualmente a proposta de Dark Mode; implementada no Android `0.34.0-alpha01`.
 
 ### Regra de produto
 - Configurações terá seção **Aparência** com escolha manual entre **Claro** e **Escuro**.
@@ -229,4 +229,14 @@ A direção é **grafite/carvão quente**, confortável e levemente amarronzado.
 - estados semânticos de sucesso/alerta/erro devem ganhar variantes escuras próprias; não confundir vermelho de erro com vermelho institucional;
 - fazer auditoria de cores fixas (`Color.White`, `NevesColors.Header`, containers claros etc.) antes de considerar o Dark Mode concluído.
 
-Estado: **APROVADO / NÃO IMPLEMENTADO**.
+### Implementação (Android 34)
+- **Configurações → Aparência**: card no topo com rótulo “Claro”/“Escuro” e seletor em cápsula (60×32 dp visual, alvo de toque ≥ 48 dp): Sol à esquerda, Lua à direita, indicador circular vermelho Neves que desliza para o lado ativo; ícone ativo branco sobre o indicador, inativo discreto. Trilho/borda usam `surfaceVariant`/`outlineVariant`, portanto a cápsula é clara no Claro e escura no Escuro.
+- **Transição**: 300 ms, `FastOutSlowInEasing`. O indicador desliza, Sol/Lua trocam destaque e a paleta inteira interpola ao mesmo tempo; sem flash, onda, zoom ou recriação de tela; navegação inalterada.
+- **Header escuro**: `#110F0D` (mais escuro que o fundo `#181614`), texto `#F4F1ED`, secundário `#B8B0A7`; faixa decorativa e `Accent #EF4444` preservados.
+- **Vermelho Neves no Escuro**: `primary #D93A3A` (branco sobre ele ≥ 4.5:1; legível sobre cards). No Claro continua `#B91C1C`.
+- **Superfícies escuras**: background `#181614`; surface/cards `#211E1B`; surfaceVariant/surfaceContainer `#2A2622`; surfaceContainerHigh (dialogs, calendário) `#302B27`; surfaceContainerHighest `#3A3430`; outline `#8A8078`; outlineVariant/divisores `#3D3732`; borda de card `#3A2A27`.
+- **Semânticas escuras**: alerta `#3A2C12`/`#F5CF8A`; sucesso `#173323`/`#9BE3B8`; erro container `#4A1F1B`/`#FFB4AB`; `error #F2B8B5` (distinto do vermelho institucional); faixa Offline `#5C3A10`/`#FDE7C2`.
+- **Login no Escuro**: a arte oficial de fundo branco vira placa arredondada centralizada; no Claro o layout é o anterior.
+- Tema claro: mesmos valores de antes (cobertos por teste unitário).
+
+Estado: **IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR**.
