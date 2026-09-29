@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
 import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
 import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
@@ -16,8 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.text.style.TextAlign
@@ -111,7 +110,7 @@ private fun ProductDetailScreen(
         ) {
             noticeMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -125,12 +124,12 @@ private fun ProductDetailScreen(
                 }
             }
             if (state.loading) {
-                item { Card { Text("Carregando Produto…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Produto…", modifier = Modifier.padding(18.dp)) } }
             }
 
             state.errorMessage?.let { error ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(error, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = onRefresh) { Text("Tentar novamente") }
@@ -141,7 +140,7 @@ private fun ProductDetailScreen(
 
             state.actionError?.let { error ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Text(
                             error,
                             color = MaterialTheme.colorScheme.error,
@@ -178,7 +177,7 @@ private fun ProductDetailScreen(
 
                 if (product.stockRequiresConference) {
                     item {
-                        Card {
+                        NevesContentCard {
                             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                                 Text("Conferência física necessária", fontWeight = FontWeight.Bold)
                                 Text(
@@ -220,7 +219,7 @@ private fun ProductDetailScreen(
                 }
 
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text("Atualizar estoque", fontWeight = FontWeight.Bold)
                             Text(
@@ -285,7 +284,7 @@ private fun ProductDetailScreen(
                 }
 
                 if (product.priceHistory.isEmpty() && product.initialPrice == null) {
-                    item { Card { NevesStatusMessage("Nenhum preço registrado até agora.") } }
+                    item { NevesContentCard { NevesStatusMessage("Nenhum preço registrado até agora.") } }
                 } else {
                     items(product.priceHistory, key = { it.id }) { price ->
                         Column {
@@ -336,7 +335,7 @@ private fun ProductDetailScreen(
 
 @Composable
 private fun ProductMetricCard(label: String, value: String, modifier: Modifier) {
-    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    NevesContentCard(modifier = modifier) {
         Column(Modifier.padding(14.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))

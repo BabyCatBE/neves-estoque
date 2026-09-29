@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -103,7 +103,7 @@ private fun ConferenceHubCard(
     onClick: () -> Unit,
     primary: Boolean = false,
 ) {
-    Card(onClick = onClick) {
+    NevesContentCard(onClick = onClick) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             NevesIcon(icon, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
             Text(
@@ -203,7 +203,7 @@ private fun ConferenceCategoriesScreen(
         ) {
             noticeMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -227,14 +227,14 @@ private fun ConferenceCategoriesScreen(
                 }
             }
             if (state.loading) {
-                item { Card { Text("Carregando Categorias…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Categorias…", modifier = Modifier.padding(18.dp)) } }
             }
             state.errorMessage?.let {
-                item { Card { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
             }
             items(state.categories, key = { it.id }) { category ->
                 val enabled = if (historyMode) category.lastConferenceAt != null else category.productCount > 0
-                Card(onClick = { if (enabled) onCategoryClick(category.id) }) {
+                NevesContentCard(onClick = { if (enabled) onCategoryClick(category.id) }) {
                     Column(
                         Modifier.fillMaxWidth().padding(16.dp)
                     ) {
@@ -274,7 +274,7 @@ private fun ConferenceCategoriesScreen(
                 }
             }
             if (!state.loading && state.categories.isEmpty()) {
-                item { Card { NevesStatusMessage("Ainda não existem Categorias ativas.") } }
+                item { NevesContentCard { NevesStatusMessage("Ainda não existem Categorias ativas.") } }
             }
         }
     }
@@ -319,7 +319,7 @@ fun CategoryConferenceHistoryRoute(
         ) {
             noticeMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -347,14 +347,14 @@ fun CategoryConferenceHistoryRoute(
                 }
             }
             if (state.loading) {
-                item { Card { Text("Carregando Conferências…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Conferências…", modifier = Modifier.padding(18.dp)) } }
             }
             state.errorMessage?.let {
-                item { Card { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
             }
             items(state.conferences, key = { it.id }) { conference ->
                 val dayCount = countsByDay[conferenceLocalDate(conference.effectiveAt)] ?: 1
-                Card(onClick = { onConferenceClick(conference.id) }) {
+                NevesContentCard(onClick = { onConferenceClick(conference.id) }) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(
                             formatConferenceDateLong(conference.effectiveAt) +
@@ -371,7 +371,7 @@ fun CategoryConferenceHistoryRoute(
             }
             if (!state.loading && state.conferences.isEmpty()) {
                 item {
-                    Card {
+                    NevesContentCard {
                         Text(
                             "Nenhuma Conferência registrada para esta Categoria.",
                             modifier = Modifier.padding(18.dp),
@@ -427,7 +427,7 @@ fun ConferenceDetailRoute(
         ) {
             noticeMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -441,13 +441,13 @@ fun ConferenceDetailRoute(
                 }
             }
             if (state.loading) {
-                item { Card { Text("Carregando Conferência…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Conferência…", modifier = Modifier.padding(18.dp)) } }
             }
             state.errorMessage?.let {
-                item { Card { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
             }
             state.actionError?.let {
-                item { Card { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
             }
             state.details?.let { details ->
                 item {
@@ -473,7 +473,7 @@ fun ConferenceDetailRoute(
                 }
                 details.observation?.let { observation ->
                     item {
-                        Card {
+                        NevesContentCard {
                             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                                 Text("Observação", fontWeight = FontWeight.Bold)
                                 Text(observation, modifier = Modifier.padding(top = 6.dp))
@@ -489,7 +489,7 @@ fun ConferenceDetailRoute(
                     )
                 }
                 items(details.items, key = { it.id }) { item ->
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(16.dp)) {
                             Column(Modifier.weight(1f)) {
                                 Text(item.productName, fontWeight = FontWeight.Bold)
@@ -504,7 +504,7 @@ fun ConferenceDetailRoute(
                     }
                 }
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text("Excluir Conferência", fontWeight = FontWeight.Bold)
                             Text(
@@ -583,15 +583,15 @@ fun ConferencePrintRoute(onBack: () -> Unit) {
                 }
             }
             if (state.loading) {
-                item { Card { Text("Gerando dados…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Gerando dados…", modifier = Modifier.padding(18.dp)) } }
             }
             state.errorMessage?.let {
-                item { Card { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
             }
             data?.let { printData ->
                 if (printData.pendingProductCount > 0) {
                     item {
-                        Card {
+                        NevesContentCard {
                             Text(
                                 printData.pendingProductCount.toString() +
                                     " Produto(s) sem Categoria não aparecerão nos papéis.",
@@ -602,7 +602,7 @@ fun ConferencePrintRoute(onBack: () -> Unit) {
                     }
                 }
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text("Prévia do conteúdo", fontWeight = FontWeight.Bold)
                             Text(
@@ -620,7 +620,7 @@ fun ConferencePrintRoute(onBack: () -> Unit) {
                     }
                 }
                 items(printData.categories.filter { it.products.isNotEmpty() }, key = { it.id }) { category ->
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(category.name, fontWeight = FontWeight.Bold)
                             Text(
@@ -633,7 +633,7 @@ fun ConferencePrintRoute(onBack: () -> Unit) {
                     }
                 }
                 if (pageCount == 0) {
-                    item { Card { Text("Não existem Categorias com Produtos ativos para imprimir.", modifier = Modifier.padding(18.dp)) } }
+                    item { NevesContentCard { Text("Não existem Categorias com Produtos ativos para imprimir.", modifier = Modifier.padding(18.dp)) } }
                 }
             }
         }

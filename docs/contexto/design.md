@@ -143,3 +143,11 @@ Não existe tipografia customizada em arquivo próprio no estado atual; o app us
 ## Trabalho visual em andamento
 
 O Bloco Android 11 de 13 está revisando experiência, fluidez e performance. Qualquer mudança de animações, háptico, transições ou padrões visuais feita nesse bloco deve atualizar este arquivo quando se tornar padrão permanente.
+
+## Android — correção visual do PR #75 (29/09/2026)
+
+Padrão aprovado por Elias após teste do APK 29: cards operacionais brancos, borda avermelhada discreta, cantos arredondados e faixa vermelha de 4 dp à esquerda. `NevesContentCard` centraliza as variantes de conteúdo e clicável, mantendo a semântica Material. A faixa usa a altura medida do card completo, inclusive durante expansão/recolhimento; não pertence ao cabeçalho.
+
+Aplicado a Estoque (categoria, fornecedor, A–Z e resumo), Produtos/Categorias, Fornecedores, Entrada, Conferência, Compras, Home, Relatórios, Alertas, pendências Offline, Lixeira e card de versão em Configurações. Chips, campos, badges, menus, ilustrações e avisos semânticos conservam o tratamento próprio. Compras preserva o checkbox e distingue a seleção por borda vermelha mais forte sobre fundo branco.
+
+Implementação da branch `feat/android-17-product-maintenance-ux`, Android `0.30.0-alpha01 / 30`; aprovação visual em aparelho ainda A VERIFICAR. Web não alterada. Não representa integração em main nem consolidação do Contexto Mestre/Notion.

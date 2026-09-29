@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
@@ -17,7 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -167,11 +167,11 @@ private fun ProductMergeScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
-                Card { Text("Carregando Produtos…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando Produtos…", modifier = Modifier.padding(18.dp)) }
             }
 
             state.errorMessage?.let {
-                Card {
+                NevesContentCard {
                     Text(
                         it,
                         color = MaterialTheme.colorScheme.error,
@@ -180,7 +180,7 @@ private fun ProductMergeScreen(
                 }
             }
             state.actionError?.let {
-                Card {
+                NevesContentCard {
                     Text(
                         it,
                         color = MaterialTheme.colorScheme.error,
@@ -197,7 +197,7 @@ private fun ProductMergeScreen(
                 )
 
                 if (pair == null) {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text("Escolha o cadastro duplicado", fontWeight = FontWeight.Bold)
                             Text(
@@ -239,7 +239,7 @@ private fun ProductMergeScreen(
                                 )
                             } else {
                                 candidates.forEach { product ->
-                                    Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                                    NevesContentCard(Modifier.fillMaxWidth().padding(top = 8.dp)) {
                                         TextButton(
                                             onClick = { onSelectCandidate(product.id) },
                                             modifier = Modifier.fillMaxWidth(),
@@ -270,7 +270,7 @@ private fun ProductMergeScreen(
                         helper = "Cadastro mais novo · não vai para a Lixeira",
                     )
 
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Row(Modifier.fillMaxWidth()) {
                                 Column(Modifier.weight(1f)) {
@@ -444,7 +444,7 @@ private fun ProductMergeScreen(
                         absorbedEquivalentQuantity = absorbedEquivalentQuantity,
                         initialPriceSource = priceSource(),
                     ).draft
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(
                                 "CONFIRMAÇÃO FINAL",
@@ -537,7 +537,7 @@ private fun ProductMergeIdentityCard(
     product: ProductDetails,
     helper: String,
 ) {
-    Card {
+    NevesContentCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
                 label.uppercase(Locale.forLanguageTag("pt-BR")),

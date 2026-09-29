@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.stock
 
+import androidx.compose.material3.Card
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -16,10 +18,8 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import com.babycatbe.nevesestoque.ui.motion.NevesExpandedContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,10 +30,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -41,7 +39,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -223,7 +220,7 @@ private fun StockScreen(
 
             if (showValues && data != null) {
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(
                                 "VALOR TOTAL DO ESTOQUE",
@@ -260,7 +257,7 @@ private fun StockScreen(
 
             if (state.loading) {
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth().padding(18.dp),
@@ -315,7 +312,7 @@ private fun StockScreen(
                             item { EmptyStock(search) }
                         } else {
                             item {
-                                Card {
+                                NevesContentCard {
                                     Column {
                                         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                                             Text("Ordem alfabética", fontWeight = FontWeight.Bold)
@@ -349,7 +346,7 @@ private fun StockGroupCard(
 ) {
     val expanded = forceOpen || group.id in expandedGroups
 
-    Card {
+    NevesContentCard {
         Column {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -359,26 +356,15 @@ private fun StockGroupCard(
                     .clickable(role = Role.Button) { if (expanded) expandedGroups.remove(group.id) else expandedGroups.add(group.id) }
                     .padding(vertical = 14.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .height(44.dp)
-                        .width(4.dp)
-                        .background(
-                            when (group.accent) {
-                                StockGroupAccent.Primary -> MaterialTheme.colorScheme.primary
-                                StockGroupAccent.Warning -> MaterialTheme.colorScheme.tertiary
-                                StockGroupAccent.Neutral -> MaterialTheme.colorScheme.outline
-                            }
-                        )
-                )
-                Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
+                Column(modifier = Modifier.weight(1f).padding(start = 18.dp)) {
                     Text(group.name, fontWeight = FontWeight.Bold)
                     Text(
                         listOfNotNull(
                             group.subtitle,
                             "${group.items.size} produto(s)",
                         ).joinToString(" · "),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (group.accent == StockGroupAccent.Warning) MaterialTheme.colorScheme.tertiary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -445,7 +431,7 @@ private fun Metric(label: String, value: String) {
 
 @Composable
 private fun EmptyStock(search: String) {
-    Card {
+    NevesContentCard {
         NevesStatusMessage(
             if (search.isBlank()) "Ainda não há produtos para exibir no Estoque Atual."
             else "Nenhum produto encontrado para esta pesquisa.",

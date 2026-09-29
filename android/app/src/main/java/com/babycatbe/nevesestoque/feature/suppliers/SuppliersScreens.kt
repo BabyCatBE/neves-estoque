@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.suppliers
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
 import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
@@ -22,7 +23,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -115,7 +115,7 @@ private fun SuppliersScreen(
         ) {
             noticeMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -154,7 +154,7 @@ private fun SuppliersScreen(
             }
 
             item {
-                Card {
+                NevesContentCard {
                     Text(
                         "Próxima compra recomendada continuará como “Aguardando Entradas” até existir histórico real suficiente. A sugestão de compra fica em Compras → Por fornecedor.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -165,12 +165,12 @@ private fun SuppliersScreen(
             }
 
             if (state.loading) {
-                item { Card { Text("Carregando Fornecedores…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Fornecedores…", modifier = Modifier.padding(18.dp)) } }
             }
 
             state.errorMessage?.let { error ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(error, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = onRefresh) { Text("Tentar novamente") }
@@ -181,7 +181,7 @@ private fun SuppliersScreen(
 
             if (!state.loading && state.errorMessage == null && filtered.isEmpty()) {
                 item {
-                    Card {
+                    NevesContentCard {
                         Text(
                             when {
                                 search.isNotBlank() -> "Nenhum Fornecedor encontrado."
@@ -195,7 +195,7 @@ private fun SuppliersScreen(
             }
 
             items(filtered, key = { it.id }) { supplier ->
-                Card(onClick = { onSupplierClick(supplier.id) }) {
+                NevesContentCard(onClick = { onSupplierClick(supplier.id) }) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Row(Modifier.fillMaxWidth()) {
                             Column(Modifier.weight(1f)) {
@@ -304,7 +304,7 @@ private fun SupplierDetailScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             noticeMessage?.let { message ->
-                Card {
+                NevesContentCard {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                         Text(
                             message,
@@ -318,11 +318,11 @@ private fun SupplierDetailScreen(
             }
 
             if (state.loading) {
-                Card { Text("Carregando Fornecedor…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando Fornecedor…", modifier = Modifier.padding(18.dp)) }
             }
 
             state.errorMessage?.let { error ->
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(error, color = MaterialTheme.colorScheme.error)
                         TextButton(onClick = onRefresh) { Text("Tentar novamente") }
@@ -331,7 +331,7 @@ private fun SupplierDetailScreen(
             }
 
             state.actionError?.let { error ->
-                Card {
+                NevesContentCard {
                     Text(
                         error,
                         color = MaterialTheme.colorScheme.error,
@@ -372,7 +372,7 @@ private fun SupplierDetailScreen(
                 }
 
                 if (supplier.isPending) {
-                    Card {
+                    NevesContentCard {
                         Text(
                             "Este Fornecedor veio de um cadastro rápido ou está incompleto. Preencha Empresa e Telefone para concluir o cadastro.",
                             color = MaterialTheme.colorScheme.tertiary,
@@ -400,7 +400,7 @@ private fun SupplierDetailScreen(
                     Modifier.fillMaxWidth(),
                 )
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Configuração de compra", fontWeight = FontWeight.Bold)
                         SupplierInfoLine(
@@ -426,7 +426,7 @@ private fun SupplierDetailScreen(
                     }
                 }
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Lixeira", fontWeight = FontWeight.Bold)
                         Text(
@@ -600,12 +600,12 @@ private fun SupplierFormScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
-                Card { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
                 return@Column
             }
 
             state.errorMessage?.let {
-                Card {
+                NevesContentCard {
                     Text(
                         it,
                         color = MaterialTheme.colorScheme.error,
@@ -650,7 +650,7 @@ private fun SupplierFormScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Configuração de compra", fontWeight = FontWeight.Bold)
 
@@ -748,7 +748,7 @@ private fun SupplierFormScreen(
                     }
                 }
 
-                Card {
+                NevesContentCard {
                     Text(
                         "Empresa e telefone são obrigatórios no cadastro completo. O cadastro rápido com apenas o nome será tratado no bloco de Entradas e ficará marcado como pendente.",
                         color = MaterialTheme.colorScheme.tertiary,
@@ -809,7 +809,7 @@ private fun SupplierMetricCard(
     value: String,
     modifier: Modifier,
 ) {
-    Card(modifier) {
+    NevesContentCard(modifier) {
         Column(Modifier.fillMaxWidth().padding(14.dp)) {
             Text(
                 label.uppercase(),

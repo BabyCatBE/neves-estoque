@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.purchases
 
+import androidx.compose.foundation.BorderStroke
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.theme.NevesColors
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
@@ -27,8 +29,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -163,7 +163,7 @@ fun PurchaseSupplierSelectRoute(onBack: () -> Unit, onSelect: (String) -> Unit, 
             item { InfoCard(if (search.isBlank()) "Nenhum fornecedor ativo cadastrado." else "Nenhum fornecedor encontrado.") }
         }
         items(suppliers, key = { it.id }) { supplier ->
-            Card(onClick = { onSelect(supplier.id) }) {
+            NevesContentCard(onClick = { onSelect(supplier.id) }) {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     Text(supplier.name, fontWeight = FontWeight.Bold)
                     val detail = listOfNotNull(supplier.company, supplier.phone).joinToString(" · ")
@@ -197,7 +197,7 @@ fun PurchaseCategorySelectRoute(onBack: () -> Unit, onSelect: (String) -> Unit, 
             item { InfoCard("Nenhuma categoria ativa cadastrada.") }
         }
         items(categories, key = { it.id }) { category ->
-            Card(onClick = { onSelect(category.id) }) {
+            NevesContentCard(onClick = { onSelect(category.id) }) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(category.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     val count = counts[category.id] ?: 0
@@ -500,12 +500,8 @@ private fun PurchaseItemCard(
     onStep: (Int) -> Unit,
 ) {
     val recommended = item.projection?.status == PurchaseProjectionStatus.Recommended
-    Card(
-        colors = if (checked) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
-        } else {
-            CardDefaults.cardColors()
-        },
+    NevesContentCard(
+        border = BorderStroke(1.dp, if (checked) MaterialTheme.colorScheme.primary else NevesColors.CardBorder),
     ) {
         Column(Modifier.fillMaxWidth().padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -662,7 +658,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.loadingAndError(state
     if (state.loading) item { InfoCard("Calculando projeções…") }
     state.errorMessage?.let { message ->
         item {
-            Card {
+            NevesContentCard {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     Text(message, color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = onRetry) { Text("Tentar novamente") }
@@ -683,7 +679,7 @@ private fun Header(eyebrow: String, title: String, text: String?) {
 
 @Composable
 private fun HubCard(icon: Int, eyebrow: String, title: String, description: String, onClick: () -> Unit) {
-    Card(onClick = onClick) {
+    NevesContentCard(onClick = onClick) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             NevesIcon(icon, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
             Text(eyebrow, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
@@ -709,7 +705,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit, placeholder: 
 
 @Composable
 private fun InfoCard(text: String) {
-    Card {
+    NevesContentCard {
         Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(18.dp))
     }
 }

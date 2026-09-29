@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.reports
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.theme.NevesColors
 import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
@@ -21,8 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -144,12 +143,12 @@ private fun ReportsScreen(state: ReportsUiState, onBack: () -> Unit, onRefresh: 
             }
 
             if (state.loading) {
-                item { Card { Text("Carregando Relatórios…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Relatórios…", modifier = Modifier.padding(18.dp)) } }
             }
 
             state.errorMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(message, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = onRefresh) { Text("Tentar novamente") }
@@ -160,7 +159,7 @@ private fun ReportsScreen(state: ReportsUiState, onBack: () -> Unit, onRefresh: 
 
             if (!state.loading && state.errorMessage == null && state.series != null && points.isEmpty()) {
                 item {
-                    Card {
+                    NevesContentCard {
                         Text(
                             "Ainda não existem registros suficientes para montar o histórico mensal.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -198,7 +197,7 @@ private fun ReportsScreen(state: ReportsUiState, onBack: () -> Unit, onRefresh: 
 @Composable
 private fun CurrentSummaryCard(point: MonthlyStockSeriesPoint) {
     val report = point.report
-    Card {
+    NevesContentCard {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             StatusBadges(point, estimatedLabel = "Estimado pelos registros disponíveis")
             Text("VALOR CONHECIDO", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 14.dp))
@@ -229,7 +228,7 @@ private fun CurrentSummaryCard(point: MonthlyStockSeriesPoint) {
 @Composable
 private fun MonthlyValueCard(point: MonthlyStockSeriesPoint) {
     val report = point.report
-    Card {
+    NevesContentCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
                 formatReportMonth(point.month).replaceFirstChar { it.uppercase() },
@@ -259,7 +258,7 @@ private fun MonthlyValueCard(point: MonthlyStockSeriesPoint) {
 
 @Composable
 private fun ChartCard(points: List<MonthlyStockSeriesPoint>) {
-    Card {
+    NevesContentCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text("EVOLUÇÃO MENSAL", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
             Text("Valor conhecido do estoque", fontWeight = FontWeight.Bold)
@@ -363,7 +362,7 @@ private fun PrintCard(points: List<MonthlyStockSeriesPoint>) {
         points
     }
 
-    Card {
+    NevesContentCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text("IMPRESSÃO", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
             Text("Imprimir / Salvar PDF", fontWeight = FontWeight.Bold)
@@ -483,8 +482,7 @@ private fun Badge(text: String, background: Color, foreground: Color) {
 
 @Composable
 private fun Metric(label: String, value: Int, modifier: Modifier = Modifier) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    NevesContentCard(
         modifier = modifier,
     ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {

@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.settings
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -56,9 +57,7 @@ fun SettingsRoute(onBack: () -> Unit) {
                     }
                 }
             }
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)),
+            NevesContentCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

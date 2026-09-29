@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
@@ -26,7 +27,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.MaterialTheme
@@ -167,7 +167,7 @@ private fun ProductFormScreen(
                 .verticalScroll(rememberScrollState()).padding(16.dp),
         ) {
             if (state.loading) {
-                Card { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
                 return@Column
             }
 
@@ -265,7 +265,7 @@ private fun ProductFormScreen(
                 ) { Text(if (state.saving) "Salvando…" else "Salvar Produto") }
                 if (editing) maintenanceContent()
             } else if (state.errorMessage == null) {
-                Card {
+                NevesContentCard {
                     Text(
                         "Cadastre ao menos uma Categoria antes de criar Produtos.",
                         modifier = Modifier.padding(16.dp),
@@ -350,12 +350,12 @@ fun CategoryFormRoute(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
-                Card { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
                 return@Column
             }
 
             state.errorMessage?.let { message ->
-                Card {
+                NevesContentCard {
                     Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
                 }
             }
@@ -372,7 +372,7 @@ fun CategoryFormRoute(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         CategoryIllustrationEditor(
                             value = illustration,

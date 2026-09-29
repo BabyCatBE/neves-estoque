@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
@@ -19,7 +20,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -292,17 +292,17 @@ private fun NewEntryScreen(
             )
 
             if (state.loading) {
-                Card { Text("Carregando dados…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando dados…", modifier = Modifier.padding(18.dp)) }
             }
 
             state.errorMessage?.let { error ->
-                Card {
+                NevesContentCard {
                     Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.fillMaxWidth().padding(16.dp))
                 }
             }
 
             if (!state.loading && options != null) {
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Fornecedor *", style = MaterialTheme.typography.labelMedium)
                         val selected = options.suppliers.firstOrNull { it.id == supplierId }
@@ -433,13 +433,13 @@ private fun NewEntryScreen(
                 }
 
                 if (items.isEmpty()) {
-                    Card { Text("Adicione ao menos um Produto recebido.", modifier = Modifier.padding(18.dp)) }
+                    NevesContentCard { Text("Adicione ao menos um Produto recebido.", modifier = Modifier.padding(18.dp)) }
                 }
 
                 items.forEachIndexed { index, line ->
                     val quantity = parseEntryPositiveDecimal(line.quantity, "Quantidade").value
                     val price = parseEntryOptionalPrice(line.unitPrice).value
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Row(Modifier.fillMaxWidth()) {
                                 Column(Modifier.weight(1f)) {
@@ -503,7 +503,7 @@ private fun NewEntryScreen(
                         parseEntryOptionalPrice(it.unitPrice).value == null
                 }
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         EntryInfoLine("Total conhecido", formatEntryMoney(totalKnown) + if (missingPrices > 0) " *" else "")
                         if (missingPrices > 0) {
@@ -523,7 +523,7 @@ private fun NewEntryScreen(
                 }
 
                 actionError?.let {
-                    Card { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
+                    NevesContentCard { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
                 }
             }
         }
@@ -921,10 +921,10 @@ private fun EditEntryScreen(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
-                Card { Text("Carregando Entrada…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando Entrada…", modifier = Modifier.padding(18.dp)) }
             }
             state.errorMessage?.let {
-                Card { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
+                NevesContentCard { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
             }
             if (!state.loading && data != null) {
                 Text("Edição histórica", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
@@ -933,7 +933,7 @@ private fun EditEntryScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Fornecedor *", style = MaterialTheme.typography.labelMedium)
                         Box {
@@ -1004,7 +1004,7 @@ private fun EditEntryScreen(
                 items.forEachIndexed { index, line ->
                     val quantity = parseEntryPositiveDecimal(line.quantity, "Quantidade").value
                     val price = parseEntryOptionalPrice(line.unitPrice).value
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Row(Modifier.fillMaxWidth()) {
                                 Column(Modifier.weight(1f)) {
@@ -1061,7 +1061,7 @@ private fun EditEntryScreen(
                     val p = parseEntryOptionalPrice(line.unitPrice).value
                     if (q != null && p != null) q * p else 0.0
                 }
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         EntryInfoLine("Total conhecido", formatEntryMoney(totalKnown))
                         Button(
@@ -1072,7 +1072,7 @@ private fun EditEntryScreen(
                     }
                 }
                 actionError?.let {
-                    Card { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
+                    NevesContentCard { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
                 }
             }
         }

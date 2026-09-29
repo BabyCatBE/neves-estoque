@@ -83,3 +83,13 @@ Depois disso, a implantação dos arquivos de contexto avançou a branch operaci
 ## Critério para atualizar este arquivo
 
 Atualizar quando mudar fase, objetivo, prioridade, próxima tarefa, bloqueio, branch de trabalho, pendência operacional ou estado de integração. Histórico detalhado deve ficar no Contexto Mestre/checkpoints; decisões duradouras ficam em `memory.md`.
+
+## Continuidade Android — correção visual após teste do PR #75 (29/09/2026)
+
+- Baseline deste bloco: `e2d46d8f1e84a948675d93bff34a0c5e1c707e43`, Android `0.29.0-alpha01 / 29`, Android CI #110 SUCCESS.
+- Trabalho atual: mesma branch `feat/android-17-product-maintenance-ux`, mesmo PR #75 DRAFT (base `feat/android-launcher-icon`). Android `0.30.0-alpha01 / 30`; Web/System `0.26.0` intacto.
+- Correção: `NevesContentCard` branco com borda sutil e faixa vermelha por toda a altura, inclusive categorias expandidas e A–Z; varredura dos cards operacionais. Estado de Compras permanece distinto por checkbox/borda. Sem alteração de lógica de domínio, navegação ou persistência.
+- Validação local: `git diff --check` e comparação de escopo; Gradle/SDK/emulador indisponíveis. Lint/testes/build e identidade/certificado do APK signed devem ser verificados pela CI antes da entrega.
+- HEAD final, resultado efetivo da CI e artifact signed: consultar o checkpoint corrente em https://github.com/BabyCatBE/neves-estoque/pull/75. CI não equivale a teste funcional.
+- Pendente em aparelho: atualização sobre 29 sem desinstalar; categorias abertas/fechadas, fornecedores, A–Z, listas curtas/longas, nomes grandes, fonte ampliada, tela pequena, rolagem/safe area e retorno preservando pesquisa/grupos; demais cards e seleção de Compras.
+- Sem merge em main, Release, mudança Web, Supabase/migrations/dados ou atualização do Contexto Mestre/Notion. Próximo passo: teste de Elias e correções, com consolidação somente quando solicitada.

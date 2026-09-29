@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.trash
 
+import androidx.compose.material3.Card
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
 import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
@@ -18,7 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -196,7 +197,7 @@ fun TrashScreen(
 
             notice?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -212,7 +213,7 @@ fun TrashScreen(
 
             actionError?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -227,7 +228,7 @@ fun TrashScreen(
 
             loadError?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(message, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = { scope.launch { load() } }, enabled = !working) {
@@ -275,12 +276,12 @@ fun TrashScreen(
             }
 
             if (loading) {
-                item { Card { Text("Carregando Lixeira…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Lixeira…", modifier = Modifier.padding(18.dp)) } }
             }
 
             if (!loading && loadError == null && visibleItems.isEmpty()) {
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(18.dp)) {
                             Text(
                                 if (search.isBlank()) "Nenhum item neste filtro" else "Nenhum item encontrado",
@@ -299,7 +300,7 @@ fun TrashScreen(
 
             if (!loading) {
                 items(visibleItems, key = { "${it.type.rpcValue}-${it.id}" }) { item ->
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(
                                 item.type.label.uppercase(),

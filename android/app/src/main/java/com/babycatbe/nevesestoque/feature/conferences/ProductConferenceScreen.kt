@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
@@ -20,7 +21,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -114,7 +114,7 @@ private fun ProductStockUpdateScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             noticeMessage?.let { message ->
-                Card {
+                NevesContentCard {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                         Text(
                             message,
@@ -128,11 +128,11 @@ private fun ProductStockUpdateScreen(
             }
 
             if (state.loading) {
-                Card { Text("Carregando Produto…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando Produto…", modifier = Modifier.padding(18.dp)) }
             }
 
             state.errorMessage?.let { message ->
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(message, color = MaterialTheme.colorScheme.error)
                         TextButton(onClick = onRefresh) { Text("Tentar novamente") }
@@ -141,7 +141,7 @@ private fun ProductStockUpdateScreen(
             }
 
             if (!state.loading && state.errorMessage == null && product != null) {
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(
                             "PRODUTO",
@@ -172,7 +172,7 @@ private fun ProductStockUpdateScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(
                             "Conferência",
@@ -193,7 +193,7 @@ private fun ProductStockUpdateScreen(
                     }
                 }
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(
                             "Entrada",
@@ -306,11 +306,11 @@ private fun ProductConferenceScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
-                Card { Text("Carregando Produto…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando Produto…", modifier = Modifier.padding(18.dp)) }
             }
 
             state.errorMessage?.let { message ->
-                Card {
+                NevesContentCard {
                     Text(
                         message,
                         color = MaterialTheme.colorScheme.error,
@@ -320,7 +320,7 @@ private fun ProductConferenceScreen(
             }
 
             if (!state.loading && product != null) {
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(
                             "PRODUTO",

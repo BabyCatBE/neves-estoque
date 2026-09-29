@@ -6,6 +6,7 @@ object NevesColors {
     val Header = Color(0xFF09090B)
     val HeaderText = Color.White
     val HeaderMuted = Color(0xFFA1A1AA)
+    val CardBorder = Color(0xFFF8DADA)
     val Accent = Color(0xFFEF4444)
     // Darker red retains readable white labels on filled buttons.
     val Primary = Color(0xFFB91C1C)

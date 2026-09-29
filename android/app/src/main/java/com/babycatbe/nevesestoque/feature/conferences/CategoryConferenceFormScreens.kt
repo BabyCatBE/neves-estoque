@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -17,7 +18,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -122,10 +122,10 @@ private fun CategoryConferenceFormScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
-                Card { Text("Carregando Categoria…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando Categoria…", modifier = Modifier.padding(18.dp)) }
             }
             state.errorMessage?.let { error ->
-                Card {
+                NevesContentCard {
                     Row(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
                         TextButton(onClick = onClearError) { Text("Fechar") }
@@ -151,7 +151,7 @@ private fun CategoryConferenceFormScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         OutlinedTextField(
                             value = date,
@@ -188,7 +188,7 @@ private fun CategoryConferenceFormScreen(
                 )
 
                 current.products.forEachIndexed { index, product ->
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(
                                 "ITEM " + (index + 1),
@@ -224,7 +224,7 @@ private fun CategoryConferenceFormScreen(
                     }
                 }
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         OutlinedTextField(
                             value = observation,
@@ -243,7 +243,7 @@ private fun CategoryConferenceFormScreen(
                     }
                 }
 
-                Card {
+                NevesContentCard {
                     Text(
                         "Esta Conferência só será considerada salva depois da confirmação do backend. O Offline Android será tratado em bloco próprio.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -401,10 +401,10 @@ private fun EditConferenceScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
-                Card { Text("Carregando Conferência…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando Conferência…", modifier = Modifier.padding(18.dp)) }
             }
             state.errorMessage?.let {
-                Card { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) }
             }
 
             details?.let { current ->
@@ -424,7 +424,7 @@ private fun EditConferenceScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         OutlinedTextField(
                             value = date,
@@ -457,7 +457,7 @@ private fun EditConferenceScreen(
                     fontWeight = FontWeight.Bold,
                 )
                 current.items.forEach { item ->
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(item.productName, fontWeight = FontWeight.Bold)
                             Text(
@@ -482,7 +482,7 @@ private fun EditConferenceScreen(
                     }
                 }
 
-                Card {
+                NevesContentCard {
                     OutlinedTextField(
                         value = observation,
                         onValueChange = { if (it.length <= 2000) observation = it },
