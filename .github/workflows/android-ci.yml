@@ -16,6 +16,9 @@ on:
       - "android/**"
       - ".github/workflows/android-ci.yml"
 
+permissions:
+  contents: read
+
 jobs:
   android-build:
     runs-on: ubuntu-latest
@@ -45,27 +48,90 @@ jobs:
         with:
           gradle-version: "9.5.0"
 
+      - name: Restore signing keystore
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error title=Android signing::Required Repository Secret $name is not configured."
+              exit 1
+            fi
+          done
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/neves-estoque.jks"
+          test -s "$RUNNER_TEMP/neves-estoque.jks"
+
       - name: Check APK runtime config
         shell: bash
         run: |
           if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
             echo "Supabase runtime config: configured"
           else
-            echo "::warning title=APK runtime config::SUPABASE_URL/SUPABASE_PUBLISHABLE_KEY not configured; APK installs but login will be unavailable."
+            echo "::error title=APK runtime config::SUPABASE_URL/SUPABASE_PUBLISHABLE_KEY must be configured for release validation."
+            exit 1
           fi
 
-      - name: Lint, unit tests and debug APK build
+      - name: Verify release configuration guard
         shell: bash
         run: |
+          set -euo pipefail
+          if gradle -p android --no-daemon :app:validateReleaseConfig -PSUPABASE_URL= > release-guard.log 2>&1; then
+            echo "::error::Release accepted an empty URL."
+            exit 1
+          fi
+          grep -q "Release requires a valid HTTPS" release-guard.log
+          if gradle -p android --no-daemon :app:validateReleaseConfig -PSUPABASE_URL=https://example.supabase.co -PSUPABASE_PUBLISHABLE_KEY=sb_secret_rejected_test_value > release-guard.log 2>&1; then
+            echo "::error::Release accepted a private key."
+            exit 1
+          fi
+          grep -q "private or invalid keys are forbidden" release-guard.log
+
+      - name: Lint, unit tests and debug/release APK build
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/neves-estoque.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
           set -o pipefail
-          gradle -p android --no-daemon --continue :app:lintDebug :app:testDebugUnitTest :app:assembleDebug 2>&1 | tee android-build.log
+          gradle -p android --no-daemon --continue :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:lintRelease :app:assembleRelease 2>&1 | tee android-build.log
 
       - name: Publish debug APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: neves-estoque-android-debug-0.22.0-alpha01
+          name: neves-estoque-android-debug-0.23.0-alpha01
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Verify signed release APK
+        if: success()
+        working-directory: android/app/build/outputs/apk/release
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app-release.apk
+
+      - name: Checksum signed release APK
+        if: success()
+        working-directory: android/app/build/outputs/apk/release
+        run: sha256sum app-release.apk | tee SHA256SUMS
+
+      - name: Publish signed release APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neves-estoque-android-signed-0.23.0-alpha01-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/release/SHA256SUMS
+            android/app/build/outputs/apk/release/output-metadata.json
           if-no-files-found: error
           retention-days: 30
 
@@ -75,10 +141,13 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          grep -E '^e: |error:|FAILED|AssertionError|ComparisonFailure|expected:<|Lint found|What went wrong' android-build.log \
+          for build_log in android-build.log release-guard.log; do
+            [ -f "$build_log" ] || continue
+            grep -E '^e: |error:|FAILED|AssertionError|ComparisonFailure|expected:<|Lint found|What went wrong|Release requires' "$build_log" \
             | grep -v '^> Task' | head -40 | while IFS= read -r line; do
               echo "::error title=Android build::${line//$'\r'/}"
-            done
+            done || true
+          done
           for report in android/app/build/test-results/testDebugUnitTest/*.xml; do
             [ -f "$report" ] || continue
             python3 - "$report" <<'PY'
@@ -89,8 +158,15 @@ jobs:
                   print(f"::error title=Test {case.get('classname')}.{case.get('name')}::{message}")
           PY
           done
-          if [ -f android/app/build/reports/lint-results-debug.txt ]; then
-            grep -E 'Error:' android/app/build/reports/lint-results-debug.txt | head -20 | while IFS= read -r line; do
+          for variant in debug release; do
+            if [ -f android/app/build/reports/lint-results-$variant.txt ]; then
+            grep -E 'Error:' android/app/build/reports/lint-results-$variant.txt | head -20 | while IFS= read -r line; do
               echo "::error title=Android lint::$line"
             done
           fi
+          done
+
+      - name: Remove temporary signing keystore
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/neves-estoque.jks"
