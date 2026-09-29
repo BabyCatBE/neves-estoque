@@ -66,6 +66,7 @@ fun HomeScreen(
     onModuleClick: (HomeModule) -> Unit,
     alertCount: Int? = null,
     onAlerts: () -> Unit = {},
+    onSettings: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var confirmExit by remember { mutableStateOf(false) }
@@ -101,6 +102,11 @@ fun HomeScreen(
                 items(homeModules, key = { it.route }) { module ->
                     ModuleCard(module) { onModuleClick(module) }
                 }
+            }
+            TextButton(onClick = onSettings, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                NevesIcon(NevesIcons.Settings, description = "Configurações", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(6.dp))
+                Text("Configurações")
             }
             Text(
                 text = "Android ${BuildConfig.ANDROID_VERSION} • Sistema ${BuildConfig.SYSTEM_VERSION}",

@@ -58,6 +58,7 @@ import com.babycatbe.nevesestoque.feature.purchases.PurchasesViewModel
 import com.babycatbe.nevesestoque.feature.reports.ReportsRoute
 import com.babycatbe.nevesestoque.feature.suppliers.SuppliersRoute
 import com.babycatbe.nevesestoque.feature.trash.TrashScreen
+import com.babycatbe.nevesestoque.feature.settings.SettingsRoute
 
 private const val HOME_ROUTE = "home"
 private const val MODULE_ROUTE = "module/{route}"
@@ -67,6 +68,7 @@ private const val CATEGORIES_ROUTE = "products/categories"
 private const val TRASH_ROUTE = "trash?filter={filter}"
 private const val REPORTS_ROUTE = "stock/reports"
 private const val ALERTS_ROUTE = "alerts"
+private const val SETTINGS_ROUTE = "settings"
 private const val PENDING_LOCAL_ROUTE = "offline/pending"
 private const val PENDING_EDIT_ROUTE = "offline/pending/{localId}/edit"
 private const val PENDING_SUPPLIERS_ROUTE = "suppliers/pending"
@@ -132,7 +134,12 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 onModuleClick = { navController.navigate("module/${it.route}") },
                 alertCount = (alertsState.counts?.total ?: 0) + localPending.size,
                 onAlerts = { navController.navigate(ALERTS_ROUTE) },
+                onSettings = { navController.navigate(SETTINGS_ROUTE) },
             )
+        }
+
+        composable(SETTINGS_ROUTE) {
+            SettingsRoute(onBack = { navController.popBackStack() })
         }
 
         composable(ALERTS_ROUTE) {
