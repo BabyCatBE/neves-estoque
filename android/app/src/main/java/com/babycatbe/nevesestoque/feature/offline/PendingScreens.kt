@@ -1,5 +1,11 @@
 package com.babycatbe.nevesestoque.feature.offline
 
+import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
+import com.babycatbe.nevesestoque.ui.theme.NevesColors
+import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -129,7 +135,7 @@ fun PendingListRoute(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
                         Button(onClick = { toConfirm = operation }, enabled = online) { Text("Confirmar envio") }
-                        OutlinedButton(onClick = { onEdit(operation.localId) }) { Text("Editar") }
+                        OutlinedButton(onClick = { onEdit(operation.localId) }) { NevesActionLabel("Editar", NevesIcons.Edit) }
                         TextButton(onClick = { toDelete = operation }) { Text("Excluir", color = MaterialTheme.colorScheme.error) }
                     }
                 }
@@ -352,8 +358,8 @@ private fun Field(label: String, value: String, singleLine: Boolean = true, onCh
 
 @Composable
 internal fun Warning(text: String) {
-    Surface(color = Color(0xFFFEF3C7), shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
-        Text(text, color = Color(0xFF92400E), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(12.dp))
+    Surface(color = NevesColors.WarningContainer, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
+        NevesStatusMessage(text, NevesIcons.Offline, color = NevesColors.OnWarning)
     }
 }
 
@@ -361,9 +367,9 @@ internal fun Warning(text: String) {
 internal fun PendingScaffold(title: String, onBack: () -> Unit, content: LazyListScope.() -> Unit) {
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 }
             }
@@ -514,3 +520,4 @@ fun PendingConfirmFlow(operation: PendingOperation, onDone: (String) -> Unit) {
         },
     )
 }
+

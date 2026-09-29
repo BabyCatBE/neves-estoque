@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -298,7 +300,7 @@ private fun CategoryConferenceFormScreen(
                 Button(onClick = onConfirmSameDay) { Text("É outra contagem") }
             },
             dismissButton = {
-                TextButton(onClick = onDismissSameDay) { Text("Voltar") }
+                TextButton(onClick = onDismissSameDay) { NevesIcon(NevesIcons.Back, "Voltar") }
             },
         )
     }
@@ -593,3 +595,4 @@ private fun consumptionWarningText(warning: ConferenceConsumptionWarning): Strin
         ConferenceConsumptionWarningKind.Below ->
             "consumo abaixo do padrão esperado."
     }
+

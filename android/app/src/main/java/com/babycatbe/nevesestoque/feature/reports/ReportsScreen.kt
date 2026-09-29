@@ -1,5 +1,10 @@
 package com.babycatbe.nevesestoque.feature.reports
 
+import com.babycatbe.nevesestoque.ui.theme.NevesColors
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.LatestLoad
 import com.babycatbe.nevesestoque.ui.load.loadCatching
@@ -101,12 +106,12 @@ private fun ReportsScreen(state: ReportsUiState, onBack: () -> Unit, onRefresh: 
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(8.dp),
                 ) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Relatórios",
                         style = MaterialTheme.typography.titleLarge,
@@ -114,7 +119,7 @@ private fun ReportsScreen(state: ReportsUiState, onBack: () -> Unit, onRefresh: 
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(onClick = onRefresh, enabled = !state.loading && !state.refreshing) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(state.refreshing)
                     }
                 }
             }
@@ -496,7 +501,8 @@ private fun AttentionBox(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-private val AMBER_BG = Color(0xFFFEF3C7)
-private val AMBER_TEXT = Color(0xFF92400E)
-private val GREEN_BG = Color(0xFFD1FAE5)
-private val GREEN_TEXT = Color(0xFF065F46)
+private val AMBER_BG = NevesColors.WarningContainer
+private val AMBER_TEXT = NevesColors.OnWarning
+private val GREEN_BG = NevesColors.SuccessContainer
+private val GREEN_TEXT = NevesColors.OnSuccess
+

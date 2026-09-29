@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.app
 
+import com.babycatbe.nevesestoque.ui.motion.NevesMotion
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -107,7 +108,18 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
 
     Column(Modifier.fillMaxSize()) {
     OfflineBanner(offlineMode = authState.offlineMode)
-    NavHost(navController = navController, startDestination = HOME_ROUTE, modifier = Modifier.weight(1f)) {
+    NavHost(
+        navController = navController,
+        startDestination = HOME_ROUTE,
+        modifier = Modifier.weight(1f),
+        enterTransition = { NevesMotion.navigationEnter },
+        exitTransition = { NevesMotion.navigationExit },
+        popEnterTransition = { NevesMotion.navigationEnter },
+        popExitTransition = { NevesMotion.navigationExit },
+        // Predictive back has separate defaults (including scaleOut), independent of pop transitions.
+        predictivePopEnterTransition = { _ -> NevesMotion.navigationEnter },
+        predictivePopExitTransition = { _ -> NevesMotion.navigationExit },
+    ) {
         composable(HOME_ROUTE) {
             val alertsViewModel: AlertsViewModel = viewModel()
             val alertsState by alertsViewModel.uiState.collectAsStateWithLifecycle()
@@ -761,3 +773,4 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
     }
     }
 }
+

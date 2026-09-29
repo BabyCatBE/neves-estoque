@@ -1,5 +1,10 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,11 +30,11 @@ fun ProductsHubScreen(
 ) {
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 androidx.compose.foundation.layout.Row(
                     modifier = Modifier.fillMaxWidth().padding(8.dp)
                 ) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Produtos",
                         style = MaterialTheme.typography.titleLarge,
@@ -42,7 +47,7 @@ fun ProductsHubScreen(
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
         ) {
             Text(
                 "Escolha o cadastro que deseja administrar.",
@@ -50,16 +55,19 @@ fun ProductsHubScreen(
             )
 
             HubCard(
+                icon = NevesIcons.Products,
                 title = "Produtos",
                 description = "Consultar o catálogo e abrir o detalhe de cada Produto.",
                 onClick = onProducts,
             )
             HubCard(
+                icon = NevesIcons.Products,
                 title = "Categorias",
                 description = "Consultar a organização, a ordem e quantos Produtos existem em cada Categoria.",
                 onClick = onCategories,
             )
             HubCard(
+                icon = NevesIcons.Trash,
                 title = "Lixeira",
                 description = "Lixeira Universal: restaure ou exclua definitivamente Produtos, Categorias, Fornecedores, Entradas e Conferências dos últimos 7 dias.",
                 onClick = onTrash,
@@ -69,9 +77,10 @@ fun ProductsHubScreen(
 }
 
 @Composable
-private fun HubCard(title: String, description: String, onClick: () -> Unit) {
+private fun HubCard(icon: Int, title: String, description: String, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp)) {
+            NevesIcon(icon, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(
                 description,
@@ -81,3 +90,4 @@ private fun HubCard(title: String, description: String, onClick: () -> Unit) {
         }
     }
 }
+

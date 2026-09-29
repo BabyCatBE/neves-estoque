@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.module
 
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +30,7 @@ fun ModulePlaceholderScreen(title: String, onBack: () -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 10.dp, bottom = 20.dp),
         )
-        Button(onClick = onBack) { Text("Voltar") }
+        Button(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
     }
 }
+

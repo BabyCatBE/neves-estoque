@@ -1,5 +1,10 @@
 package com.babycatbe.nevesestoque.feature.suppliers
 
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.activity.compose.BackHandler
@@ -87,9 +92,9 @@ private fun SuppliersScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Fornecedores",
                         style = MaterialTheme.typography.titleLarge,
@@ -97,7 +102,7 @@ private fun SuppliersScreen(
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
                     TextButton(onClick = onRefresh, enabled = !state.refreshing) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(state.refreshing)
                     }
                     TextButton(onClick = onCreateSupplier) { Text("Novo") }
                 }
@@ -134,6 +139,7 @@ private fun SuppliersScreen(
                         value = search,
                         onValueChange = { search = it },
                         label = { Text("Pesquisar") },
+                        leadingIcon = { NevesIcon(NevesIcons.Search) },
                         placeholder = { Text("Contato, empresa ou telefone") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -142,7 +148,7 @@ private fun SuppliersScreen(
                         OutlinedButton(onClick = { pendingOnly = !pendingOnly }, modifier = Modifier.weight(1f)) {
                             Text(if (pendingOnly) "Mostrando pendentes · Ver todos" else "Mostrar cadastros pendentes")
                         }
-                        OutlinedButton(onClick = onTrash) { Text("Lixeira") }
+                        OutlinedButton(onClick = onTrash) { NevesActionLabel("Lixeira", NevesIcons.Trash) }
                     }
                 }
             }
@@ -271,9 +277,9 @@ private fun SupplierDetailScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack, enabled = !state.deleting) { Text("Voltar") }
+                    TextButton(onClick = onBack, enabled = !state.deleting) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Fornecedor",
                         style = MaterialTheme.typography.titleLarge,
@@ -283,11 +289,11 @@ private fun SupplierDetailScreen(
                     TextButton(
                         onClick = onEdit,
                         enabled = supplier != null && !state.loading && !state.deleting,
-                    ) { Text("Editar") }
+                    ) { NevesActionLabel("Editar", NevesIcons.Edit) }
                     TextButton(
                         onClick = onRefresh,
                         enabled = !state.refreshing && !state.deleting,
-                    ) { Text(if (state.refreshing) "Atualizando…" else "Atualizar") }
+                    ) { NevesRefreshIcon(state.refreshing) }
                 }
             }
         }
@@ -462,7 +468,7 @@ private fun SupplierDetailScreen(
                         onDelete()
                     },
                     enabled = !state.deleting,
-                ) { Text("Excluir Fornecedor") }
+                ) { NevesActionLabel("Excluir Fornecedor", NevesIcons.Trash) }
             },
             dismissButton = {
                 TextButton(
@@ -575,9 +581,9 @@ private fun SupplierFormScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = ::requestBack, enabled = !state.saving) { Text("Voltar") }
+                    TextButton(onClick = ::requestBack, enabled = !state.saving) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         if (editing) "Editar Fornecedor" else "Novo Fornecedor",
                         style = MaterialTheme.typography.titleLarge,
@@ -832,3 +838,4 @@ private fun formatSupplierDays(value: Int?): String =
         1 -> "1 dia"
         else -> "$value dias"
     }
+

@@ -1,5 +1,10 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -170,7 +175,7 @@ fun CategoriesScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
                     TextButton(
                         onClick = { if (reordering) cancelReordering() else onBack() },
@@ -194,7 +199,7 @@ fun CategoriesScreen(
                             onClick = { scope.launch { load() } },
                             enabled = !loading && !refreshing,
                         ) {
-                            Text(if (refreshing) "Atualizando…" else "Atualizar")
+                            NevesRefreshIcon(refreshing)
                         }
                     }
                 }
@@ -288,7 +293,7 @@ fun CategoriesScreen(
             }
 
             if (!loading && error == null && visibleCategories.isEmpty()) {
-                item { Card { Text("Nenhuma Categoria cadastrada.", modifier = Modifier.padding(18.dp)) } }
+                item { Card { NevesStatusMessage("Nenhuma Categoria cadastrada.") } }
             }
 
             items(visibleCategories, key = { it.id }) { category ->
@@ -366,7 +371,7 @@ fun CategoriesScreen(
                                     },
                                     enabled = index > 0 && !reorderSaving,
                                 ) {
-                                    Text("↑ Subir")
+                                    NevesActionLabel("Subir", NevesIcons.Up)
                                 }
                                 TextButton(
                                     onClick = {
@@ -378,20 +383,20 @@ fun CategoriesScreen(
                                     },
                                     enabled = index < visibleCategories.lastIndex && !reorderSaving,
                                 ) {
-                                    Text("↓ Descer")
+                                    NevesActionLabel("Descer", NevesIcons.Down)
                                 }
                             } else {
                                 TextButton(onClick = { onCategoryClick(category.id) }) {
                                     Text("Ver Produtos")
                                 }
                                 TextButton(onClick = { onEditCategory(category.id) }) {
-                                    Text("Editar")
+                                    NevesActionLabel("Editar", NevesIcons.Edit)
                                 }
                                 TextButton(
                                     onClick = { requestDelete(category) },
                                     enabled = !deletingCategory && category.productCount == 0,
                                 ) {
-                                    Text("Excluir")
+                                    NevesActionLabel("Excluir", NevesIcons.Trash)
                                 }
                             }
                         }
@@ -429,3 +434,4 @@ fun CategoriesScreen(
         )
     }
 }
+

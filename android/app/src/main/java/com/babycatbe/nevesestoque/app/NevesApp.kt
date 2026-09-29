@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.app
 
+import com.babycatbe.nevesestoque.ui.theme.NevesColors
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +28,7 @@ import com.babycatbe.nevesestoque.feature.auth.AuthViewModel
 import com.babycatbe.nevesestoque.feature.auth.LoginScreen
 import com.babycatbe.nevesestoque.ui.theme.NevesTheme
 
-private val StatusBarBackground = Color(0xFF09090B)
+private val StatusBarBackground = NevesColors.Header
 
 @Composable
 fun NevesApp(authViewModel: AuthViewModel = viewModel()) {
@@ -78,3 +79,4 @@ private fun LoadingAccessScreen() {
         }
     }
 }
+

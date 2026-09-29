@@ -1,5 +1,8 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -260,19 +263,19 @@ private fun NewEntryScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
                     TextButton(
                         onClick = { if (dirty) leaveOpen = true else onBack() },
                         enabled = !state.saving,
-                    ) { Text("Voltar") }
+                    ) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Nova Entrada",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
-                    TextButton(onClick = onRefresh, enabled = !state.saving) { Text("Atualizar") }
+                    TextButton(onClick = onRefresh, enabled = !state.saving) { NevesIcon(NevesIcons.Refresh, "Atualizar") }
                 }
             }
         }
@@ -325,6 +328,7 @@ private fun NewEntryScreen(
                                 value = supplierSearch,
                                 onValueChange = { supplierSearch = it },
                                 label = { Text("Buscar Fornecedor") },
+                        leadingIcon = { NevesIcon(NevesIcons.Search) },
                                 placeholder = { Text("Contato, empresa ou telefone") },
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
@@ -896,12 +900,12 @@ private fun EditEntryScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
                     TextButton(
                         onClick = { if (dirty) leaveOpen = true else onBack() },
                         enabled = !state.saving,
-                    ) { Text("Voltar") }
+                    ) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Editar Entrada",
                         style = MaterialTheme.typography.titleLarge,
@@ -1156,3 +1160,4 @@ private fun buildEditChangeSummary(
     if (oldItems != newItems) changes += "Itens recebidos alterados (${original.items.size} → ${items.size} linhas)."
     return changes.ifEmpty { listOf("Nenhuma alteração detectada.") }
 }
+

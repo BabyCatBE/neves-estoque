@@ -1,5 +1,8 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -140,9 +143,9 @@ private fun ProductMergeScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack, enabled = !state.merging) { Text("Voltar") }
+                    TextButton(onClick = onBack, enabled = !state.merging) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Mesclar Produtos",
                         style = MaterialTheme.typography.titleLarge,
@@ -205,6 +208,7 @@ private fun ProductMergeScreen(
                                 value = search,
                                 onValueChange = { search = it },
                                 label = { Text("Pesquisar Produto") },
+                        leadingIcon = { NevesIcon(NevesIcons.Search) },
                                 placeholder = { Text("Digite o nome do Produto duplicado") },
                                 singleLine = true,
                                 enabled = !state.selectingCandidate,
@@ -540,7 +544,7 @@ private fun ProductMergeScreen(
                                     },
                                     enabled = !state.merging,
                                     modifier = Modifier.weight(1f),
-                                ) { Text("Voltar") }
+                                ) { NevesIcon(NevesIcons.Back, "Voltar") }
                                 Button(
                                     onClick = {
                                         val confirmed = validate()
@@ -635,3 +639,4 @@ private fun formatMergeDecimal(value: Double): String =
     NumberFormat.getNumberInstance(Locale.forLanguageTag("pt-BR")).apply {
         maximumFractionDigits = 8
     }.format(value)
+

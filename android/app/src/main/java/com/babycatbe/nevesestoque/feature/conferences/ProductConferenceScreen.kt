@@ -1,5 +1,9 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,9 +89,9 @@ private fun ProductStockUpdateScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Atualizar estoque",
                         style = MaterialTheme.typography.titleLarge,
@@ -95,7 +99,7 @@ private fun ProductStockUpdateScreen(
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
                     TextButton(onClick = onRefresh, enabled = !state.refreshing) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(state.refreshing)
                     }
                 }
             }
@@ -280,9 +284,9 @@ private fun ProductConferenceScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack, enabled = !busy) { Text("Voltar") }
+                    TextButton(onClick = onBack, enabled = !busy) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Conferência do Produto",
                         style = MaterialTheme.typography.titleLarge,
@@ -500,3 +504,4 @@ private fun formatDifference(
     }.format(percent)
     return "$amount ($sign$formattedPercent%)"
 }
+
