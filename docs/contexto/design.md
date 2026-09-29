@@ -168,3 +168,61 @@ Padrão atual do Android 31:
 - Salvar permanece ação explícita; o último campo não salva automaticamente.
 
 Implementação funcional em `e204e06be0bf17db1f625ff9223430503024dd12`, Android `0.31.0-alpha01 / 31`, CI #115 SUCCESS. Teste funcional em aparelho ainda A VERIFICAR. Web não alterada.
+
+
+## Android — refinamentos após CHECKPOINT 246 (29/09/2026)
+
+### Entrada — busca de Produto acima do teclado
+Android `0.32.0-alpha01 / 32`, commit funcional `b9cb75b0e462db279e19fe3d564454bcfced1f5c`, CI #117 SUCCESS.
+
+A busca “Adicionar Produto” da Nova Entrada passou a reservar mais espaço abaixo do campo e a trazê-lo para uma posição mais alta quando o teclado do celular está aberto, mantendo as sugestões visíveis durante a digitação. Elias testou em aparelho e aprovou o resultado: campo e sugestões ficaram na posição desejada e o fluxo Produto → Quantidade → Preço ficou confortável.
+
+Estado: **IMPLEMENTADO / CI APROVADA / APROVADO EM APARELHO**.
+
+### Datas — padrão brasileiro + calendário visual
+Android `0.33.0-alpha01 / 33`, commit funcional `e2b980dc4d412a91e528a88efcdd75898eb65f35`, CI #118 SUCCESS.
+
+Padrão implementado:
+- data visível no Android em `DD/MM/AAAA`;
+- armazenamento/API permanecem em ISO `AAAA-MM-DD`;
+- data atual continua preenchida por padrão onde já existia essa regra;
+- campo de data passa a ser somente leitura para o usuário, com ícone de calendário;
+- alteração via seletor Material/Android;
+- datas futuras continuam indisponíveis;
+- após confirmar a data em fluxos sequenciais, o foco avança para o próximo campo lógico;
+- aplicado em Nova Entrada, Editar Entrada, Nova Conferência, Corrigir Conferência e edição de pendência Offline.
+
+Estado: **IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR**.
+
+## Android — Modo Escuro APROVADO para o próximo bloco (29/09/2026)
+
+Elias aprovou visualmente a proposta de Dark Mode e definiu que o próximo bloco deve implementá-la.
+
+### Regra de produto
+- Configurações terá seção **Aparência** com escolha manual entre **Claro** e **Escuro**.
+- A preferência deve mudar o app imediatamente e persistir localmente neste aparelho.
+- Não sincronizar a preferência com Supabase/usuário.
+- Nesta primeira versão, não incluir “Seguir sistema”; manter apenas Claro/Escuro.
+- O tema claro atual deve permanecer visualmente inalterado.
+
+### Paleta escura aprovada
+- fundo geral: `#181614`;
+- cards/superfícies principais: `#211E1B`;
+- superfícies secundárias: `#2A2622`;
+- elementos elevados: `#302B27`;
+- texto principal: `#F4F1ED`;
+- texto secundário: `#B8B0A7`;
+- bordas: cinza/marrom quente discreto e de baixo contraste;
+- vermelho Neves permanece como cor de identidade/destaque.
+
+A direção é **grafite/carvão quente**, confortável e levemente amarronzado. Não usar preto puro como base, não usar azul-marinho dominante e não fazer simples inversão de cores.
+
+### Aplicação visual aprovada
+- header continua mais escuro que o conteúdo, mas dentro da mesma família quente;
+- cards operacionais escuros preservam faixa vermelha lateral e identidade aprovada do `NevesContentCard`;
+- ícones podem usar superfícies elevadas/avermelhadas discretas, mantendo vermelho como destaque;
+- teclado numérico próprio, calendário, dialogs, dropdowns, campos, filtros, chips, menus, histórico, Estoque, Produtos, Entrada, Conferência, Compras, Relatórios, Alertas, Offline, Lixeira e Configurações devem respeitar o tema;
+- estados semânticos de sucesso/alerta/erro devem ganhar variantes escuras próprias; não confundir vermelho de erro com vermelho institucional;
+- fazer auditoria de cores fixas (`Color.White`, `NevesColors.Header`, containers claros etc.) antes de considerar o Dark Mode concluído.
+
+Estado: **APROVADO / NÃO IMPLEMENTADO**.

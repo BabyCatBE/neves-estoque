@@ -110,3 +110,18 @@ Atualizar quando mudar fase, objetivo, prioridade, próxima tarefa, bloqueio, br
 - Nenhuma alteração de Web, Supabase, migrations ou dados.
 - Estado: IMPLEMENTADO / CI APROVADA / TESTE FUNCIONAL EM APARELHO A VERIFICAR.
 - Próximo passo: instalar APK 31 e validar abertura imediata, preload, teclado, foco/rolagem, buscas e regressões online/offline. Corrigir apenas achados reais.
+
+
+## Continuidade — CHECKPOINT 247: refinamentos Android 32/33 + Dark Mode aprovado (29/09/2026)
+
+- Branch: `feat/android-17-product-maintenance-ux`; PR #75 DRAFT / OPEN / NÃO INTEGRADO.
+- CHECKPOINT 246 / Android 31 foi testado por Elias no aparelho; os fluxos testados funcionaram corretamente. Não interpretar isso como validação de todos os cenários extremos ainda não executados.
+- Android 32: `b9cb75b0e462db279e19fe3d564454bcfced1f5c`, CI #117 SUCCESS. Ajuste da busca de Produto na Nova Entrada para manter campo e sugestões visíveis acima do teclado. **APROVADO EM APARELHO** por Elias.
+- Android 33: `e2b980dc4d412a91e528a88efcdd75898eb65f35`, CI #118 SUCCESS. Novo seletor visual de data e exibição `DD/MM/AAAA`, mantendo ISO internamente. **APARELHO A VERIFICAR**.
+- Artifact signed Android 32: `neves-estoque-android-signed-0.32.0-alpha01-e457360660a0c5f0ac7e2bca29403a670b0a786d`, ID `11058501470`.
+- Artifact signed Android 33: `neves-estoque-android-signed-0.33.0-alpha01-11a92345665de52ee7b16bde4827b54fdc8c3d33`, ID `11060590120`.
+- Nenhuma alteração de Web, Supabase, migrations ou dados nesses refinamentos.
+- Próximo bloco aprovado: **Modo Escuro Android**. Tema claro permanece inalterado; Configurações terá seletor Claro/Escuro com persistência local e troca imediata.
+- Paleta Dark aprovada: background `#181614`; surface/card `#211E1B`; secondary surface `#2A2622`; elevated `#302B27`; primary text `#F4F1ED`; secondary text `#B8B0A7`; vermelho Neves como destaque.
+- Antes de implementar Dark Mode, auditar cores fixas e componentes semânticos. Não tratar como simples inversão de branco/preto.
+- Próximo passo imediato: Elias instalar/testar o APK 33; em seguida iniciar o bloco de Dark Mode sobre o último estado seguro.

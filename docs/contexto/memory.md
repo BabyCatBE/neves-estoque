@@ -117,3 +117,38 @@ O aplicativo novo possui uma decisão posterior e aprovada no Contexto Mestre at
 **Interpretação correta:** não é inconsistência a ser “corrigida” automaticamente. A planilha legado continua sendo autoridade para o comportamento do sistema antigo e para dados/migração; o Contexto Mestre atual é autoridade para a regra funcional vigente do aplicativo novo.
 
 **Regra:** não alterar o legado para fazê-lo combinar com o aplicativo e não ressuscitar a regra antiga dentro do app sem nova decisão explícita.
+
+
+## 2026-09-29 — padrão operacional Android consolidado
+
+Elias aprovou em aparelho o fluxo operacional rápido introduzido no Android 31 e o refinamento da busca de Produto do Android 32.
+
+Decisões duradouras:
+- abertura deve ser imediata quando houver acesso local previamente validado; revalidação ocorre em segundo plano;
+- preload de abertura deve priorizar somente Estoque Atual e Produtos;
+- Conferência/Entrada usam avanço de foco e teclado numérico próprio;
+- botões −/+ pertencem somente à Conferência;
+- busca de Produto na Entrada deve manter campo e sugestões visíveis acima do teclado;
+- datas devem ser apresentadas ao usuário em `DD/MM/AAAA`, preservando ISO internamente.
+
+## 2026-09-29 — Dark Mode Android aprovado
+
+**Estado:** APROVADO / NÃO IMPLEMENTADO.
+
+Decisão de produto:
+- Configurações oferece seletor manual Claro/Escuro;
+- preferência local por aparelho, aplicada imediatamente;
+- tema claro atual não muda;
+- primeira versão não precisa seguir o tema do sistema.
+
+Paleta escura aprovada:
+- fundo `#181614`;
+- cards/superfícies `#211E1B`;
+- superfícies secundárias `#2A2622`;
+- elementos elevados `#302B27`;
+- texto principal `#F4F1ED`;
+- texto secundário `#B8B0A7`;
+- bordas quentes discretas;
+- vermelho Neves preservado como identidade.
+
+Direção visual: grafite/carvão quente, levemente amarronzado, confortável; evitar preto puro, cinza frio dominante e azul-marinho dominante. O Dark Mode exige auditoria de cores fixas e variantes semânticas, não mera inversão de cores.
