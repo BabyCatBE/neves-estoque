@@ -15,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.Instant
@@ -32,12 +31,12 @@ fun OfflineBanner(offlineMode: Boolean) {
     val lastSnapshot by OfflineStore.lastSnapshotAt.collectAsStateWithLifecycle()
     if (online && !offlineMode) return
 
-    Surface(color = NevesColors.OnWarning, modifier = Modifier.fillMaxWidth()) {
+    Surface(color = NevesColors.OfflineBanner, modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-        NevesIcon(NevesIcons.Offline, tint = Color.White)
+        NevesIcon(NevesIcons.Offline, tint = NevesColors.OnOfflineBanner)
         Text(
             offlineBannerText(lastSnapshot),
-            color = Color.White,
+            color = NevesColors.OnOfflineBanner,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f),

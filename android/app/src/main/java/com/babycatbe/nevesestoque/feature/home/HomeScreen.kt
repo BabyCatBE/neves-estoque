@@ -160,12 +160,15 @@ private fun NevesHeader(
                     }
                 }
             }
+            val stripeAccent = NevesColors.Accent
+            val stripeAlert = NevesColors.Alert
+            val stripeLight = NevesColors.HeaderText
             Canvas(Modifier.fillMaxWidth().height(3.dp)) {
-                drawRect(NevesColors.Accent)
+                drawRect(stripeAccent)
                 repeat(3) { index ->
                     val x = (12 + index * 24).dp.toPx()
-                    drawLine(NevesColors.Alert, Offset(x, size.height), Offset(x + 4.dp.toPx(), 0f), strokeWidth = 6.dp.toPx())
-                    drawLine(NevesColors.HeaderText, Offset(x + 6.dp.toPx(), size.height), Offset(x + 10.dp.toPx(), 0f), strokeWidth = 4.dp.toPx())
+                    drawLine(stripeAlert, Offset(x, size.height), Offset(x + 4.dp.toPx(), 0f), strokeWidth = 6.dp.toPx())
+                    drawLine(stripeLight, Offset(x + 6.dp.toPx(), size.height), Offset(x + 10.dp.toPx(), 0f), strokeWidth = 4.dp.toPx())
                 }
             }
         }

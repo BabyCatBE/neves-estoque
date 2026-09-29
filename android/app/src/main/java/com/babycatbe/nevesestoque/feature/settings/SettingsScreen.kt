@@ -14,11 +14,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
 import com.babycatbe.nevesestoque.ui.theme.NevesColors
 import com.babycatbe.nevesestoque.BuildConfig
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesThemeToggle
+import com.babycatbe.nevesestoque.ui.theme.AppearanceMode
+import com.babycatbe.nevesestoque.ui.theme.AppearanceStore
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -35,13 +38,14 @@ fun SettingsRoute(onBack: () -> Unit) {
     }
     Scaffold(topBar = {
         TopAppBar(
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = NevesColors.Header, titleContentColor = Color.White, navigationIconContentColor = Color.White),
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = NevesColors.Header, titleContentColor = NevesColors.HeaderText, navigationIconContentColor = NevesColors.HeaderText),
             title = { Text("Configurações", fontWeight = FontWeight.SemiBold) }, navigationIcon = {
             IconButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
         })
     }) { padding ->
         Column(verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
+            AppearanceSection()
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(16.dp),
@@ -49,7 +53,7 @@ fun SettingsRoute(onBack: () -> Unit) {
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp)) {
-                        Box(contentAlignment = Alignment.Center) { NevesIcon(NevesIcons.Refresh, "Atualizações", tint = Color.White) }
+                        Box(contentAlignment = Alignment.Center) { NevesIcon(NevesIcons.Refresh, "Atualizações", tint = MaterialTheme.colorScheme.onPrimary) }
                     }
                     Column {
                         Text("Atualização do aplicativo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -123,4 +127,37 @@ fun SettingsRoute(onBack: () -> Unit) {
 private fun ReleaseInfo(release: UpdateRelease, status: String?) {
     if (status != null) Text(status, fontWeight = FontWeight.SemiBold)
     Text("Versão disponível: ${release.versionName} (versionCode ${release.versionCode})")
+}
+
+/** Aparência: preferência local deste aparelho; troca imediata com transição curta de paleta. */
+@Composable
+private fun AppearanceSection() {
+    val mode by AppearanceStore.mode.collectAsStateWithLifecycle()
+    val dark = mode == AppearanceMode.Dark
+    NevesContentCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Aparência", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (dark) "Escuro" else "Claro",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    "Preferência salva somente neste aparelho.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            NevesThemeToggle(
+                dark = dark,
+                onDarkChange = { AppearanceStore.select(if (it) AppearanceMode.Dark else AppearanceMode.Light) },
+            )
+        }
+    }
 }

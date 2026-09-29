@@ -355,7 +355,7 @@ fun NevesNumericKeypad(state: NumericKeypadState) {
                 ) {
                     Text(
                         active.confirmLabel(),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleSmall,
                     )

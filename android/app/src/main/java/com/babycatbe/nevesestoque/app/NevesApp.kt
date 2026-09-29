@@ -32,14 +32,15 @@ import com.babycatbe.nevesestoque.feature.auth.AuthStatus
 import com.babycatbe.nevesestoque.feature.auth.AuthViewModel
 import com.babycatbe.nevesestoque.feature.auth.LoginScreen
 import com.babycatbe.nevesestoque.ui.theme.NevesTheme
-
-private val StatusBarBackground = NevesColors.Header
+import com.babycatbe.nevesestoque.ui.theme.AppearanceMode
+import com.babycatbe.nevesestoque.ui.theme.AppearanceStore
 
 @Composable
 fun NevesApp(authViewModel: AuthViewModel = viewModel()) {
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val appearance by AppearanceStore.mode.collectAsStateWithLifecycle()
 
-    NevesTheme {
+    NevesTheme(darkTheme = appearance == AppearanceMode.Dark) {
         Surface(
             color = MaterialTheme.colorScheme.background,
             modifier = Modifier.fillMaxSize(),
@@ -49,7 +50,7 @@ fun NevesApp(authViewModel: AuthViewModel = viewModel()) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .windowInsetsTopHeight(WindowInsets.statusBars)
-                        .background(StatusBarBackground),
+                        .background(NevesColors.Header),
                 )
                 Box(
                     modifier = Modifier

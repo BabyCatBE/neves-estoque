@@ -45,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -730,10 +731,16 @@ private fun Badge(text: String, background: Color, foreground: Color) {
     }
 }
 
-private val AMBER_BG = NevesColors.WarningContainer
-private val AMBER_TEXT = NevesColors.OnWarning
-private val GREEN_BG = NevesColors.SuccessContainer
-private val GREEN_TEXT = NevesColors.OnSuccess
-private val RED_BG = NevesColors.ErrorContainer
-private val RED_TEXT = NevesColors.OnError
+private val AMBER_BG: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.WarningContainer
+private val AMBER_TEXT: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.OnWarning
+private val GREEN_BG: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.SuccessContainer
+private val GREEN_TEXT: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.OnSuccess
+private val RED_BG: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.ErrorContainer
+private val RED_TEXT: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.OnError
 

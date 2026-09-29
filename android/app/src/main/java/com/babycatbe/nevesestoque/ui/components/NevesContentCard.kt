@@ -24,9 +24,9 @@ fun NevesContentCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
-        modifier = modifier.contentCardAccent(shape),
+        modifier = modifier.contentCardAccent(shape, NevesColors.Primary),
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = border,
         content = content,
     )
@@ -44,10 +44,10 @@ fun NevesContentCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.contentCardAccent(shape),
+        modifier = modifier.contentCardAccent(shape, NevesColors.Primary),
         enabled = enabled,
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = border,
         content = content,
     )
@@ -56,7 +56,7 @@ fun NevesContentCard(
 // Draw against the card's measured bounds, including expanded/animated content. No fixed height,
 // intrinsic measurement or additional layout nodes: long lists and large fonts keep natural sizing.
 // Clip the decoration and ripple to the same rounded shape. The stripe is deliberately on the left.
-private fun Modifier.contentCardAccent(shape: Shape): Modifier = clip(shape).drawWithContent {
+private fun Modifier.contentCardAccent(shape: Shape, stripe: Color): Modifier = clip(shape).drawWithContent {
     drawContent()
-    drawRect(color = NevesColors.Primary, size = Size(4.dp.toPx(), size.height))
+    drawRect(color = stripe, size = Size(4.dp.toPx(), size.height))
 }

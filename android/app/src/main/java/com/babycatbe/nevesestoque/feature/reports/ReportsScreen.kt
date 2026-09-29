@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -499,8 +500,12 @@ private fun AttentionBox(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-private val AMBER_BG = NevesColors.WarningContainer
-private val AMBER_TEXT = NevesColors.OnWarning
-private val GREEN_BG = NevesColors.SuccessContainer
-private val GREEN_TEXT = NevesColors.OnSuccess
+private val AMBER_BG: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.WarningContainer
+private val AMBER_TEXT: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.OnWarning
+private val GREEN_BG: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.SuccessContainer
+private val GREEN_TEXT: Color
+    @Composable @ReadOnlyComposable get() = NevesColors.OnSuccess
 
