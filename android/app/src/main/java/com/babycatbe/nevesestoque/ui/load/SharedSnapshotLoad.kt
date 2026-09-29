@@ -86,15 +86,19 @@ class SharedSnapshotLoad<T : Any>(
         }
     }
 
-    private fun request(reuseInFlight: Boolean): Deferred<T> = synchronized(lock) {
-        val current = inFlight
-        if (reuseInFlight && current != null && current.isActive) return current
-        val requestGeneration = ++generation
-        scope.async {
-            val result = loadOfficial()
-            publish(requestGeneration, result)
-            result
-        }.also { inFlight = it }
+    private fun request(reuseInFlight: Boolean): Deferred<T> {
+        synchronized(lock) {
+            val current = inFlight
+            if (reuseInFlight && current != null && current.isActive) return current
+            val requestGeneration = ++generation
+            val started = scope.async {
+                val result = loadOfficial()
+                publish(requestGeneration, result)
+                result
+            }
+            inFlight = started
+            return started
+        }
     }
 
     private fun publish(requestGeneration: Long, value: T) {

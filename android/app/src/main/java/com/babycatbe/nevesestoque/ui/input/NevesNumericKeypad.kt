@@ -179,9 +179,9 @@ fun NevesNumericField(
             readOnly = true,
             enabled = enabled,
             label = { Text(label) },
-            placeholder = placeholder?.let { { Text(it) } },
+            placeholder = placeholder?.let { hint -> { Text(hint) } },
             isError = errorMessage != null,
-            supportingText = errorMessage?.let { { Text(it) } },
+            supportingText = errorMessage?.let { message -> { Text(message) } },
             singleLine = true,
             textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             modifier = fieldModifier
