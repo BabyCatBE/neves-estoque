@@ -196,7 +196,7 @@ Padrão implementado:
 - após confirmar a data em fluxos sequenciais, o foco avança para o próximo campo lógico;
 - aplicado em Nova Entrada, Editar Entrada, Nova Conferência, Corrigir Conferência e edição de pendência Offline.
 
-Estado: **IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR**.
+Estado: **IMPLEMENTADO / CI APROVADA / APROVADO EM APARELHO**.
 
 ## Android — Modo Escuro (Android 34, 29/09/2026)
 
@@ -239,4 +239,4 @@ A direção é **grafite/carvão quente**, confortável e levemente amarronzado.
 - **Login no Escuro**: a arte oficial de fundo branco vira placa arredondada centralizada; no Claro o layout é o anterior.
 - Tema claro: mesmos valores de antes (cobertos por teste unitário).
 
-Estado: **IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR**.
+Estado: **TESTADO / APROVADO EM APARELHO**. Elias aprovou visual, transição Claro↔Escuro e persistência após fechar completamente e reabrir o app. CI funcional #122 SUCCESS.

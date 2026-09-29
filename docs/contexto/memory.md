@@ -1,3 +1,11 @@
+## Regra de eficiência de contexto — 29/09/2026
+
+- O checkpoint consolidado mais recente deve ser suficiente para reconstruir o estado recente, mudanças, testes, pendências e próximo passo.
+- Novo chat/IA começa pelo checkpoint mais recente + arquivos `docs/contexto/` aplicáveis + fontes reais necessárias à tarefa.
+- O histórico antigo do Contexto Mestre permanece disponível para aprofundamento seletivo, mas não deve ser relido integralmente por formalidade quando decisões antigas já foram superadas.
+- Se faltar contexto ou houver conflito, aprofundar seletivamente no Contexto Mestre e nas fontes de autoridade.
+- Se um checkpoint não permitir continuidade segura sem reler toda a história, melhorar o checkpoint.
+
 # Memória técnica — Neves Estoque
 
 Este arquivo registra apenas decisões e aprendizados que continuam úteis. O histórico completo permanece no Contexto Mestre.

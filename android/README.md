@@ -23,8 +23,8 @@ Leia primeiro os arquivos aplicáveis em `../docs/contexto/`, especialmente `arc
 
 - Android 31: abertura imediata por acesso local previamente validado, revalidação em segundo plano, preload somente de Estoque Atual/Produtos, teclado numérico próprio e fluxo rápido de Conferência/Entrada. Elias testou os fluxos exercitados com resultado positivo.
 - Android 32: campo “Adicionar Produto” da Nova Entrada mantém campo e sugestões visíveis acima do teclado. **APROVADO EM APARELHO**.
-- Android 33: datas visíveis em `DD/MM/AAAA`, valor interno ISO, ícone de calendário e seletor visual Material/Android. **IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR**.
-- Android 34: **Modo Escuro** — Configurações → Aparência com seletor Sol/Lua, troca imediata com transição de paleta de ~300 ms, preferência local por aparelho e paleta grafite quente aprovada. **IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR**.
+- Android 33: datas visíveis em `DD/MM/AAAA`, valor interno ISO, ícone de calendário e seletor visual Material/Android. **APROVADO EM APARELHO**.
+- Android 34: **Modo Escuro** — Configurações → Aparência com seletor Sol/Lua, troca imediata com transição de paleta de ~300 ms, preferência local por aparelho e paleta grafite quente aprovada. **TESTADO / APROVADO EM APARELHO**, incluindo persistência após fechar/reabrir.
 
 ## Módulos
 

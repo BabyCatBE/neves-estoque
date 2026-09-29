@@ -22,14 +22,14 @@
 - Android 30: visual e fluidez dos cards aprovados.
 - Android 31: Elias informou que os fluxos exercitados de abertura/fluidez e operação de Conferência/Entrada funcionaram corretamente.
 - Android 32: correção da busca de Produto na Nova Entrada, mantendo campo e sugestões acima do teclado, **APROVADA EM APARELHO**.
-- Android 33: calendário visual e formato `DD/MM/AAAA` ainda **A VERIFICAR EM APARELHO**.
-- Android 34: Modo Escuro **IMPLEMENTADO / CI APROVADA / A VERIFICAR EM APARELHO**.
+- Android 33: calendário visual e formato `DD/MM/AAAA` **APROVADOS EM APARELHO** por Elias.
+- Android 34: Modo Escuro **TESTADO / APROVADO EM APARELHO** — visual, transição Claro↔Escuro e persistência após fechar/reabrir confirmados por Elias; CI #122 SUCCESS.
 
 ## Trabalho vigente e próximo bloco
 
-1. instalar/testar o APK 34 em aparelho: Claro, Escuro, troca com transição de ~300 ms, persistência após fechar/reabrir, ausência de flash, contraste e módulos principais;
-2. validar também o calendário visual do Android 33, ainda pendente em aparelho;
-3. corrigir somente achados reais, se houver.
+- CHECKPOINT 248 fechado no escopo funcional testado: Modo Escuro Android 34 e calendário visual do Android 33 aprovados em aparelho.
+- Próximo bloco funcional: **A DEFINIR** a partir da prioridade vigente do projeto e do GitHub real; não inventar nova prioridade só porque o checkpoint atual terminou.
+- Limitação conhecida não bloqueante: splash do sistema Android 12+ pode permanecer claro antes do primeiro frame do app.
 
 Referência do Modo Escuro: `design.md` (seção Android — Modo Escuro) e `architecture.md` (Tema / Aparência Android).
 
@@ -60,8 +60,6 @@ Referências antigas abaixo devem ser lidas como histórico do momento em que fo
 
 ## Pendências conhecidas
 
-- Android 33 calendário visual: `A VERIFICAR EM APARELHO`;
-- Dark Mode (Android 34): `IMPLEMENTADO / CI APROVADA / A VERIFICAR EM APARELHO`;
 - tela de abertura do sistema (splash Android 12+) segue o tema claro do manifesto mesmo com Escuro salvo: `LIMITAÇÃO CONHECIDA / A VERIFICAR EM APARELHO`;
 - comportamento das pendências Offline ao trocar de usuário no mesmo aparelho: `A DEFINIR`;
 - PRs empilhados #69–#75 ainda não integrados à linha principal;

@@ -28,8 +28,8 @@ O **Contexto Mestre no Google Drive** continua sendo a fonte consolidada de cont
 - Android CI funcional #122: SUCCESS;
 - commits exclusivamente documentais também podem disparar Android CI; a referência funcional permanece a CI do último commit funcional;
 - Android 32: busca de Produto da Nova Entrada APROVADA EM APARELHO;
-- Android 33: seletor visual de data `DD/MM/AAAA` IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR;
-- Android 34: **Modo Escuro** (Configurações → Aparência, seletor Sol/Lua, transição de ~300 ms, preferência local) IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR.
+- Android 33: seletor visual de data `DD/MM/AAAA` APROVADO EM APARELHO;
+- Android 34: **Modo Escuro** (Configurações → Aparência, seletor Sol/Lua, transição de ~300 ms, preferência local) TESTADO / APROVADO EM APARELHO.
 
 A cadeia atual é empilhada: PRs #69–#75 permanecem abertos/em rascunho em suas bases sucessivas. Não confundir “presente na branch atual” com “integrado em main/develop”.
 
