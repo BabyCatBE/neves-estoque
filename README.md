@@ -23,10 +23,10 @@ O **Contexto Mestre no Google Drive** continua sendo a fonte consolidada de cont
 - Android: `0.33.0-alpha01` (versionCode 33);
 - linha de trabalho atual: `feat/android-17-product-maintenance-ux`;
 - PR atual: #75 — DRAFT / OPEN / NÃO INTEGRADO, base `feat/android-launcher-icon`;
-- HEAD documental consolidado: `85ef0f11c7eda95a6b12eafe325eaec4328dfc72`;
+- o HEAD atual deve ser consultado diretamente no GitHub; commits documentais posteriores ao último commit funcional não alteram o estado funcional;
 - último commit funcional: `e2b980dc4d412a91e528a88efcdd75898eb65f35`;
 - Android CI funcional #118: SUCCESS;
-- Android CI #119: SUCCESS no commit documental de consolidação;
+- commits exclusivamente documentais também podem disparar Android CI; a referência funcional permanece a CI do último commit funcional;
 - Android 32: busca de Produto da Nova Entrada APROVADA EM APARELHO;
 - Android 33: seletor visual de data `DD/MM/AAAA` IMPLEMENTADO / CI APROVADA / APARELHO A VERIFICAR;
 - próximo bloco aprovado: **Modo Escuro Android**, ainda NÃO IMPLEMENTADO.
