@@ -1,0 +1,184 @@
+name: Publish Android Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_version:
+        description: "Android versionName to publish (example: 0.28.0-alpha01)"
+        required: true
+        type: string
+      confirm_version_code:
+        description: "Android versionCode to publish (example: 28)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL || secrets.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
+
+    steps:
+      - name: Checkout selected commit
+        uses: actions/checkout@v5
+
+      - name: Read and validate Android version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON' >> "$GITHUB_OUTPUT"
+          import re
+          from pathlib import Path
+          text = Path("android/app/build.gradle.kts").read_text()
+          code = re.search(r'^\s*versionCode\s*=\s*(\d+)\s*$', text, re.M)
+          name = re.search(r'^\s*versionName\s*=\s*"([^"]+)"\s*$', text, re.M)
+          if not code or not name:
+              raise SystemExit("Could not read versionCode/versionName from build.gradle.kts")
+          print(f"version_code={code.group(1)}")
+          print(f"version_name={name.group(1)}")
+          print(f"tag=android-v{name.group(1)}")
+          PYTHON
+          test "${{ steps.version.outputs.version_name }}" = "${{ inputs.confirm_version }}" || {
+            echo "::error::confirm_version does not match build.gradle.kts"; exit 1;
+          }
+          test "${{ steps.version.outputs.version_code }}" = "${{ inputs.confirm_version_code }}" || {
+            echo "::error::confirm_version_code does not match build.gradle.kts"; exit 1;
+          }
+
+      - name: Refuse an existing tag or Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists. Refusing to replace an existing release."
+            exit 1
+          fi
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $tag already exists. Refusing to replace it."
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android platform
+        run: android sdk install --beta platforms/android-37 build-tools/36.0.0
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.5.0"
+
+      - name: Restore signing keystore
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error title=Android signing::Required Repository Secret $name is not configured."
+              exit 1
+            fi
+          done
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/neves-estoque.jks"
+          test -s "$RUNNER_TEMP/neves-estoque.jks"
+
+      - name: Build and test signed release
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/neves-estoque.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          gradle -p android --no-daemon :app:lintRelease :app:testDebugUnitTest :app:assembleRelease
+
+      - name: Verify identity and permanent signature
+        working-directory: android/app/build/outputs/apk/release
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app-release.apk | tee SIGNATURE.txt
+          expected_cert="9901a1ea1fac3b993449a981770f63759b3b74e8c007f3ff9f56f1cbc7e6017a"
+          actual_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' SIGNATURE.txt | tr '[:upper:]' '[:lower:]')
+          test "$actual_cert" = "$expected_cert" || {
+            echo "::error::Release certificate differs from the approved permanent certificate."; exit 1;
+          }
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app-release.apk > APK_BADGING.txt
+          grep -q "package: name='com.babycatbe.nevesestoque'.*versionCode='${{ steps.version.outputs.version_code }}'.*versionName='${{ steps.version.outputs.version_name }}'" APK_BADGING.txt
+
+      - name: Prepare official updater assets
+        working-directory: android/app/build/outputs/apk/release
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp app-release.apk neves-estoque-android.apk
+          sha256sum neves-estoque-android.apk > SHA256SUMS
+          grep -Eq '^[a-f0-9]{64}  neves-estoque-android\.apk$' SHA256SUMS
+
+      - name: Publish public GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          version="${{ steps.version.outputs.version_name }}"
+          version_code="${{ steps.version.outputs.version_code }}"
+          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+          Neves Estoque Android $version
+
+          versionCode: $version_code
+          EOF
+          gh release create "$tag"             android/app/build/outputs/apk/release/neves-estoque-android.apk             android/app/build/outputs/apk/release/SHA256SUMS             --repo "$GITHUB_REPOSITORY"             --target "$GITHUB_SHA"             --title "Neves Estoque Android $version"             --notes-file "$RUNNER_TEMP/release-notes.md"             --latest
+
+      - name: Verify published Release contract
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          json=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")
+          python3 - "$json" "${{ steps.version.outputs.version_code }}" <<'PYTHON'
+          import json, sys
+          release = json.loads(sys.argv[1])
+          expected_code = sys.argv[2]
+          assert release["draft"] is False
+          assert release["prerelease"] is False
+          assert f"versionCode: {expected_code}" in (release.get("body") or "")
+          names = [asset["name"] for asset in release["assets"]]
+          assert names.count("neves-estoque-android.apk") == 1
+          assert names.count("SHA256SUMS") == 1
+          print("Published Release satisfies Android updater contract.")
+          PYTHON
+
+      - name: Remove temporary signing keystore
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/neves-estoque.jks"
