@@ -45,7 +45,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
+import com.babycatbe.nevesestoque.ui.input.NevesDateField
 import com.babycatbe.nevesestoque.ui.input.NevesNumericField
 import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
 import com.babycatbe.nevesestoque.ui.input.rememberKeepVisibleOnFocus
@@ -478,24 +478,14 @@ private fun NewEntryScreen(
                             }
                         }
 
-                        OutlinedTextField(
+                        NevesDateField(
                             value = date,
                             onValueChange = { date = it },
-                            label = { Text("Data *") },
-                            placeholder = { Text("AAAA-MM-DD") },
-                            supportingText = { entryDateError(date)?.let { Text(it) } },
-                            isError = entryDateError(date) != null,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number,
-                                imeAction = ImeAction.Next,
-                            ),
-                            keyboardActions = KeyboardActions(onNext = {
-                                // Data inválida: o erro já aparece no campo e o foco permanece nele.
-                                if (entryDateError(date) == null) focusAfterDate()
-                            }),
-                            singleLine = true,
+                            label = "Data *",
+                            errorMessage = entryDateError(date),
+                            focusRequester = dateFocus,
+                            onDateConfirmed = ::focusAfterDate,
                             modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                                .focusRequester(dateFocus)
                                 .then(rememberKeepVisibleOnFocus()),
                         )
                     }
@@ -1133,14 +1123,12 @@ private fun EditEntryScreen(
                             }
                         }
 
-                        OutlinedTextField(
+                        NevesDateField(
                             value = date,
                             onValueChange = { date = it },
-                            label = { Text("Data *") },
-                            placeholder = { Text("AAAA-MM-DD") },
-                            supportingText = { entryDateError(date)?.let { Text(it) } },
-                            isError = entryDateError(date) != null,
-                            singleLine = true,
+                            label = "Data *",
+                            errorMessage = entryDateError(date),
+                            enabled = !state.saving,
                             modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                         )
                         OutlinedTextField(

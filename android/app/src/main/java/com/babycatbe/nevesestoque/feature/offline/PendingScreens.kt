@@ -7,6 +7,7 @@ import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
+import com.babycatbe.nevesestoque.ui.input.NevesDateField
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -228,7 +229,12 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
         }
         if (operation.kind != PendingKind.ProductConference) {
             item {
-                Field("Data (AAAA-MM-DD)", draft.date) { draft = draft.copy(date = it) }
+                NevesDateField(
+                    value = draft.date,
+                    onValueChange = { draft = draft.copy(date = it) },
+                    label = "Data *",
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
         if (operation.kind != PendingKind.Entry) {

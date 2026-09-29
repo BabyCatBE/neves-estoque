@@ -35,7 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
+import com.babycatbe.nevesestoque.ui.input.NevesDateField
 import com.babycatbe.nevesestoque.ui.input.NevesNumericField
 import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
 import com.babycatbe.nevesestoque.ui.input.rememberKeepVisibleOnFocus
@@ -178,30 +178,19 @@ private fun CategoryConferenceFormScreen(
                 NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         val dateError = localErrors.date ?: state.fieldErrors.date
-                        OutlinedTextField(
+                        NevesDateField(
                             value = date,
                             onValueChange = {
                                 date = it
                                 localErrors = localErrors.copy(date = null)
                                 onClearError()
                             },
-                            label = { Text("Data *") },
-                            placeholder = { Text("AAAA-MM-DD") },
-                            isError = dateError != null,
-                            supportingText = dateError?.let { message -> { Text(message) } },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number,
-                                imeAction = ImeAction.Next,
-                            ),
-                            keyboardActions = KeyboardActions(onNext = {
-                                val error = categoryConferenceDateError(date)
-                                if (error != null) localErrors = localErrors.copy(date = error)
-                                else flow.responsible.requestFocusSafely()
-                            }),
+                            label = "Data *",
+                            errorMessage = dateError,
                             enabled = !busy,
+                            focusRequester = flow.date,
+                            onDateConfirmed = { flow.afterDate() },
                             modifier = Modifier.fillMaxWidth()
-                                .focusRequester(flow.date)
                                 .then(rememberKeepVisibleOnFocus()),
                         )
                         val responsibleError = localErrors.responsible ?: state.fieldErrors.responsible
@@ -503,29 +492,18 @@ private fun EditConferenceScreen(
                 NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         val dateError = localErrors.date ?: state.fieldErrors.date
-                        OutlinedTextField(
+                        NevesDateField(
                             value = date,
                             onValueChange = {
                                 date = it
                                 localErrors = localErrors.copy(date = null)
                             },
-                            label = { Text("Data *") },
-                            placeholder = { Text("AAAA-MM-DD") },
-                            isError = dateError != null,
-                            supportingText = dateError?.let { message -> { Text(message) } },
+                            label = "Data *",
+                            errorMessage = dateError,
                             enabled = !busy,
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number,
-                                imeAction = ImeAction.Next,
-                            ),
-                            keyboardActions = KeyboardActions(onNext = {
-                                val error = categoryConferenceDateError(date)
-                                if (error != null) localErrors = localErrors.copy(date = error)
-                                else flow.responsible.requestFocusSafely()
-                            }),
+                            focusRequester = flow.date,
+                            onDateConfirmed = { flow.afterDate() },
                             modifier = Modifier.fillMaxWidth()
-                                .focusRequester(flow.date)
                                 .then(rememberKeepVisibleOnFocus()),
                         )
                         val responsibleError = localErrors.responsible ?: state.fieldErrors.responsible

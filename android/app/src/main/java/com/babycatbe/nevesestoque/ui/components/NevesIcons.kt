@@ -42,4 +42,5 @@ object NevesIcons {
     val Settings = R.drawable.ic_neves_settings
     val Backspace = R.drawable.ic_neves_backspace
     val KeyboardHide = R.drawable.ic_neves_keyboard_hide
+    val Calendar = R.drawable.ic_neves_calendar
 }

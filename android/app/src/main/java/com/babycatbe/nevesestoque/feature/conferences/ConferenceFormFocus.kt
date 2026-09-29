@@ -29,6 +29,10 @@ class ConferenceFocusFlow internal constructor(
 
     fun quantity(productId: String): FocusRequester = quantities.getOrPut(productId) { FocusRequester() }
 
+    fun afterDate() {
+        focusTextField(responsible)
+    }
+
     fun afterResponsible() {
         val first = productIds.firstOrNull()
         if (first != null) quantity(first).requestFocusSafely() else focusObservation()
