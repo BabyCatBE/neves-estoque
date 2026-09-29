@@ -152,3 +152,16 @@ Paleta escura aprovada:
 - vermelho Neves preservado como identidade.
 
 Direção visual: grafite/carvão quente, levemente amarronzado, confortável; evitar preto puro, cinza frio dominante e azul-marinho dominante. O Dark Mode exige auditoria de cores fixas e variantes semânticas, não mera inversão de cores.
+
+
+## 2026-09-29 — correção de continuidade: Bloco 11 foi integrado
+
+Entradas históricas deste arquivo registram corretamente que o sub-bloco 11.3 esteve por um período **NÃO INTEGRADO**. Esse estado foi posteriormente superado.
+
+Estado correto posterior:
+- Elias autorizou a integração dos sub-blocos 11.3–11.7;
+- PR #67 (`feat/android-11-performance-completion` → `fix/audit-device-id`) foi MERGED em 28/09/2026;
+- PR temporário #68 foi usado somente para validar por CI o HEAD integrado e foi fechado sem merge;
+- a cadeia Android 12+ foi construída depois desse fechamento integrado.
+
+Regra de leitura: marcações “NÃO INTEGRADO” de 11.3 em seções anteriores são históricas e não devem ser usadas como estado operacional atual.

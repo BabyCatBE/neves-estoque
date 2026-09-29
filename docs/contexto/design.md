@@ -87,38 +87,42 @@ Padrões atuais:
 
 ## Android
 
-### Tema atual
+### Tema claro atual
 
 `NevesTheme.kt` usa Material 3 com esquema claro:
 
 - `primary`: `#B91C1C`;
 - `onPrimary`: branco;
-- `primaryContainer`: `#FFE4E4`;
-- `onPrimaryContainer`: `#5C0000`;
+- `primaryContainer`: `#FEE2E2`;
+- `onPrimaryContainer`: `#991B1B`;
+- `secondary`: `#52525B`;
+- `secondaryContainer`: `#E4E4E7`;
 - `background`: `#F7F7F8`;
 - `onBackground`: `#18181B`;
 - `surface`: branco;
 - `onSurface`: `#18181B`;
 - `surfaceVariant`: `#F1F1F3`;
-- `onSurfaceVariant`: `#5F5F66`;
+- `onSurfaceVariant`: `#52525B`;
+- `outline`: `#71717A`;
+- `outlineVariant`: `#D4D4D8`;
 - `error`: `#B3261E`.
 
-Não existe tipografia customizada em arquivo próprio no estado atual; o app usa a tipografia padrão do Material 3 com pesos ajustados localmente.
+A tipografia parte de `Typography()` do Material 3 e reforça peso em `titleLarge`, `titleMedium` e `labelLarge`. Shapes compartilhados variam de 6 dp a 24 dp.
 
 ### Home Android
 
-`HomeScreen.kt` estabelece padrões atuais:
+`HomeScreen.kt` estabelece os padrões atuais:
 
-- `Scaffold` com fundo do tema;
-- header em `Surface` com elevação;
-- marca circular vermelha com `N`;
-- título `Controle de Estoque`, usuário/role e ações Alertas/Sair;
+- `Scaffold` com `MaterialTheme.colorScheme.background`;
+- header escuro `NevesColors.Header = #09090B`, com logo horizontal oficial da Panificadora Neves;
+- identidade textual `NEVES • ESTOQUE` + `Neves Estoque`;
+- usuário/role abaixo da identidade e ações Alertas/Sair à direita;
+- linha vermelha inferior com detalhes de identidade;
 - grid fixo de 2 colunas;
-- padding de conteúdo 16 dp;
-- espaçamento do grid 14 dp;
-- cards com raio 22 dp, elevação 2 dp e proporção aproximada 1.08;
-- marca do módulo em círculo `primaryContainer` de 56 dp;
-- versão Android/Sistema no rodapé;
+- padding de conteúdo 16 dp e espaçamento 14 dp;
+- módulos em `NevesContentCard`, com altura mínima 148 dp e faixa vermelha lateral aprovada;
+- ícone do módulo em superfície `primaryContainer` de 48 dp;
+- Configurações e versão Android/Sistema no rodapé;
 - Voltar na Home abre confirmação para sair.
 
 ### Alertas

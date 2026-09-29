@@ -1,84 +1,79 @@
 # Estado operacional — Neves Estoque
 
-> Atualizado em 28/09/2026. Este arquivo é operacional e deve mudar com frequência.
+> Atualizado em 29/09/2026. Este arquivo é operacional e deve refletir o trabalho vigente; detalhes históricos ficam nos checkpoints do Contexto Mestre e em `memory.md`.
 
 ## Fase atual
 
-`IMPLEMENTAÇÃO INCREMENTAL / TESTES`
+`IMPLEMENTAÇÃO INCREMENTAL / TESTES / PR EMPILHADO AINDA NÃO INTEGRADO À LINHA PRINCIPAL`
 
-## Último ponto funcional integrado e comprovado
+## Último estado seguro atual
 
-- branch operacional: `fix/audit-device-id`;
-- último HEAD funcional integrado: `10ec3abfc76185fa75afdc47a3b1cdac8d676433`;
-- Web: `0.26.0`;
-- Android: `0.21.0-alpha01` (versionCode 21);
-- Android CI funcional #62: `SUCCESS`;
-- sub-blocos 11.1 e 11.2: concluídos;
-- testes Offline, performance e aparelho: `A VERIFICAR`.
+- linha de trabalho: `feat/android-17-product-maintenance-ux`;
+- PR #75: DRAFT / OPEN / NÃO INTEGRADO; base `feat/android-launcher-icon`;
+- HEAD atual: `85ef0f11c7eda95a6b12eafe325eaec4328dfc72` — somente documentação de consolidação;
+- último commit funcional: `e2b980dc4d412a91e528a88efcdd75898eb65f35`;
+- Web/System: `0.26.0`;
+- Android: `0.33.0-alpha01` / versionCode 33;
+- Android CI #118: SUCCESS no último commit funcional;
+- Android CI #119: SUCCESS no HEAD documental;
+- nenhuma alteração de Web, Supabase, migrations ou dados nos refinamentos Android 31–33.
 
-## Branch operacional após a implantação documental
+## O que já está comprovado em aparelho
 
-A branch `fix/audit-device-id` avançou após o ponto funcional seguro apenas por documentação. A linhagem documental inclui a criação/manutenção dos seis arquivos em `docs/contexto/` e a atualização de `README.md` e `android/README.md`.
+- Android 30: visual e fluidez dos cards aprovados.
+- Android 31: Elias informou que os fluxos exercitados de abertura/fluidez e operação de Conferência/Entrada funcionaram corretamente.
+- Android 32: correção da busca de Produto na Nova Entrada, mantendo campo e sugestões acima do teclado, **APROVADA EM APARELHO**.
+- Android 33: calendário visual e formato `DD/MM/AAAA` ainda **A VERIFICAR EM APARELHO**.
 
-Como este próprio arquivo faz parte dessa linhagem, o SHA atual da branch deve ser consultado diretamente no GitHub; não é duplicado aqui para evitar uma referência que se torna obsoleta a cada atualização de `task.md`.
+## Trabalho vigente e próximo bloco
 
-Nenhum código funcional, migration ou dado foi alterado por essa implantação documental.
+1. instalar/testar o APK 33 e validar o seletor de calendário;
+2. corrigir somente achados reais, se houver;
+3. iniciar o bloco de **Modo Escuro Android**, já APROVADO e ainda NÃO IMPLEMENTADO;
+4. preservar o tema claro atual;
+5. Configurações deve oferecer seletor manual Claro/Escuro, com troca imediata e persistência local por aparelho.
 
-## Trabalho atual posterior ao ponto seguro — 11.3
+Paleta Dark aprovada:
+- `#181614` background;
+- `#211E1B` cards/surface;
+- `#2A2622` secondary surface;
+- `#302B27` elevated;
+- `#F4F1ED` texto principal;
+- `#B8B0A7` texto secundário;
+- vermelho Neves como destaque.
 
-O **SUB-BLOCO 11.3 — Integridade das leituras históricas e paginação** foi implementado e auditado em branch isolada, mas **ainda NÃO está integrado** na branch operacional.
+## Cadeia de PRs Android
 
-- branch isolada: `feat/android-11-3-history-pagination`;
-- HEAD: `9aa118c16e5f6f91d1a0bd6482b5f5e892792c29`;
-- estado: `IMPLEMENTADO / CI APROVADA / AUDITORIA INDEPENDENTE APROVADA`;
-- CI Web final: run `36473536301` — SUCCESS;
-- Android CI final: run `36472525419` — SUCCESS;
-- Supabase: sem alteração e sem migration nova;
-- testes manuais Web/Android: `A VERIFICAR`.
+A linha atual é empilhada e ainda não foi integrada à linha principal:
 
-### O que o 11.3 fez
+- PR #69 — Bloco 12 / release preparation;
+- PR #70 — Bloco 13 / production readiness;
+- PR #71 — Android 14 / UX;
+- PR #72 — Android 15 / in-app updater;
+- PR #73 — Android 16 / release automation;
+- PR #74 — launcher icon;
+- PR #75 — manutenção de Produto, cards e refinamentos Android 31–33.
 
-- corrigiu risco de truncamento silencioso de leituras históricas em Compras;
-- Web e Android passaram, nessa branch isolada, a usar paginação por cursor/chave primária `id`;
-- leitura termina somente quando chega página vazia;
-- falhas intermediárias não devolvem histórico parcial;
-- regra de negócio de Compras foi preservada;
-- Relatórios não foram alterados nesse sub-bloco e permanecem como ponto de atenção separado.
+Todos permanecem OPEN/DRAFT. Não fechar, fundir ou rebasear silenciosamente.
 
-## Divergência de branches após a implantação documental
+## Correção de continuidade sobre o Bloco 11
 
-O mini-checkpoint 11.3 foi criado quando `fix/audit-device-id` ainda estava em `10ec3ab...` e registrou que um fast-forward seria possível enquanto isso permanecesse verdadeiro.
+O estado antigo que dizia que 11.3 estava “NÃO INTEGRADO” ficou obsoleto.
 
-Depois disso, a implantação dos arquivos de contexto avançou a branch operacional para `a7478baa...` com commits exclusivamente documentais. Portanto:
+- Elias autorizou a integração dos sub-blocos 11.3–11.7;
+- PR #67 foi MERGED em `fix/audit-device-id` em 28/09/2026;
+- PR temporário #68 validou o HEAD integrado por CI e foi fechado sem merge;
+- portanto o Bloco 11 funcional foi integrado antes da cadeia dos Blocos 12+.
 
-- a hipótese de fast-forward direto do 11.3 **não vale mais**;
-- não reescrever histórico nem forçar branch;
-- preservar tanto os commits documentais quanto os três commits funcionais do 11.3;
-- o método exato de integração deve ser verificado no momento da integração;
-- **não integrar o 11.3 sem autorização de Elias**.
-
-## Próximo passo
-
-1. aguardar autorização de Elias para integrar o 11.3 na branch operacional;
-2. no momento da integração, reconciliar as duas linhas de commits sem perder `docs/contexto/` nem o trabalho funcional do 11.3;
-3. rodar novamente as CIs aplicáveis na branch operacional;
-4. só então decidir conscientemente o tratamento do bug latente de paginação de Relatórios e o próximo sub-bloco do Bloco 11.
+Referências antigas abaixo devem ser lidas como histórico do momento em que foram escritas, não como estado atual.
 
 ## Pendências conhecidas
 
-- **A DEFINIR:** comportamento das pendências Offline ao trocar de usuário no mesmo aparelho;
-- **BUG confirmado Web:** Conferências na Lixeira Web ainda não filtram `permanently_deleted_at`; Android já filtra;
-- paginação de Relatórios: problema latente identificado no trabalho do 11.3, fora do escopo daquele sub-bloco; precisa de decisão/execução posterior;
-- testes funcionais Android em aparelho: `A VERIFICAR`;
-- teste manual Offline agrupado: `A VERIFICAR`;
-- preparação/atualização do APK pertence ao Bloco 12, não ao Bloco 11.
-
-## Ordem macro aprovada
-
-1. concluir Bloco 11 de 13;
-2. Bloco 12 de 13 — atualização/distribuição do APK + acabamentos finais;
-3. Bloco 13 de 13 — fechamento para produção e bateria final;
-4. somente após validação completa e confirmação, realizar transição para dados reais/go-live.
+- Android 33 calendário visual: `A VERIFICAR EM APARELHO`;
+- Dark Mode: `APROVADO / NÃO IMPLEMENTADO`;
+- comportamento das pendências Offline ao trocar de usuário no mesmo aparelho: `A DEFINIR`;
+- PRs empilhados #69–#75 ainda não integrados à linha principal;
+- CI aprovada não substitui teste funcional em aparelho.
 
 ## Critério para atualizar este arquivo
 
