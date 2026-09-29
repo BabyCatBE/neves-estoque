@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:insetLeft="10%"
-    android:insetRight="10%"
-    android:insetTop="11.041667%"
-    android:insetBottom="11.041667%">
-    <bitmap android:src="@drawable/neves_brand_icon" android:gravity="fill" android:filter="true" />
+    android:insetLeft="16%"
+    android:insetRight="16%"
+    android:insetTop="16%"
+    android:insetBottom="16%">
+    <bitmap
+        android:src="@drawable/neves_launcher_icon"
+        android:gravity="fill"
+        android:filter="true" />
 </inset>
