@@ -4,6 +4,7 @@ import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.offline.ConnectivityMonitor
 import com.babycatbe.nevesestoque.data.offline.OfflineStore
 import com.babycatbe.nevesestoque.data.offline.isNetworkFailure
+import com.babycatbe.nevesestoque.ui.load.SharedSnapshotLoads
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
@@ -34,6 +35,13 @@ class AuthRepository(private val client: SupabaseClient?) {
     private var failureStatus: AuthStatus? = null
     private var bootstrappedAuthUserId: String? = null
 
+    /**
+     * Usuário aberto pelo último acesso validado neste aparelho, ainda sem a confirmação online desta
+     * abertura. Enquanto estiver preenchido, a sessão desse usuário é validada em segundo plano, sem a
+     * tela bloqueante "Verificando acesso".
+     */
+    private var provisionalAuthUserId: String? = null
+
     fun start(scope: CoroutineScope) {
         val activeClient = client ?: return
         // Ao reconectar, refaz a validação online sem voltar para a tela de carregamento.
@@ -45,6 +53,9 @@ class AuthRepository(private val client: SupabaseClient?) {
             }
         }
         scope.launch {
+            // Abertura imediata: se este aparelho já tem um acesso validado online, a interface abre
+            // direto e a validação acontece em segundo plano quando a sessão for carregada.
+            openFromLocalAccessIfKnown()
             activeClient.auth.sessionStatus.collectLatest { sessionStatus ->
                 when (sessionStatus) {
                     SessionStatus.Initializing -> if (_uiState.value.status != AuthStatus.Ready) {
@@ -56,10 +67,19 @@ class AuthRepository(private val client: SupabaseClient?) {
                             bootstrappedAuthUserId == authUserId &&
                             _uiState.value.status == AuthStatus.Ready
                         ) return@collectLatest
+                        if (authUserId != null &&
+                            provisionalAuthUserId == authUserId &&
+                            _uiState.value.status == AuthStatus.Ready
+                        ) {
+                            verifyInBackground(sessionStatus.session)
+                            return@collectLatest
+                        }
+                        provisionalAuthUserId = null
                         bootstrapAccess(sessionStatus.session)
                     }
                     is SessionStatus.NotAuthenticated -> {
                         bootstrappedAuthUserId = null
+                        provisionalAuthUserId = null
                         _uiState.value = AuthUiState(
                             status = failureStatus ?: AuthStatus.SignedOut,
                             errorMessage = _uiState.value.errorMessage,
@@ -67,7 +87,18 @@ class AuthRepository(private val client: SupabaseClient?) {
                     }
                     is SessionStatus.RefreshFailure -> {
                         // Falha ao renovar a sessão costuma ser falta de internet: não desloga.
-                        if (_uiState.value.status == AuthStatus.Ready) return@collectLatest
+                        if (_uiState.value.status == AuthStatus.Ready) {
+                            if (_uiState.value.verifyingInBackground) {
+                                // Aberto pelo acesso local e sem conseguir renovar a sessão agora:
+                                // passa ao modo sem internet. A validação é refeita quando a sessão
+                                // voltar a ser autenticada ou quando a conexão retornar.
+                                _uiState.value = _uiState.value.copy(
+                                    offlineMode = true,
+                                    verifyingInBackground = false,
+                                )
+                            }
+                            return@collectLatest
+                        }
                         val authUserId = activeClient.auth.currentSessionOrNull()?.user?.id
                         if (authUserId != null && enterOfflineIfKnown(authUserId)) return@collectLatest
                         _uiState.value = _uiState.value.copy(
@@ -121,9 +152,11 @@ class AuthRepository(private val client: SupabaseClient?) {
     suspend fun signOut() {
         failureStatus = null
         bootstrappedAuthUserId = null
+        provisionalAuthUserId = null
         DeviceIdentityStore.clearRegisteredDeviceId()
         OfflineAccessStore.clear()
         OfflineStore.clearCache()
+        SharedSnapshotLoads.clearAll()
         val activeClient = client ?: return setConfigMissing()
         runCatching { activeClient.auth.signOut() }
         _uiState.value = AuthUiState(status = AuthStatus.SignedOut)
@@ -156,6 +189,55 @@ class AuthRepository(private val client: SupabaseClient?) {
         }
     }
 
+    /**
+     * Abre a interface pelo último acesso validado online neste aparelho, sem esperar a rede.
+     * Não roda depois de login, falha ou bloqueio (só a partir do estado inicial de carregamento).
+     */
+    private suspend fun openFromLocalAccessIfKnown() {
+        if (_uiState.value.status != AuthStatus.Loading) return
+        val record = OfflineAccessStore.load()
+        if (!canOpenFromLocalAccess(record, DeviceIdentityStore.getOrCreateDeviceKey())) return
+        if (_uiState.value.status != AuthStatus.Loading) return
+        val known = record ?: return
+        provisionalAuthUserId = known.authUserId
+        _uiState.value = known.toReadyState(offlineMode = false, verifyingInBackground = true)
+    }
+
+    /**
+     * Confirma online o acesso de quem já está usando o app aberto pelo acesso local.
+     * Mesmas regras do bootstrap: recusa do servidor bloqueia e apaga o acesso local; falta de
+     * internet mantém o modo sem internet sem deslogar.
+     */
+    private suspend fun verifyInBackground(session: UserSession) {
+        val activeClient = client ?: return setConfigMissing()
+        val authUserId = session.user?.id ?: return blockAccess(
+            AuthStatus.Unauthorized,
+            "Não foi possível identificar o usuário autenticado.",
+        )
+        if (!_uiState.value.verifyingInBackground) {
+            _uiState.value = _uiState.value.copy(verifyingInBackground = true)
+        }
+        try {
+            validateOnline(activeClient, authUserId)
+        } catch (error: Throwable) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            if (error is AccessRefused) return blockAccess(error.status, error.message.orEmpty())
+            if (isNetworkFailure(error)) {
+                // Mesmo tratamento do bootstrap sem internet: segue pela cópia deste aparelho.
+                provisionalAuthUserId = null
+                if (!enterOfflineIfKnown(authUserId)) {
+                    _uiState.value = AuthUiState(
+                        status = AuthStatus.Error,
+                        errorMessage = "Sem internet. Este aparelho precisa de uma conexão para o primeiro acesso. " +
+                            "Conecte-se e abra o app novamente.",
+                    )
+                }
+                return
+            }
+            blockAccess(AuthStatus.Unauthorized, "Não foi possível validar este acesso no servidor.")
+        }
+    }
+
     /** Revalida em segundo plano após reconectar, mantendo a navegação atual. */
     private suspend fun revalidateSilently(session: UserSession) {
         val activeClient = client ?: return
@@ -175,16 +257,8 @@ class AuthRepository(private val client: SupabaseClient?) {
         if (record.deviceKey != DeviceIdentityStore.getOrCreateDeviceKey()) return false
         failureStatus = null
         bootstrappedAuthUserId = authUserId
-        _uiState.value = AuthUiState(
-            status = AuthStatus.Ready,
-            appUserId = record.appUserId,
-            roleName = record.roleName,
-            deviceId = record.deviceId,
-            displayName = record.displayName,
-            username = record.username,
-            authMethod = record.authMethod,
-            offlineMode = true,
-        )
+        provisionalAuthUserId = null
+        _uiState.value = record.toReadyState(offlineMode = true, verifyingInBackground = false)
         return true
     }
 
@@ -230,6 +304,7 @@ class AuthRepository(private val client: SupabaseClient?) {
             )
             failureStatus = null
             bootstrappedAuthUserId = authUserId
+            provisionalAuthUserId = null
             _uiState.value = AuthUiState(
                 status = AuthStatus.Ready,
                 appUserId = access.appUserId,
@@ -245,9 +320,11 @@ class AuthRepository(private val client: SupabaseClient?) {
     private suspend fun blockAccess(status: AuthStatus, message: String) {
         failureStatus = status
         bootstrappedAuthUserId = null
+        provisionalAuthUserId = null
         DeviceIdentityStore.clearRegisteredDeviceId()
         OfflineAccessStore.clear()
         OfflineStore.clearCache()
+        SharedSnapshotLoads.clearAll()
         _uiState.value = AuthUiState(status = status, errorMessage = message)
         runCatching { client?.auth?.signOut() }
     }

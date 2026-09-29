@@ -41,12 +41,8 @@ fun validateCategoryConferenceDraft(
     effectiveAtBuilder: (String) -> String = ::buildCategoryConferenceEffectiveAt,
 ): ValidatedCategoryConferenceDraft {
     val dateError = categoryConferenceDateError(date)
-    val cleanResponsible = responsible.trim().replace(Regex("\\s+"), " ")
-    val responsibleError = when {
-        cleanResponsible.isEmpty() -> "Informe o responsável pela contagem física."
-        cleanResponsible.length > 160 -> "O responsável pode ter no máximo 160 caracteres."
-        else -> null
-    }
+    val cleanResponsible = cleanConferenceResponsible(responsible)
+    val responsibleError = conferenceResponsibleError(responsible)
     val observationError = if (observation.length > 2000) {
         "A observação deve ter no máximo 2.000 caracteres."
     } else {
@@ -96,6 +92,18 @@ fun validateCategoryConferenceEdit(
         quantities = quantities,
         effectiveAtBuilder = { buildEditedConferenceEffectiveAt(it, details.effectiveAt) },
     )
+
+fun cleanConferenceResponsible(value: String): String = value.trim().replace(Regex("\\s+"), " ")
+
+/** Mesma regra usada ao salvar; também valida o campo ao avançar com Enter/Próximo. */
+fun conferenceResponsibleError(value: String): String? {
+    val clean = cleanConferenceResponsible(value)
+    return when {
+        clean.isEmpty() -> "Informe o responsável pela contagem física."
+        clean.length > 160 -> "O responsável pode ter no máximo 160 caracteres."
+        else -> null
+    }
+}
 
 fun categoryConferenceDateError(value: String, today: LocalDate = LocalDate.now()): String? {
     val date = try {

@@ -2,8 +2,18 @@ package com.babycatbe.nevesestoque.app
 
 import com.babycatbe.nevesestoque.ui.motion.NevesMotion
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import com.babycatbe.nevesestoque.feature.products.CatalogWarmLoad
+import com.babycatbe.nevesestoque.feature.stock.StockWarmLoad
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.babycatbe.nevesestoque.data.offline.OfflineBanner
@@ -108,12 +118,20 @@ private const val NOTICE_KEY = "catalog-notice"
 fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
     val navController = rememberNavController()
 
+    // Pré-carregamento enxuto: somente Estoque Atual e Produtos, as telas mais abertas.
+    // Primeiro a cópia local do aparelho, depois a leitura oficial em segundo plano.
+    LaunchedEffect(authState.appUserId) {
+        StockWarmLoad.shared.warm()
+        CatalogWarmLoad.shared.warm()
+    }
+
     Column(Modifier.fillMaxSize()) {
     OfflineBanner(offlineMode = authState.offlineMode)
+    Box(Modifier.weight(1f)) {
     NavHost(
         navController = navController,
         startDestination = HOME_ROUTE,
-        modifier = Modifier.weight(1f),
+        modifier = Modifier.fillMaxSize(),
         enterTransition = { NevesMotion.navigationEnter },
         exitTransition = { NevesMotion.navigationExit },
         popEnterTransition = { NevesMotion.navigationEnter },
@@ -782,6 +800,16 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             )
         }
     }
+    if (authState.verifyingInBackground) {
+        // Indicador discreto: o app já está utilizável enquanto o acesso é confirmado online.
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .align(Alignment.TopCenter)
+                .semantics { contentDescription = "Confirmando acesso em segundo plano" },
+        )
+    }
+    }
     }
 }
-

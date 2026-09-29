@@ -4,6 +4,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.async
 import com.babycatbe.nevesestoque.data.offline.OfflineStore
 import com.babycatbe.nevesestoque.data.offline.offlineCachedList
+import com.babycatbe.nevesestoque.data.offline.readCachedList
 import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
@@ -41,7 +42,6 @@ class ProductsRepository {
                 ) { attachRegisteredDevice() }
                 .decodeList<ProductCategoryRow>()
             }
-                .filter { it.deletedAt == null }
         }
 
         val productRowsAsync = async {
@@ -55,7 +55,6 @@ class ProductsRepository {
                 ) { attachRegisteredDevice() }
                 .decodeList<ProductRow>()
             }
-                .filter { it.deletedAt == null }
         }
 
         val stocksAsync = async {
@@ -69,30 +68,24 @@ class ProductsRepository {
                 ) { attachRegisteredDevice() }
                 .decodeList<ProductStockRow>()
             }
-                .associateBy { it.productId }
         }
 
-        val categories = categoriesAsync.await()
-        val productRows = productRowsAsync.await()
-        val stocks = stocksAsync.await()
-
-        ProductCatalogData(
-            categories = categories,
-            products = productRows.map { row ->
-                val stock = stocks[row.id]
-                ProductListItem(
-                    id = row.id,
-                    name = row.name,
-                    categoryId = row.categoryId,
-                    unit = row.unit,
-                    sortOrder = row.sortOrder,
-                    createdAt = row.createdAt,
-                    currentQuantity = stock?.currentQuantity,
-                    currentPrice = stock?.currentPrice,
-                    stockRequiresConference = stock?.stockRequiresConference ?: false,
-                )
-            },
+        assembleProductCatalog(
+            categories = categoriesAsync.await(),
+            productRows = productRowsAsync.await(),
+            stocks = stocksAsync.await(),
         )
+    }
+
+    /**
+     * Catálogo montado somente da cópia local deste aparelho (sem rede), para a lista de Produtos
+     * abrir na hora enquanto a leitura oficial atualiza em segundo plano. Null quando falta alguma parte.
+     */
+    suspend fun loadCatalogSnapshot(): ProductCatalogData? {
+        val categories = readCachedList<ProductCategoryRow>("catalog-categories") ?: return null
+        val productRows = readCachedList<ProductRow>("catalog-products") ?: return null
+        val stocks = readCachedList<ProductStockRow>("catalog-stock_current") ?: return null
+        return assembleProductCatalog(categories, productRows, stocks)
     }
 
     suspend fun loadCategories(): List<CategoryListItem> {
@@ -556,4 +549,29 @@ class ProductsRepository {
 
     private fun epoch(value: String): Long =
         runCatching { java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli() }.getOrDefault(0L)
+}
+
+internal fun assembleProductCatalog(
+    categories: List<ProductCategoryRow>,
+    productRows: List<ProductRow>,
+    stocks: List<ProductStockRow>,
+): ProductCatalogData {
+    val stockByProduct = stocks.associateBy { it.productId }
+    return ProductCatalogData(
+        categories = categories.filter { it.deletedAt == null },
+        products = productRows.filter { it.deletedAt == null }.map { row ->
+            val stock = stockByProduct[row.id]
+            ProductListItem(
+                id = row.id,
+                name = row.name,
+                categoryId = row.categoryId,
+                unit = row.unit,
+                sortOrder = row.sortOrder,
+                createdAt = row.createdAt,
+                currentQuantity = stock?.currentQuantity,
+                currentPrice = stock?.currentPrice,
+                stockRequiresConference = stock?.stockRequiresConference ?: false,
+            )
+        },
+    )
 }

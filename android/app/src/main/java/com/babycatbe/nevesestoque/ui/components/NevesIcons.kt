@@ -40,4 +40,6 @@ object NevesIcons {
     val Error = R.drawable.ic_neves_error
     val Check = R.drawable.ic_neves_check
     val Settings = R.drawable.ic_neves_settings
+    val Backspace = R.drawable.ic_neves_backspace
+    val KeyboardHide = R.drawable.ic_neves_keyboard_hide
 }

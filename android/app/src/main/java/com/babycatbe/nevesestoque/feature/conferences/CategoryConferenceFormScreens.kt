@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -32,7 +33,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import com.babycatbe.nevesestoque.ui.input.NevesNumericField
+import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
+import com.babycatbe.nevesestoque.ui.input.rememberKeepVisibleOnFocus
+import com.babycatbe.nevesestoque.ui.input.rememberNumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.LocalDate
@@ -94,11 +102,26 @@ private fun CategoryConferenceFormScreen(
     var initialized by remember { mutableStateOf(false) }
     var leaveOpen by rememberSaveable { mutableStateOf(false) }
 
+    // Fluxo de preenchimento: Data → Responsável → quantidades (teclado do app) → Observação.
+    val keypad = rememberNumericKeypadState()
+    val flow = rememberConferenceFocusFlow(setup?.products.orEmpty().map { it.id })
+    var localErrors by remember { mutableStateOf(CategoryConferenceFormErrors()) }
+    var initialFocusDone by rememberSaveable { mutableStateOf(false) }
+
     LaunchedEffect(setup?.categoryId) {
         if (!initialized && setup != null) {
             quantities = setup.products.associate { it.id to "" }
             initialized = true
         }
+    }
+    LaunchedEffect(setup?.categoryId) {
+        if (setup != null && !initialFocusDone) {
+            initialFocusDone = flow.date.requestFocusSafely()
+        }
+    }
+    // Erro vindo do salvamento: leva o foco ao primeiro campo com problema.
+    LaunchedEffect(state.fieldErrors) {
+        if (state.fieldErrors.hasErrors) flow.focusFirstError(state.fieldErrors)
     }
 
     val dirty = responsible.isNotBlank() || observation.isNotBlank() ||
@@ -114,7 +137,8 @@ private fun CategoryConferenceFormScreen(
                 title = "Nova Conferência",
                 onBack = { if (dirty) leaveOpen = true else onBack() },
             )
-        }
+        },
+        bottomBar = { NevesNumericKeypad(keypad) },
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -153,30 +177,55 @@ private fun CategoryConferenceFormScreen(
 
                 NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        val dateError = localErrors.date ?: state.fieldErrors.date
                         OutlinedTextField(
                             value = date,
-                            onValueChange = { date = it; onClearError() },
+                            onValueChange = {
+                                date = it
+                                localErrors = localErrors.copy(date = null)
+                                onClearError()
+                            },
                             label = { Text("Data *") },
                             placeholder = { Text("AAAA-MM-DD") },
-                            isError = state.fieldErrors.date != null,
-                            supportingText = state.fieldErrors.date?.let { message -> { Text(message) } },
+                            isError = dateError != null,
+                            supportingText = dateError?.let { message -> { Text(message) } },
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Next,
+                            ),
+                            keyboardActions = KeyboardActions(onNext = {
+                                val error = categoryConferenceDateError(date)
+                                if (error != null) localErrors = localErrors.copy(date = error)
+                                else flow.responsible.requestFocusSafely()
+                            }),
                             enabled = !busy,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
+                                .focusRequester(flow.date)
+                                .then(rememberKeepVisibleOnFocus()),
                         )
+                        val responsibleError = localErrors.responsible ?: state.fieldErrors.responsible
                         OutlinedTextField(
                             value = responsible,
                             onValueChange = {
                                 if (it.length <= 160) responsible = it
+                                localErrors = localErrors.copy(responsible = null)
                                 onClearError()
                             },
                             label = { Text("Responsável pela contagem física *") },
-                            isError = state.fieldErrors.responsible != null,
-                            supportingText = state.fieldErrors.responsible?.let { message -> { Text(message) } },
+                            isError = responsibleError != null,
+                            supportingText = responsibleError?.let { message -> { Text(message) } },
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = {
+                                val error = conferenceResponsibleError(responsible)
+                                if (error != null) localErrors = localErrors.copy(responsible = error)
+                                else flow.afterResponsible()
+                            }),
                             enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
+                                .focusRequester(flow.responsible)
+                                .then(rememberKeepVisibleOnFocus()),
                         )
                     }
                 }
@@ -205,20 +254,36 @@ private fun CategoryConferenceFormScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            OutlinedTextField(
+                            val isLast = index == current.products.lastIndex
+                            NevesNumericField(
                                 value = quantities[product.id].orEmpty(),
                                 onValueChange = { value ->
                                     quantities = quantities + (product.id to value)
+                                    localErrors = localErrors.copy(quantities = localErrors.quantities - product.id)
                                     onClearError()
                                 },
-                                label = { Text("Quantidade *") },
-                                placeholder = { Text("Zero é permitido") },
-                                isError = state.fieldErrors.quantities[product.id] != null,
-                                supportingText = state.fieldErrors.quantities[product.id]?.let { message -> { Text(message) } },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
+                                keypad = keypad,
+                                label = "Quantidade *",
+                                placeholder = "Zero é permitido",
+                                errorMessage = localErrors.quantities[product.id]
+                                    ?: state.fieldErrors.quantities[product.id],
+                                onConfirm = {
+                                    val error = parseConferenceQuantity(
+                                        quantities[product.id].orEmpty(),
+                                        "Quantidade de " + product.name,
+                                    ).second
+                                    if (error != null) {
+                                        localErrors = localErrors.copy(quantities = localErrors.quantities + (product.id to error))
+                                    } else {
+                                        flow.afterQuantity(product.id)
+                                    }
+                                },
+                                confirmLabel = if (isLast) "Concluir" else "Próximo",
+                                focusRequester = flow.quantity(product.id),
                                 enabled = !busy,
-                                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                                stepper = true,
+                                stepSubject = product.name,
+                                modifier = Modifier.padding(top = 10.dp),
                             )
                         }
                     }
@@ -238,7 +303,9 @@ private fun CategoryConferenceFormScreen(
                             isError = state.fieldErrors.observation != null,
                             supportingText = state.fieldErrors.observation?.let { message -> { Text(message) } },
                             enabled = !busy,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
+                                .focusRequester(flow.observation)
+                                .then(rememberKeepVisibleOnFocus()),
                         )
                     }
                 }
@@ -364,6 +431,14 @@ private fun EditConferenceScreen(
     var initialized by remember { mutableStateOf(false) }
     var leaveOpen by rememberSaveable { mutableStateOf(false) }
 
+    // Mesmo fluxo da Nova Conferência, sem foco automático ao abrir (é uma correção pontual).
+    val keypad = rememberNumericKeypadState()
+    val flow = rememberConferenceFocusFlow(details?.items.orEmpty().map { it.productId })
+    var localErrors by remember { mutableStateOf(CategoryConferenceFormErrors()) }
+    LaunchedEffect(state.fieldErrors) {
+        if (state.fieldErrors.hasErrors) flow.focusFirstError(state.fieldErrors)
+    }
+
     LaunchedEffect(details?.id) {
         if (!initialized && details != null) {
             date = conferenceDateInput(details.effectiveAt)
@@ -393,7 +468,8 @@ private fun EditConferenceScreen(
                 title = "Corrigir Conferência",
                 onBack = { if (dirty) leaveOpen = true else onBack() },
             )
-        }
+        },
+        bottomBar = { NevesNumericKeypad(keypad) },
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -426,27 +502,53 @@ private fun EditConferenceScreen(
 
                 NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        val dateError = localErrors.date ?: state.fieldErrors.date
                         OutlinedTextField(
                             value = date,
-                            onValueChange = { date = it },
+                            onValueChange = {
+                                date = it
+                                localErrors = localErrors.copy(date = null)
+                            },
                             label = { Text("Data *") },
                             placeholder = { Text("AAAA-MM-DD") },
-                            isError = state.fieldErrors.date != null,
-                            supportingText = state.fieldErrors.date?.let { message -> { Text(message) } },
+                            isError = dateError != null,
+                            supportingText = dateError?.let { message -> { Text(message) } },
                             enabled = !busy,
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Next,
+                            ),
+                            keyboardActions = KeyboardActions(onNext = {
+                                val error = categoryConferenceDateError(date)
+                                if (error != null) localErrors = localErrors.copy(date = error)
+                                else flow.responsible.requestFocusSafely()
+                            }),
+                            modifier = Modifier.fillMaxWidth()
+                                .focusRequester(flow.date)
+                                .then(rememberKeepVisibleOnFocus()),
                         )
+                        val responsibleError = localErrors.responsible ?: state.fieldErrors.responsible
                         OutlinedTextField(
                             value = responsible,
-                            onValueChange = { if (it.length <= 160) responsible = it },
+                            onValueChange = {
+                                if (it.length <= 160) responsible = it
+                                localErrors = localErrors.copy(responsible = null)
+                            },
                             label = { Text("Responsável pela contagem física *") },
-                            isError = state.fieldErrors.responsible != null,
-                            supportingText = state.fieldErrors.responsible?.let { message -> { Text(message) } },
+                            isError = responsibleError != null,
+                            supportingText = responsibleError?.let { message -> { Text(message) } },
                             enabled = !busy,
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = {
+                                val error = conferenceResponsibleError(responsible)
+                                if (error != null) localErrors = localErrors.copy(responsible = error)
+                                else flow.afterResponsible()
+                            }),
+                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
+                                .focusRequester(flow.responsible)
+                                .then(rememberKeepVisibleOnFocus()),
                         )
                     }
                 }
@@ -456,7 +558,7 @@ private fun EditConferenceScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
-                current.items.forEach { item ->
+                current.items.forEachIndexed { index, item ->
                     NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(item.productName, fontWeight = FontWeight.Bold)
@@ -465,18 +567,33 @@ private fun EditConferenceScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            OutlinedTextField(
+                            NevesNumericField(
                                 value = quantities[item.productId].orEmpty(),
                                 onValueChange = { value ->
                                     quantities = quantities + (item.productId to value)
+                                    localErrors = localErrors.copy(quantities = localErrors.quantities - item.productId)
                                 },
-                                label = { Text("Quantidade *") },
-                                isError = state.fieldErrors.quantities[item.productId] != null,
-                                supportingText = state.fieldErrors.quantities[item.productId]?.let { message -> { Text(message) } },
+                                keypad = keypad,
+                                label = "Quantidade *",
+                                errorMessage = localErrors.quantities[item.productId]
+                                    ?: state.fieldErrors.quantities[item.productId],
+                                onConfirm = {
+                                    val error = parseConferenceQuantity(
+                                        quantities[item.productId].orEmpty(),
+                                        "Quantidade de " + item.productName,
+                                    ).second
+                                    if (error != null) {
+                                        localErrors = localErrors.copy(quantities = localErrors.quantities + (item.productId to error))
+                                    } else {
+                                        flow.afterQuantity(item.productId)
+                                    }
+                                },
+                                confirmLabel = if (index == current.items.lastIndex) "Concluir" else "Próximo",
+                                focusRequester = flow.quantity(item.productId),
                                 enabled = !busy,
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                                stepper = true,
+                                stepSubject = item.productName,
+                                modifier = Modifier.padding(top = 10.dp),
                             )
                         }
                     }
@@ -489,7 +606,9 @@ private fun EditConferenceScreen(
                         label = { Text("Observação") },
                         minLines = 3,
                         enabled = !busy,
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                            .focusRequester(flow.observation)
+                            .then(rememberKeepVisibleOnFocus()),
                     )
                 }
 

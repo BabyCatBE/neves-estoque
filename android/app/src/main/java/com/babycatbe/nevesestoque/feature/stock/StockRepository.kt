@@ -3,6 +3,7 @@ package com.babycatbe.nevesestoque.feature.stock
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.async
 import com.babycatbe.nevesestoque.data.offline.offlineCachedList
+import com.babycatbe.nevesestoque.data.offline.readCachedList
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
 import io.github.jan.supabase.postgrest.from
@@ -14,18 +15,17 @@ class StockRepository {
             ?: error("Supabase não está configurado nesta build.")
 
         val categoriesAsync = async {
-            offlineCachedList<StockCategoryRow>("stock-categories") {
+            offlineCachedList<StockCategoryRow>(CATEGORIES_KEY) {
                 client.from("categories")
                 .select(Columns.list("id", "name", "sort_order", "deleted_at")) {
                     attachRegisteredDevice()
                 }
                 .decodeList<StockCategoryRow>()
             }
-                .filter { it.deletedAt == null }
         }
 
         val suppliersAsync = async {
-            offlineCachedList<StockSupplierRow>("stock-suppliers") {
+            offlineCachedList<StockSupplierRow>(SUPPLIERS_KEY) {
                 client.from("suppliers")
                 .select(Columns.list("id", "name")) {
                     attachRegisteredDevice()
@@ -35,7 +35,7 @@ class StockRepository {
         }
 
         val itemsAsync = async {
-            offlineCachedList<CurrentStockRow>("stock-stock_current") {
+            offlineCachedList<CurrentStockRow>(ITEMS_KEY) {
                 client.from("stock_current")
                 .select(
                     Columns.list(
@@ -55,17 +55,39 @@ class StockRepository {
                 }
                 .decodeList<CurrentStockRow>()
             }
-                .filter { it.productId.isNotBlank() && it.productName.isNotBlank() && it.unit.isNotBlank() }
         }
 
-        val categories = categoriesAsync.await()
-        val suppliers = suppliersAsync.await()
-        val items = itemsAsync.await()
-
-        CurrentStockData(
-            categories = categories,
-            suppliers = suppliers,
-            items = items,
+        assembleCurrentStock(
+            categories = categoriesAsync.await(),
+            suppliers = suppliersAsync.await(),
+            items = itemsAsync.await(),
         )
     }
+
+    /**
+     * Estoque Atual montado somente da cópia local deste aparelho (sem rede), para exibir na hora
+     * enquanto a leitura oficial atualiza em segundo plano. Null quando alguma parte não existe.
+     */
+    suspend fun loadCurrentStockSnapshot(): CurrentStockData? {
+        val categories = readCachedList<StockCategoryRow>(CATEGORIES_KEY) ?: return null
+        val suppliers = readCachedList<StockSupplierRow>(SUPPLIERS_KEY) ?: return null
+        val items = readCachedList<CurrentStockRow>(ITEMS_KEY) ?: return null
+        return assembleCurrentStock(categories, suppliers, items)
+    }
+
+    private companion object {
+        const val CATEGORIES_KEY = "stock-categories"
+        const val SUPPLIERS_KEY = "stock-suppliers"
+        const val ITEMS_KEY = "stock-stock_current"
+    }
 }
+
+internal fun assembleCurrentStock(
+    categories: List<StockCategoryRow>,
+    suppliers: List<StockSupplierRow>,
+    items: List<CurrentStockRow>,
+): CurrentStockData = CurrentStockData(
+    categories = categories.filter { it.deletedAt == null },
+    suppliers = suppliers,
+    items = items.filter { it.productId.isNotBlank() && it.productName.isNotBlank() && it.unit.isNotBlank() },
+)

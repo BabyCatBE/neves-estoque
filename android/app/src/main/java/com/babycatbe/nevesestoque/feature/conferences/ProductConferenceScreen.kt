@@ -38,9 +38,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import com.babycatbe.nevesestoque.ui.input.NevesNumericField
+import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
+import com.babycatbe.nevesestoque.ui.input.rememberKeepVisibleOnFocus
+import com.babycatbe.nevesestoque.ui.input.rememberNumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
@@ -276,10 +281,22 @@ private fun ProductConferenceScreen(
     val quantityFocus = remember { FocusRequester() }
     val observationFocus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val keypad = rememberNumericKeypadState()
     val busy = state.checking || state.saving
+    var localErrors by remember { mutableStateOf(ProductConferenceFormErrors()) }
 
+    // Fluxo rápido: Responsável → Quantidade (teclado do app) → Observação → Salvar.
     LaunchedEffect(state.loading) {
-        if (!state.loading && state.product != null) responsibleFocus.requestFocus()
+        if (!state.loading && state.product != null) responsibleFocus.requestFocusSafely()
+    }
+    // Erro ao salvar: volta o foco para o primeiro campo com problema.
+    LaunchedEffect(state.fieldErrors) {
+        if (state.fieldErrors.responsible != null) {
+            if (responsibleFocus.requestFocusSafely()) keyboard?.show()
+        } else if (state.fieldErrors.quantity != null) {
+            quantityFocus.requestFocusSafely()
+        }
     }
 
     Scaffold(
@@ -295,7 +312,8 @@ private fun ProductConferenceScreen(
                     )
                 }
             }
-        }
+        },
+        bottomBar = { NevesNumericKeypad(keypad) },
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -351,20 +369,29 @@ private fun ProductConferenceScreen(
                     }
                 }
 
+                val responsibleError = localErrors.responsible ?: state.fieldErrors.responsible
                 OutlinedTextField(
                     value = responsible,
-                    onValueChange = onResponsibleChange,
+                    onValueChange = {
+                        onResponsibleChange(it)
+                        localErrors = localErrors.copy(responsible = null)
+                    },
                     label = { Text("Responsável pela contagem física") },
                     singleLine = true,
                     enabled = !busy,
-                    isError = state.fieldErrors.responsible != null,
+                    isError = responsibleError != null,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { quantityFocus.requestFocus() }),
+                    keyboardActions = KeyboardActions(onNext = {
+                        val error = conferenceResponsibleError(responsible)
+                        if (error != null) localErrors = localErrors.copy(responsible = error)
+                        else quantityFocus.requestFocusSafely()
+                    }),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRequester(responsibleFocus),
+                        .focusRequester(responsibleFocus)
+                        .then(rememberKeepVisibleOnFocus()),
                 )
-                state.fieldErrors.responsible?.let { error ->
+                responsibleError?.let { error ->
                     Text(
                         error,
                         color = MaterialTheme.colorScheme.error,
@@ -372,30 +399,30 @@ private fun ProductConferenceScreen(
                     )
                 }
 
-                OutlinedTextField(
+                NevesNumericField(
                     value = quantity,
-                    onValueChange = onQuantityChange,
-                    label = { Text("Nova quantidade") },
-                    placeholder = { Text("0") },
-                    singleLine = true,
+                    onValueChange = {
+                        onQuantityChange(it)
+                        localErrors = localErrors.copy(quantity = null)
+                    },
+                    keypad = keypad,
+                    label = "Nova quantidade",
+                    placeholder = "0",
+                    errorMessage = localErrors.quantity ?: state.fieldErrors.quantity,
+                    onConfirm = {
+                        val error = parseConferenceQuantity(quantity, "Nova quantidade").second
+                        if (error != null) {
+                            localErrors = localErrors.copy(quantity = error)
+                        } else if (observationFocus.requestFocusSafely()) {
+                            keyboard?.show()
+                        }
+                    },
+                    confirmLabel = "Próximo",
+                    focusRequester = quantityFocus,
                     enabled = !busy,
-                    isError = state.fieldErrors.quantity != null,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Decimal,
-                        imeAction = ImeAction.Next,
-                    ),
-                    keyboardActions = KeyboardActions(onNext = { observationFocus.requestFocus() }),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(quantityFocus),
+                    stepper = true,
+                    stepSubject = product.name,
                 )
-                state.fieldErrors.quantity?.let { error ->
-                    Text(
-                        error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
 
                 OutlinedTextField(
                     value = observation,
@@ -407,7 +434,8 @@ private fun ProductConferenceScreen(
                     keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRequester(observationFocus),
+                        .focusRequester(observationFocus)
+                        .then(rememberKeepVisibleOnFocus()),
                 )
 
                 Text(

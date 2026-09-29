@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -39,7 +40,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import com.babycatbe.nevesestoque.ui.input.NevesNumericField
+import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
+import com.babycatbe.nevesestoque.ui.input.rememberKeepVisibleOnFocus
+import com.babycatbe.nevesestoque.ui.input.rememberNumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
@@ -58,6 +69,12 @@ private data class EntryItemFieldErrors(
     val quantity: String? = null,
     val unitPrice: String? = null,
 )
+
+/** Foco dos campos numéricos de uma linha da Entrada (Quantidade → Preço). */
+private class EntryLineFocus {
+    val quantity = FocusRequester()
+    val price = FocusRequester()
+}
 
 private data class EditEntryLineUi(
     val localId: String,
@@ -148,12 +165,57 @@ private fun NewEntryScreen(
     var missingPriceOpen by rememberSaveable { mutableStateOf(false) }
     var leaveOpen by rememberSaveable { mutableStateOf(false) }
 
+    // Fluxo de preenchimento: Fornecedor → Data → Produto → Quantidade → Preço → próximo Produto.
+    // Quantidade e Preço usam o teclado do app (sem −/+ na Entrada).
+    val keypad = rememberNumericKeypadState()
+    val keyboard = LocalSoftwareKeyboardController.current
+    val supplierFocus = remember { FocusRequester() }
+    val dateFocus = remember { FocusRequester() }
+    val productSearchFocus = remember { FocusRequester() }
+    val observationFocus = remember { FocusRequester() }
+    val lineFocus = remember { mutableMapOf<String, EntryLineFocus>() }
+    fun focusOf(localId: String): EntryLineFocus = lineFocus.getOrPut(localId) { EntryLineFocus() }
+    var focusQuantityOf by remember { mutableStateOf<String?>(null) }
+    var focusDatePending by remember { mutableStateOf(false) }
+    var initialFocusDone by rememberSaveable { mutableStateOf(false) }
+    val startedFromProduct = !initialProductId.isNullOrBlank()
+
+    fun focusText(requester: FocusRequester) {
+        if (requester.requestFocusSafely()) keyboard?.show()
+    }
+
+    fun focusAfterDate() {
+        val waiting = items.firstOrNull { it.quantity.isBlank() }
+        if (waiting != null) focusOf(waiting.localId).quantity.requestFocusSafely()
+        else focusText(productSearchFocus)
+    }
+
+    fun focusAfterPrice(localId: String) {
+        val index = items.indexOfFirst { it.localId == localId }
+        val waiting = items.drop(index + 1).firstOrNull { it.quantity.isBlank() }
+        when {
+            waiting != null -> focusOf(waiting.localId).quantity.requestFocusSafely()
+            // Entrada iniciada por um Produto: depois do Preço vem Observação e Salvar.
+            startedFromProduct -> focusText(observationFocus)
+            // Entrada normal: volta para buscar o próximo Produto recebido.
+            else -> focusText(productSearchFocus)
+        }
+    }
+
     val dirty = supplierId.isNotBlank() || draftSupplierName != null || supplierSearch.isNotBlank() ||
         observation.isNotBlank() || productSearch.isNotBlank() || items.isNotEmpty() || date != todayEntryDate()
 
     fun clearLocalError() {
         actionError = null
         onClearError()
+    }
+
+    fun selectSupplier(id: String) {
+        supplierId = id
+        draftSupplierName = null
+        supplierSearch = ""
+        clearLocalError()
+        focusDatePending = true
     }
 
     fun addProduct(
@@ -165,14 +227,18 @@ private fun NewEntryScreen(
             duplicateProduct = product to draft
             return
         }
-        items = items + EntryLineUi(
+        val line = EntryLineUi(
             localId = UUID.randomUUID().toString(),
             product = product,
             draftProduct = draft ?: items.firstOrNull { it.product.id == product.id }?.draftProduct,
         )
+        items = items + line
         productSearch = ""
         duplicateProduct = null
         clearLocalError()
+        // A nova linha ainda não está na tela: o foco vai para a Quantidade depois da composição,
+        // exceto na abertura pelo Produto, em que o fluxo começa pelo Fornecedor.
+        if (initialProductHandled) focusQuantityOf = line.localId
     }
 
     fun chooseProduct(product: EntryProductOption, draft: EntryDraftProduct? = null) {
@@ -237,8 +303,27 @@ private fun NewEntryScreen(
         )
     }
 
+    fun focusFirstProblem() {
+        when {
+            supplierId.isBlank() && draftSupplierName == null -> focusText(supplierFocus)
+            entryDateError(date) != null -> focusText(dateFocus)
+            validateEntryObservation(observation) != null -> focusText(observationFocus)
+            items.isEmpty() -> focusText(productSearchFocus)
+            else -> items.firstOrNull { itemErrors[it.localId] != null }?.let { line ->
+                val errors = itemErrors.getValue(line.localId)
+                val target = focusOf(line.localId)
+                if (errors.quantity != null) target.quantity.requestFocusSafely()
+                else target.price.requestFocusSafely()
+            }
+        }
+    }
+
     fun requestSave() {
-        val input = buildInput() ?: return
+        val input = buildInput()
+        if (input == null) {
+            focusFirstProblem()
+            return
+        }
         if (input.items.any { it.unitPrice == null }) {
             missingPriceOpen = true
         } else {
@@ -258,10 +343,33 @@ private fun NewEntryScreen(
         }
     }
 
+    // Abertura: foco no Fornecedor (também na Entrada iniciada por um Produto).
+    LaunchedEffect(options != null, initialProductHandled) {
+        if (!initialFocusDone && options != null && initialProductHandled) {
+            initialFocusDone = true
+            if (supplierId.isBlank() && draftSupplierName == null) focusText(supplierFocus)
+            else focusText(dateFocus)
+        }
+    }
+    LaunchedEffect(focusDatePending) {
+        if (focusDatePending) {
+            focusDatePending = false
+            focusText(dateFocus)
+        }
+    }
+    LaunchedEffect(focusQuantityOf, items) {
+        val target = focusQuantityOf ?: return@LaunchedEffect
+        if (items.any { it.localId == target }) {
+            focusQuantityOf = null
+            focusOf(target).quantity.requestFocusSafely()
+        }
+    }
+
     BackHandler(enabled = state.saving) {}
     BackHandler(enabled = !state.saving && dirty) { leaveOpen = true }
 
     Scaffold(
+        bottomBar = { NevesNumericKeypad(keypad) },
         topBar = {
             NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
@@ -331,7 +439,18 @@ private fun NewEntryScreen(
                         leadingIcon = { NevesIcon(NevesIcons.Search) },
                                 placeholder = { Text("Contato, empresa ou telefone") },
                                 singleLine = true,
-                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = {
+                                    // Enter só escolhe quando a busca aponta um único Fornecedor.
+                                    options.suppliers
+                                        .filter { entrySupplierMatches(it, supplierSearch) }
+                                        .singleOrNull()
+                                        ?.takeIf { supplierSearch.isNotBlank() }
+                                        ?.let { selectSupplier(it.id) }
+                                }),
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                                    .focusRequester(supplierFocus)
+                                    .then(rememberKeepVisibleOnFocus()),
                             )
                             if (supplierSearch.isNotBlank()) {
                                 options.suppliers
@@ -339,12 +458,7 @@ private fun NewEntryScreen(
                                     .take(8)
                                     .forEach { supplier ->
                                         TextButton(
-                                            onClick = {
-                                                supplierId = supplier.id
-                                                draftSupplierName = null
-                                                supplierSearch = ""
-                                                clearLocalError()
-                                            },
+                                            onClick = { selectSupplier(supplier.id) },
                                             modifier = Modifier.fillMaxWidth(),
                                         ) {
                                             Text(
@@ -371,18 +485,18 @@ private fun NewEntryScreen(
                             placeholder = { Text("AAAA-MM-DD") },
                             supportingText = { entryDateError(date)?.let { Text(it) } },
                             isError = entryDateError(date) != null,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Next,
+                            ),
+                            keyboardActions = KeyboardActions(onNext = {
+                                // Data inválida: o erro já aparece no campo e o foco permanece nele.
+                                if (entryDateError(date) == null) focusAfterDate()
+                            }),
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                        )
-
-                        OutlinedTextField(
-                            value = observation,
-                            onValueChange = { if (it.length <= 2000) observation = it },
-                            label = { Text("Observação") },
-                            placeholder = { Text("Observação única para esta Entrada.") },
-                            minLines = 2,
-                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                                .focusRequester(dateFocus)
+                                .then(rememberKeepVisibleOnFocus()),
                         )
                     }
                 }
@@ -395,7 +509,19 @@ private fun NewEntryScreen(
                     label = { Text("Adicionar Produto") },
                     placeholder = { Text("Buscar por nome") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = {
+                        // Enter só adiciona quando a busca aponta um único Produto.
+                        if (productSearch.isNotBlank()) {
+                            options.products
+                                .filter { entryProductMatches(it, productSearch) }
+                                .singleOrNull()
+                                ?.let { chooseProduct(it) }
+                        }
+                    }),
+                    modifier = Modifier.fillMaxWidth()
+                        .focusRequester(productSearchFocus)
+                        .then(rememberKeepVisibleOnFocus()),
                 )
 
                 if (productSearch.isNotBlank()) {
@@ -452,7 +578,9 @@ private fun NewEntryScreen(
                                     itemErrors = itemErrors - line.localId
                                 }) { Text("Remover") }
                             }
-                            OutlinedTextField(
+                            val focus = focusOf(line.localId)
+                            val isLastLine = index == items.lastIndex
+                            NevesNumericField(
                                 value = line.quantity,
                                 onValueChange = { value ->
                                     items = items.map {
@@ -460,14 +588,23 @@ private fun NewEntryScreen(
                                     }
                                     itemErrors = itemErrors - line.localId
                                 },
-                                label = { Text("Quantidade *") },
-                                supportingText = itemErrors[line.localId]?.quantity?.let { { Text(it) } },
-                                isError = itemErrors[line.localId]?.quantity != null,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                keypad = keypad,
+                                label = "Quantidade *",
+                                errorMessage = itemErrors[line.localId]?.quantity,
+                                onConfirm = {
+                                    val current = items.firstOrNull { it.localId == line.localId }?.quantity.orEmpty()
+                                    val error = parseEntryPositiveDecimal(current, "Quantidade").error
+                                    if (error != null) {
+                                        itemErrors = itemErrors + (line.localId to EntryItemFieldErrors(quantity = error))
+                                    } else {
+                                        focus.price.requestFocusSafely()
+                                    }
+                                },
+                                confirmLabel = "Próximo",
+                                focusRequester = focus.quantity,
+                                modifier = Modifier.padding(top = 8.dp),
                             )
-                            OutlinedTextField(
+                            NevesNumericField(
                                 value = line.unitPrice,
                                 onValueChange = { value ->
                                     items = items.map {
@@ -475,13 +612,22 @@ private fun NewEntryScreen(
                                     }
                                     itemErrors = itemErrors - line.localId
                                 },
-                                label = { Text("Preço unitário") },
-                                placeholder = { Text("Vazio = não informado") },
-                                supportingText = itemErrors[line.localId]?.unitPrice?.let { { Text(it) } },
-                                isError = itemErrors[line.localId]?.unitPrice != null,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                keypad = keypad,
+                                label = "Preço unitário",
+                                placeholder = "Vazio = não informado",
+                                errorMessage = itemErrors[line.localId]?.unitPrice,
+                                onConfirm = {
+                                    val current = items.firstOrNull { it.localId == line.localId }?.unitPrice.orEmpty()
+                                    val error = parseEntryOptionalPrice(current).error
+                                    if (error != null) {
+                                        itemErrors = itemErrors + (line.localId to EntryItemFieldErrors(unitPrice = error))
+                                    } else {
+                                        focusAfterPrice(line.localId)
+                                    }
+                                },
+                                confirmLabel = if (startedFromProduct && isLastLine) "Concluir" else "Próximo",
+                                focusRequester = focus.price,
+                                modifier = Modifier.padding(top = 8.dp),
                             )
                             val totalLabel = when {
                                 quantity != null && price == 0.0 -> "Bonificação"
@@ -501,6 +647,22 @@ private fun NewEntryScreen(
                 val missingPrices = items.count {
                     it.quantity.isNotBlank() && parseEntryOptionalPrice(it.unitPrice).error == null &&
                         parseEntryOptionalPrice(it.unitPrice).value == null
+                }
+
+                // Observação depois dos itens: segue a ordem do lançamento (… → Preço → Observação → Salvar).
+                NevesContentCard {
+                    OutlinedTextField(
+                        value = observation,
+                        onValueChange = { if (it.length <= 2000) observation = it },
+                        label = { Text("Observação") },
+                        placeholder = { Text("Observação única para esta Entrada.") },
+                        supportingText = validateEntryObservation(observation)?.let { { Text(it) } },
+                        isError = validateEntryObservation(observation) != null,
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                            .focusRequester(observationFocus)
+                            .then(rememberKeepVisibleOnFocus()),
+                    )
                 }
 
                 NevesContentCard {
@@ -558,6 +720,7 @@ private fun NewEntryScreen(
                         supplierSearch = ""
                         quickSupplierOpen = false
                         clearLocalError()
+                        focusDatePending = true
                     }
                 }) { Text("Cadastrar e selecionar") }
             },
@@ -796,6 +959,10 @@ private fun EditEntryScreen(
     var missingPriceOpen by rememberSaveable { mutableStateOf(false) }
     var saveReviewOpen by rememberSaveable { mutableStateOf(false) }
     var leaveOpen by rememberSaveable { mutableStateOf(false) }
+    val keypad = rememberNumericKeypadState()
+    val focusManager = LocalFocusManager.current
+    val lineFocus = remember { mutableMapOf<String, EntryLineFocus>() }
+    fun focusOf(localId: String): EntryLineFocus = lineFocus.getOrPut(localId) { EntryLineFocus() }
 
     fun signature(): String = buildString {
         append(supplierId).append('|').append(date).append('|').append(observation.trim())
@@ -899,6 +1066,7 @@ private fun EditEntryScreen(
     BackHandler(enabled = !state.saving && dirty) { leaveOpen = true }
 
     Scaffold(
+        bottomBar = { NevesNumericKeypad(keypad) },
         topBar = {
             NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
@@ -1017,32 +1185,55 @@ private fun EditEntryScreen(
                                     itemErrors = itemErrors - line.localId
                                 }) { Text("Remover") }
                             }
-                            OutlinedTextField(
+                            val focus = focusOf(line.localId)
+                            val nextLine = items.getOrNull(index + 1)
+                            NevesNumericField(
                                 value = line.quantity,
                                 onValueChange = { value ->
                                     items = items.map { if (it.localId == line.localId) it.copy(quantity = value) else it }
                                     itemErrors = itemErrors - line.localId
                                 },
-                                label = { Text("Quantidade *") },
-                                supportingText = itemErrors[line.localId]?.quantity?.let { { Text(it) } },
-                                isError = itemErrors[line.localId]?.quantity != null,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                keypad = keypad,
+                                label = "Quantidade *",
+                                errorMessage = itemErrors[line.localId]?.quantity,
+                                onConfirm = {
+                                    val current = items.firstOrNull { it.localId == line.localId }?.quantity.orEmpty()
+                                    val error = parseEntryPositiveDecimal(current, "Quantidade").error
+                                    if (error != null) {
+                                        itemErrors = itemErrors + (line.localId to EntryItemFieldErrors(quantity = error))
+                                    } else {
+                                        focus.price.requestFocusSafely()
+                                    }
+                                },
+                                confirmLabel = "Próximo",
+                                focusRequester = focus.quantity,
+                                enabled = !state.saving,
+                                modifier = Modifier.padding(top = 8.dp),
                             )
-                            OutlinedTextField(
+                            NevesNumericField(
                                 value = line.unitPrice,
                                 onValueChange = { value ->
                                     items = items.map { if (it.localId == line.localId) it.copy(unitPrice = value) else it }
                                     itemErrors = itemErrors - line.localId
                                 },
-                                label = { Text("Preço unitário") },
-                                placeholder = { Text("Vazio = não informado") },
-                                supportingText = itemErrors[line.localId]?.unitPrice?.let { { Text(it) } },
-                                isError = itemErrors[line.localId]?.unitPrice != null,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                keypad = keypad,
+                                label = "Preço unitário",
+                                placeholder = "Vazio = não informado",
+                                errorMessage = itemErrors[line.localId]?.unitPrice,
+                                onConfirm = {
+                                    val current = items.firstOrNull { it.localId == line.localId }?.unitPrice.orEmpty()
+                                    val error = parseEntryOptionalPrice(current).error
+                                    when {
+                                        error != null ->
+                                            itemErrors = itemErrors + (line.localId to EntryItemFieldErrors(unitPrice = error))
+                                        nextLine != null -> focusOf(nextLine.localId).quantity.requestFocusSafely()
+                                        else -> focusManager.clearFocus()
+                                    }
+                                },
+                                confirmLabel = if (nextLine != null) "Próximo" else "Concluir",
+                                focusRequester = focus.price,
+                                enabled = !state.saving,
+                                modifier = Modifier.padding(top = 8.dp),
                             )
                             EntryInfoLine(
                                 "Total",

@@ -82,6 +82,7 @@ class AlertsRepository {
     }
 
     suspend fun loadCounts(): AlertCounts = coroutineScope {
+        com.babycatbe.nevesestoque.data.supabase.awaitAuthSessionReady()
         val trash = async { trashRepository.loadRestorableTrash().size }
         val suppliers = async { suppliersRepository.loadActiveSuppliers().count { it.isPending } }
         val products = async { pendingProducts() }
