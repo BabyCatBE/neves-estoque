@@ -1,5 +1,8 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Context
 import android.net.Uri
@@ -95,9 +98,9 @@ private fun ProductFormScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack, enabled = !state.saving) { Text("Voltar") }
+                    TextButton(onClick = onBack, enabled = !state.saving) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         if (editing) "Editar Produto" else "Novo Produto",
                         style = MaterialTheme.typography.titleLarge,
@@ -301,9 +304,9 @@ fun CategoryFormRoute(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack, enabled = !state.saving) { Text("Voltar") }
+                    TextButton(onClick = onBack, enabled = !state.saving) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         if (categoryId == null) "Nova Categoria" else "Editar Categoria",
                         style = MaterialTheme.typography.titleLarge,
@@ -405,3 +408,4 @@ private suspend fun readCategoryIllustrationSelection(
     validateCategoryIllustrationFile(mimeType, bytes.size)?.let(::error)
     SelectedCategoryIllustration(bytes = bytes, mimeType = mimeType!!)
 }
+

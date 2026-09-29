@@ -1,5 +1,9 @@
 package com.babycatbe.nevesestoque.feature.purchases
 
+import com.babycatbe.nevesestoque.ui.theme.NevesColors
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.LatestLoad
 import com.babycatbe.nevesestoque.ui.load.loadCatching
@@ -108,21 +112,21 @@ fun PurchasesHubScreen(
         }
         item {
             HubCard(
-                "INTELIGÊNCIA + HISTÓRICO", "Por fornecedor",
+                NevesIcons.Suppliers, "INTELIGÊNCIA + HISTÓRICO", "Por fornecedor",
                 "Escolha um fornecedor. Quando houver histórico e configuração suficientes, os Produtos recomendados aparecem primeiro com quantidade sugerida.",
                 onSupplier,
             )
         }
         item {
             HubCard(
-                "NECESSIDADE DE COMPRA", "Por estoque",
+                NevesIcons.Inventory, "NECESSIDADE DE COMPRA", "Por estoque",
                 "Veja primeiro os Produtos com recomendação automática e, quando quiser, abra também o restante do estoque para inclusão manual.",
                 onStock,
             )
         }
         item {
             HubCard(
-                "CATEGORIA + SUGESTÃO", "Por categoria",
+                NevesIcons.Products, "CATEGORIA + SUGESTÃO", "Por categoria",
                 "Preserve a ordem manual da categoria e veja sugestão e risco quando houver histórico e configuração suficientes.",
                 onCategory,
             )
@@ -538,7 +542,7 @@ private fun PurchaseItemCard(
                     Text("ESTOQUE ATUAL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(formatPurchaseStock(item.currentQuantity, item.unit), fontWeight = FontWeight.SemiBold)
                 }
-                OutlinedButton(onClick = { onStep(-1) }, enabled = checked, modifier = Modifier.width(48.dp)) { Text("−") }
+                OutlinedButton(onClick = { onStep(-1) }, enabled = checked, modifier = Modifier.width(48.dp)) { NevesIcon(NevesIcons.Remove, "Diminuir quantidade") }
                 OutlinedTextField(
                     value = quantity,
                     onValueChange = onQuantity,
@@ -549,7 +553,7 @@ private fun PurchaseItemCard(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.width(96.dp).padding(horizontal = 6.dp),
                 )
-                OutlinedButton(onClick = { onStep(1) }, enabled = checked, modifier = Modifier.width(48.dp)) { Text("+") }
+                OutlinedButton(onClick = { onStep(1) }, enabled = checked, modifier = Modifier.width(48.dp)) { NevesIcon(NevesIcons.Add, "Aumentar quantidade") }
             }
             if (invalid) {
                 Text(
@@ -634,11 +638,11 @@ private fun PurchaseScaffold(
 ) {
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    if (onRefresh != null) TextButton(onClick = onRefresh) { Text("Atualizar") }
+                    if (onRefresh != null) TextButton(onClick = onRefresh) { NevesIcon(NevesIcons.Refresh, "Atualizar") }
                 }
             }
         }
@@ -678,9 +682,10 @@ private fun Header(eyebrow: String, title: String, text: String?) {
 }
 
 @Composable
-private fun HubCard(eyebrow: String, title: String, description: String, onClick: () -> Unit) {
+private fun HubCard(icon: Int, eyebrow: String, title: String, description: String, onClick: () -> Unit) {
     Card(onClick = onClick) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
+            NevesIcon(icon, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
             Text(eyebrow, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
             Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
@@ -694,6 +699,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit, placeholder: 
         value = value,
         onValueChange = onChange,
         label = { Text("Pesquisar") },
+                        leadingIcon = { NevesIcon(NevesIcons.Search) },
         placeholder = { Text(placeholder) },
         singleLine = true,
         trailingIcon = { if (value.isNotEmpty()) TextButton(onClick = { onChange("") }) { Text("Limpar") } },
@@ -728,9 +734,10 @@ private fun Badge(text: String, background: Color, foreground: Color) {
     }
 }
 
-private val AMBER_BG = Color(0xFFFEF3C7)
-private val AMBER_TEXT = Color(0xFF92400E)
-private val GREEN_BG = Color(0xFFD1FAE5)
-private val GREEN_TEXT = Color(0xFF065F46)
-private val RED_BG = Color(0xFFFEE2E2)
-private val RED_TEXT = Color(0xFF991B1B)
+private val AMBER_BG = NevesColors.WarningContainer
+private val AMBER_TEXT = NevesColors.OnWarning
+private val GREEN_BG = NevesColors.SuccessContainer
+private val GREEN_TEXT = NevesColors.OnSuccess
+private val RED_BG = NevesColors.ErrorContainer
+private val RED_TEXT = NevesColors.OnError
+

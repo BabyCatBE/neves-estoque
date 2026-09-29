@@ -1,5 +1,10 @@
 package com.babycatbe.nevesestoque.feature.trash
 
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -119,9 +124,9 @@ fun TrashScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack, enabled = !working) { Text("Voltar") }
+                    TextButton(onClick = onBack, enabled = !working) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Lixeira",
                         style = MaterialTheme.typography.titleLarge,
@@ -132,7 +137,7 @@ fun TrashScreen(
                         onClick = { scope.launch { load() } },
                         enabled = !loading && !refreshing && !working,
                     ) {
-                        Text(if (refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(refreshing)
                     }
                 }
             }
@@ -238,6 +243,7 @@ fun TrashScreen(
                     value = search,
                     onValueChange = { search = it },
                     label = { Text("Pesquisar") },
+                        leadingIcon = { NevesIcon(NevesIcons.Search) },
                     placeholder = { Text("Nome, detalhe ou tipo") },
                     trailingIcon = {
                         if (search.isNotEmpty()) {
@@ -327,7 +333,7 @@ fun TrashScreen(
                                         pendingRestore = item
                                     },
                                     enabled = !working,
-                                ) { Text("Restaurar") }
+                                ) { NevesActionLabel("Restaurar", NevesIcons.Restore) }
                                 Button(
                                     onClick = {
                                         notice = null
@@ -339,7 +345,7 @@ fun TrashScreen(
                                         containerColor = MaterialTheme.colorScheme.error,
                                         contentColor = MaterialTheme.colorScheme.onError,
                                     ),
-                                ) { Text("Excluir definitivamente") }
+                                ) { NevesActionLabel("Excluir definitivamente", NevesIcons.DeleteForever) }
                             }
                         }
                     }
@@ -460,3 +466,4 @@ private fun TrashTypedConfirmDialog(
         },
     )
 }
+

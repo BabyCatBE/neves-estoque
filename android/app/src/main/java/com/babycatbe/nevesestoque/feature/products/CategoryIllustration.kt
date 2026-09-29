@@ -1,5 +1,7 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -283,7 +285,7 @@ fun CategoryIllustrationEditor(
 @Composable
 private fun LibraryOptionContent(option: CategoryIllustrationOption) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(option.glyph, fontSize = 22.sp)
+        NevesIcon(categoryIcon(option.key))
         Text(
             option.label,
             style = MaterialTheme.typography.labelSmall,
@@ -329,15 +331,12 @@ fun CategoryIllustrationVisual(
                 )
             }
             source == "library" && key != null -> {
-                Text(
-                    CATEGORY_ILLUSTRATION_OPTIONS.firstOrNull { it.key == key }?.glyph ?: "📦",
-                    fontSize = 24.sp,
-                )
+                NevesIcon(categoryIcon(key), tint = MaterialTheme.colorScheme.primary)
             }
             source == "upload" -> {
-                Text("IMG", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                NevesIcon(NevesIcons.Error, "Imagem indisponível", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            else -> Text("▣", color = MaterialTheme.colorScheme.primary, fontSize = 22.sp)
+            else -> NevesIcon(NevesIcons.Inventory, tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -372,4 +371,17 @@ private class PercentAlignment(
         x = ((space.width - size.width) * xFraction).roundToInt(),
         y = ((space.height - size.height) * yFraction).roundToInt(),
     )
+}
+
+
+private fun categoryIcon(key: String): Int = when (key) {
+    "panificacao" -> NevesIcons.Bread
+    "boleria", "confeitaria" -> NevesIcons.Cake
+    "frios", "manteigas" -> NevesIcons.Cold
+    "etiquetas" -> NevesIcons.Label
+    "descartaveis" -> NevesIcons.Cup
+    "higiene", "limpeza" -> NevesIcons.Hygiene
+    "flexiveis" -> NevesIcons.Bag
+    "conveniencia" -> NevesIcons.Cart
+    else -> NevesIcons.Inventory
 }

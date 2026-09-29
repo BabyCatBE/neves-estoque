@@ -1,5 +1,12 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.activity.compose.BackHandler
@@ -42,7 +49,7 @@ fun EntriesHubScreen(
     Scaffold(topBar = { EntryTopBar("Entradas", onBack) }) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
         ) {
             Text(
                 "Entradas de mercadoria",
@@ -55,6 +62,7 @@ fun EntriesHubScreen(
             )
             Card(onClick = onNewEntry) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                    NevesIcon(NevesIcons.Entry, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
                     Text("OPERAÇÃO", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
                     Text("Nova Entrada", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 5.dp))
                     Text(
@@ -66,6 +74,7 @@ fun EntriesHubScreen(
             }
             Card(onClick = onHistory) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                    NevesIcon(NevesIcons.History, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
                     Text("CONSULTA", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     Text("Histórico de Entradas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 5.dp))
                     Text(
@@ -77,6 +86,7 @@ fun EntriesHubScreen(
             }
             Card(onClick = onTrash) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                    NevesIcon(NevesIcons.Trash, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
                     Text("RECUPERAÇÃO", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     Text("Lixeira", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 5.dp))
                     Text(
@@ -134,9 +144,9 @@ private fun EntriesHistoryScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Histórico de Entradas",
                         style = MaterialTheme.typography.titleLarge,
@@ -144,7 +154,7 @@ private fun EntriesHistoryScreen(
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
                     TextButton(onClick = onRefresh, enabled = !state.refreshing) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(state.refreshing)
                     }
                     TextButton(onClick = onNewEntry) { Text("Nova") }
                 }
@@ -182,6 +192,7 @@ private fun EntriesHistoryScreen(
                         value = search,
                         onValueChange = { search = it },
                         label = { Text("Pesquisar") },
+                        leadingIcon = { NevesIcon(NevesIcons.Search) },
                         placeholder = { Text("Fornecedor ou Produto") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -297,18 +308,18 @@ private fun EntryDetailScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack, enabled = !state.deleting) { Text("Voltar") }
+                    TextButton(onClick = onBack, enabled = !state.deleting) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Entrada",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f).padding(top = 10.dp),
                     )
-                    TextButton(onClick = onEdit, enabled = entry != null && !state.deleting) { Text("Editar") }
+                    TextButton(onClick = onEdit, enabled = entry != null && !state.deleting) { NevesActionLabel("Editar", NevesIcons.Edit) }
                     TextButton(onClick = onRefresh, enabled = !state.refreshing && !state.deleting) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(state.refreshing)
                     }
                 }
             }
@@ -454,7 +465,7 @@ private fun EntryDetailScreen(
                 TextButton(
                     onClick = { deleteOpen = false; onDelete() },
                     enabled = !state.deleting,
-                ) { Text("Excluir Entrada") }
+                ) { NevesActionLabel("Excluir Entrada", NevesIcons.Trash) }
             },
             dismissButton = {
                 TextButton(onClick = { deleteOpen = false }, enabled = !state.deleting) { Text("Cancelar") }
@@ -465,9 +476,9 @@ private fun EntryDetailScreen(
 
 @Composable
 fun EntryTopBar(title: String, onBack: () -> Unit) {
-    Surface(shadowElevation = 2.dp) {
+    NevesTopBarSurface {
         Row(Modifier.fillMaxWidth().padding(8.dp)) {
-            TextButton(onClick = onBack) { Text("Voltar") }
+            TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
             Text(
                 title,
                 style = MaterialTheme.typography.titleLarge,
@@ -498,3 +509,4 @@ fun EntryInfoLine(label: String, value: String) {
         Text(value, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
     }
 }
+

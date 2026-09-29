@@ -1,5 +1,12 @@
 package com.babycatbe.nevesestoque.feature.auth
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import com.babycatbe.nevesestoque.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,7 +48,13 @@ fun LoginScreen(
     val canSubmit = configured && !busy && username.isNotBlank() && password.isNotEmpty()
 
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 48.dp)) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 24.dp)) {
+            Image(
+                painter = painterResource(R.drawable.neves_brand_light),
+                contentDescription = "Panificadora Neves",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxWidth().height(140.dp),
+            )
             Text(
                 text = "NEVES • ESTOQUE",
                 color = MaterialTheme.colorScheme.primary,
@@ -123,3 +136,4 @@ fun LoginScreen(
         }
     }
 }
+

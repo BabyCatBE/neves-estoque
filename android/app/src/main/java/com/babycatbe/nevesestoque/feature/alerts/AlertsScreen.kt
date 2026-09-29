@@ -1,5 +1,9 @@
 package com.babycatbe.nevesestoque.feature.alerts
 
+import com.babycatbe.nevesestoque.ui.theme.NevesColors
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.LatestLoad
 import com.babycatbe.nevesestoque.ui.load.loadCatching
@@ -125,11 +129,11 @@ fun AlertsRoute(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text("Alertas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = vm::refresh) { Text("Atualizar") }
+                    TextButton(onClick = vm::refresh) { NevesIcon(NevesIcons.Refresh, "Atualizar") }
                 }
             }
         }
@@ -252,8 +256,8 @@ private fun AlertCard(title: String, count: Int, description: String, tone: Tone
 @Composable
 private fun CountPill(text: String, tone: Tone) {
     val (bg, fg) = when (tone) {
-        Tone.Red -> Color(0xFFFEF2F2) to Color(0xFF991B1B)
-        Tone.Amber -> Color(0xFFFFFBEB) to Color(0xFF78350F)
+        Tone.Red -> NevesColors.ErrorContainer to NevesColors.OnError
+        Tone.Amber -> NevesColors.WarningContainer to NevesColors.OnWarning
         Tone.Neutral -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Surface(color = bg, shape = MaterialTheme.shapes.extraLarge) {
@@ -266,3 +270,4 @@ private fun CountPill(text: String, tone: Tone) {
         )
     }
 }
+

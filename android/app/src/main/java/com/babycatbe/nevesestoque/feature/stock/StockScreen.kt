@@ -1,12 +1,21 @@
 package com.babycatbe.nevesestoque.feature.stock
 
+import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.Role
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.toMutableStateList
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
-import androidx.compose.animation.AnimatedVisibility
+import com.babycatbe.nevesestoque.ui.motion.NevesExpandedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -106,12 +115,12 @@ private fun StockScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
                 ) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         text = "Estoque Atual",
                         style = MaterialTheme.typography.titleLarge,
@@ -119,7 +128,7 @@ private fun StockScreen(
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(onClick = onRefresh, enabled = !state.refreshing) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(state.refreshing)
                     }
                 }
             }
@@ -158,7 +167,7 @@ private fun StockScreen(
                         Text(if (showValues) "Ocultar valores" else "Mostrar valores")
                     }
                     OutlinedButton(onClick = onReports) {
-                        Text("Relatórios")
+                        NevesActionLabel("Relatórios", NevesIcons.Reports)
                     }
                 }
             }
@@ -168,6 +177,7 @@ private fun StockScreen(
                     value = search,
                     onValueChange = { search = it },
                     label = { Text("Pesquisar") },
+                        leadingIcon = { NevesIcon(NevesIcons.Search) },
                     placeholder = { Text("Buscar produto por nome") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -345,7 +355,8 @@ private fun StockGroupCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { if (expanded) expandedGroups.remove(group.id) else expandedGroups.add(group.id) }
+                    .semantics { stateDescription = if (expanded) "Expandido" else "Recolhido" }
+                    .clickable(role = Role.Button) { if (expanded) expandedGroups.remove(group.id) else expandedGroups.add(group.id) }
                     .padding(vertical = 14.dp),
             ) {
                 Box(
@@ -371,10 +382,10 @@ private fun StockGroupCard(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                Text(if (expanded) "▲" else "▼", modifier = Modifier.padding(end = 16.dp))
+                NevesIcon(if (expanded) NevesIcons.Collapse else NevesIcons.Expand, modifier = Modifier.padding(end = 16.dp))
             }
 
-            AnimatedVisibility(visible = expanded) {
+            NevesExpandedContent(visible = expanded) {
                 Column {
                     group.items.forEach { StockItemRow(it, showValues, onProductClick) }
                 }
@@ -435,11 +446,10 @@ private fun Metric(label: String, value: String) {
 @Composable
 private fun EmptyStock(search: String) {
     Card {
-        Text(
+        NevesStatusMessage(
             if (search.isBlank()) "Ainda não há produtos para exibir no Estoque Atual."
             else "Nenhum produto encontrado para esta pesquisa.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            icon = if (search.isBlank()) NevesIcons.Inventory else NevesIcons.Search,
         )
     }
 }
@@ -461,3 +471,4 @@ private fun formatItemValue(item: CurrentStockRow): String {
     if (item.currentQuantity == 0.0) return formatMoney(0.0)
     return item.currentValue?.let(::formatMoney) ?: "Sem preço"
 }
+

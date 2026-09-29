@@ -1,8 +1,17 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.Role
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
-import androidx.compose.animation.AnimatedVisibility
+import com.babycatbe.nevesestoque.ui.motion.NevesExpandedContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -157,7 +166,7 @@ private fun ProductsListScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
                     TextButton(
                         onClick = { if (reordering) cancelReordering() else onBack() },
@@ -186,7 +195,7 @@ private fun ProductsListScreen(
                     } else {
                         TextButton(onClick = onCreateProduct) { Text("Novo") }
                         TextButton(onClick = onRefresh, enabled = !state.refreshing) {
-                            Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                            NevesRefreshIcon(state.refreshing)
                         }
                     }
                 }
@@ -247,6 +256,7 @@ private fun ProductsListScreen(
                         value = search,
                         onValueChange = { search = it },
                         label = { Text("Pesquisar") },
+                        leadingIcon = { NevesIcon(NevesIcons.Search) },
                         placeholder = { Text("Digite qualquer trecho do nome") },
                         trailingIcon = {
                             if (search.isNotEmpty()) {
@@ -405,13 +415,13 @@ private fun ProductOrderGroupCard(
                             onClick = { onMove(product.id, -1) },
                             enabled = index > 0 && !saving,
                         ) {
-                            Text("↑ Subir")
+                            NevesActionLabel("Subir", NevesIcons.Up)
                         }
                         TextButton(
                             onClick = { onMove(product.id, 1) },
                             enabled = index < group.items.lastIndex && !saving,
                         ) {
-                            Text("↓ Descer")
+                            NevesActionLabel("Descer", NevesIcons.Down)
                         }
                     }
                 }
@@ -434,16 +444,19 @@ private fun ProductGroupCard(
     Card {
         Column {
             Column(
-                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(16.dp)
+                modifier = Modifier.fillMaxWidth().semantics { stateDescription = if (open) "Expandido" else "Recolhido" }.clickable(role = Role.Button) { expanded = !expanded }.padding(16.dp)
             ) {
-                Text(group.name, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(group.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    NevesIcon(if (open) NevesIcons.Collapse else NevesIcons.Expand)
+                }
                 Text(
                     "${group.items.size} produto(s)",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            AnimatedVisibility(open) {
+            NevesExpandedContent(open) {
                 Column {
                     group.items.forEach { ProductRowCard(it, categories, onProductClick) }
                 }
@@ -535,3 +548,4 @@ private fun formatQuantity(value: Double?, unit: String): String {
 
 private fun formatMoney(value: Double): String =
     NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(value)
+

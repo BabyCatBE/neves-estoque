@@ -1,5 +1,11 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.foundation.layout.Arrangement
@@ -97,9 +103,9 @@ private fun ProductDetailScreen(
 
     Scaffold(
         topBar = {
-            Surface(shadowElevation = 2.dp) {
+            NevesTopBarSurface {
                 Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack) { Text("Voltar") }
+                    TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         "Produto",
                         style = MaterialTheme.typography.titleLarge,
@@ -109,12 +115,12 @@ private fun ProductDetailScreen(
                     TextButton(
                         onClick = onEdit,
                         enabled = product != null && !state.loading && !state.convertingUnit,
-                    ) { Text("Editar") }
+                    ) { NevesActionLabel("Editar", NevesIcons.Edit) }
                     TextButton(
                         onClick = onRefresh,
                         enabled = !state.refreshing && !state.convertingUnit,
                     ) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(state.refreshing)
                     }
                 }
             }
@@ -311,7 +317,7 @@ private fun ProductDetailScreen(
                 }
 
                 if (product.priceHistory.isEmpty() && product.initialPrice == null) {
-                    item { Card { Text("Nenhum preço registrado até agora.", modifier = Modifier.padding(16.dp)) } }
+                    item { Card { NevesStatusMessage("Nenhum preço registrado até agora.") } }
                 } else {
                     items(product.priceHistory, key = { it.id }) { price ->
                         Card {
@@ -461,7 +467,7 @@ private fun ProductDetailScreen(
                     },
                     enabled = !state.deleting,
                 ) {
-                    Text("Excluir Produto")
+                    NevesActionLabel("Excluir Produto", NevesIcons.Trash)
                 }
             },
             dismissButton = {
@@ -554,3 +560,4 @@ private fun formatDate(value: String): String =
     runCatching {
         OffsetDateTime.parse(value).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
     }.getOrDefault(value)
+

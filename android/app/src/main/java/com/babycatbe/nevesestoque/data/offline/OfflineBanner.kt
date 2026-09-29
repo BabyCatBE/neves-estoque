@@ -1,5 +1,11 @@
 package com.babycatbe.nevesestoque.data.offline
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.theme.NevesColors
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,14 +32,17 @@ fun OfflineBanner(offlineMode: Boolean) {
     val lastSnapshot by OfflineStore.lastSnapshotAt.collectAsStateWithLifecycle()
     if (online && !offlineMode) return
 
-    Surface(color = Color(0xFF78350F), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = NevesColors.OnWarning, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+        NevesIcon(NevesIcons.Offline, tint = Color.White)
         Text(
             offlineBannerText(lastSnapshot),
             color = Color.White,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            modifier = Modifier.weight(1f),
         )
+        }
     }
 }
 
@@ -43,3 +52,4 @@ fun offlineBannerText(lastSnapshotMillis: Long?, zone: ZoneId = ZoneId.systemDef
     }.orEmpty()
     return "Sem internet$snapshot. Consulta pela cópia deste aparelho; alterações oficiais exigem conexão."
 }
+

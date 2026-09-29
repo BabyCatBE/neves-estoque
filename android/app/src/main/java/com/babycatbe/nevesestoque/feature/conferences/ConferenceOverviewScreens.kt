@@ -1,5 +1,13 @@
 package com.babycatbe.nevesestoque.feature.conferences
 
+import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
+import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.babycatbe.nevesestoque.ui.load.RefreshOnKeyChange
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +50,7 @@ fun ConferencesHubScreen(
     Scaffold(topBar = { ConferenceTopBar("Conferência", onBack) }) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
         ) {
             Text(
                 "Conferência física",
@@ -55,12 +63,14 @@ fun ConferencesHubScreen(
             )
             ConferenceHubCard(
                 eyebrow = "PREPARAÇÃO",
+                icon = NevesIcons.Print,
                 title = "Imprimir papéis",
                 description = "Gere as folhas A4 a partir das Categorias e Produtos atuais.",
                 onClick = onPrint,
             )
             ConferenceHubCard(
                 eyebrow = "OPERAÇÃO",
+                icon = NevesIcons.Checklist,
                 title = "Fazer conferência",
                 description = "Escolha uma Categoria e registre todas as quantidades contadas.",
                 onClick = onNewConference,
@@ -68,12 +78,14 @@ fun ConferencesHubScreen(
             )
             ConferenceHubCard(
                 eyebrow = "CONSULTA",
+                icon = NevesIcons.History,
                 title = "Histórico",
                 description = "Consulte as Conferências salvas por Categoria e corrija um registro quando necessário.",
                 onClick = onHistory,
             )
             ConferenceHubCard(
                 eyebrow = "RECUPERAÇÃO",
+                icon = NevesIcons.Trash,
                 title = "Lixeira",
                 description = "Restaure ou exclua definitivamente Conferências excluídas nos últimos 7 dias.",
                 onClick = onTrash,
@@ -84,6 +96,7 @@ fun ConferencesHubScreen(
 
 @Composable
 private fun ConferenceHubCard(
+    icon: Int,
     eyebrow: String,
     title: String,
     description: String,
@@ -92,6 +105,7 @@ private fun ConferenceHubCard(
 ) {
     Card(onClick = onClick) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
+            NevesIcon(icon, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
             Text(
                 eyebrow,
                 color = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -177,7 +191,7 @@ private fun ConferenceCategoriesScreen(
                 onBack = onBack,
                 trailing = {
                     TextButton(onClick = onRefresh, enabled = !state.refreshing) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(state.refreshing)
                     }
                 },
             )
@@ -260,7 +274,7 @@ private fun ConferenceCategoriesScreen(
                 }
             }
             if (!state.loading && state.categories.isEmpty()) {
-                item { Card { Text("Ainda não existem Categorias ativas.", modifier = Modifier.padding(18.dp)) } }
+                item { Card { NevesStatusMessage("Ainda não existem Categorias ativas.") } }
             }
         }
     }
@@ -293,7 +307,7 @@ fun CategoryConferenceHistoryRoute(
                 onBack = onBack,
                 trailing = {
                     TextButton(onClick = vm::refresh, enabled = !state.refreshing) {
-                        Text(if (state.refreshing) "Atualizando…" else "Atualizar")
+                        NevesRefreshIcon(state.refreshing)
                     }
                 },
             )
@@ -401,7 +415,7 @@ fun ConferenceDetailRoute(
                 onBack = onBack,
                 trailing = {
                     TextButton(onClick = onEdit, enabled = state.details != null && !state.deleting) {
-                        Text("Editar")
+                        NevesActionLabel("Editar", NevesIcons.Edit)
                     }
                 },
             )
@@ -532,7 +546,7 @@ fun ConferenceDetailRoute(
                         vm.deleteConference()
                     },
                     enabled = !state.deleting,
-                ) { Text("Excluir") }
+                ) { NevesActionLabel("Excluir", NevesIcons.Trash) }
             },
             dismissButton = {
                 TextButton(onClick = { deleteOpen = false }, enabled = !state.deleting) {
@@ -632,9 +646,9 @@ fun ConferenceTopBar(
     onBack: () -> Unit,
     trailing: @Composable () -> Unit = {},
 ) {
-    Surface(shadowElevation = 2.dp) {
+    NevesTopBarSurface {
         Row(Modifier.fillMaxWidth().padding(8.dp)) {
-            TextButton(onClick = onBack) { Text("Voltar") }
+            TextButton(onClick = onBack) { NevesIcon(NevesIcons.Back, "Voltar") }
             Text(
                 title,
                 style = MaterialTheme.typography.titleLarge,
@@ -645,3 +659,4 @@ fun ConferenceTopBar(
         }
     }
 }
+

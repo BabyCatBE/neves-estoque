@@ -1,5 +1,17 @@
 package com.babycatbe.nevesestoque.feature.home
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import com.babycatbe.nevesestoque.R
+import com.babycatbe.nevesestoque.ui.components.NevesIcon
+import com.babycatbe.nevesestoque.ui.components.NevesIcons
+import com.babycatbe.nevesestoque.ui.theme.NevesColors
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -8,7 +20,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,7 +28,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -35,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -82,7 +91,7 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.weight(1f),
             ) {
-                items(homeModules) { module ->
+                items(homeModules, key = { it.route }) { module ->
                     ModuleCard(module) { onModuleClick(module) }
                 }
             }
@@ -106,8 +115,8 @@ private fun NevesHeader(
     onAlerts: () -> Unit,
 ) {
     Surface(
-        color = NEVES_HEADER_BACKGROUND,
-        contentColor = NEVES_HEADER_TEXT,
+        color = NevesColors.Header,
+        contentColor = NevesColors.HeaderText,
         tonalElevation = 0.dp,
         shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth(),
@@ -116,46 +125,44 @@ private fun NevesHeader(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(34.dp).shadow(1.dp, CircleShape),
-            ) {
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxSize()) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("N", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
-                    }
-                }
-            }
+            Image(
+                painter = painterResource(R.drawable.neves_brand_icon),
+                contentDescription = "Panificadora Neves",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(44.dp),
+            )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     "Controle de Estoque",
-                    color = NEVES_HEADER_TEXT,
+                    color = NevesColors.HeaderText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 if (!displayName.isNullOrBlank()) {
                     Text(
                         listOfNotNull(displayName, roleName?.takeIf { it.isNotBlank() }).joinToString(" • "),
-                        color = NEVES_HEADER_MUTED,
+                        color = NevesColors.HeaderMuted,
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }
             val hasAlerts = (alertCount ?: 0) > 0
-            TextButton(onClick = onAlerts) {
-                Text(
-                    if (hasAlerts) "Alertas ($alertCount)" else "Alertas",
-                    color = if (hasAlerts) ALERT_AMBER else NEVES_HEADER_ACTION,
-                    fontWeight = if (hasAlerts) FontWeight.Bold else FontWeight.SemiBold,
-                )
+            IconButton(onClick = onAlerts) {
+                BadgedBox(badge = {
+                    if (hasAlerts) Badge(containerColor = NevesColors.Alert, contentColor = NevesColors.Header) {
+                        Text(if (alertCount!! > 99) "99+" else alertCount.toString())
+                    }
+                }) {
+                    NevesIcon(
+                        NevesIcons.Alerts,
+                        if (hasAlerts) "Alertas: $alertCount" else "Alertas",
+                        tint = if (hasAlerts) NevesColors.Alert else NevesColors.HeaderText,
+                    )
+                }
             }
-            TextButton(onClick = onSignOut) {
-                Text(
-                    "Sair",
-                    color = NEVES_HEADER_ACTION,
-                    fontWeight = FontWeight.SemiBold,
-                )
+            IconButton(onClick = onSignOut) {
+                NevesIcon(NevesIcons.Logout, "Sair da conta", tint = NevesColors.HeaderMuted)
             }
         }
     }
@@ -165,19 +172,20 @@ private fun NevesHeader(
 private fun ModuleCard(module: HomeModule, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(22.dp),
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth().aspectRatio(1.08f),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 148.dp),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp, horizontal = 12.dp),
         ) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(56.dp)) {
+            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(48.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(module.mark, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    NevesIcon(moduleIcon(module.route), tint = MaterialTheme.colorScheme.primary)
                 }
             }
             Text(
@@ -191,8 +199,12 @@ private fun ModuleCard(module: HomeModule, onClick: () -> Unit) {
     }
 }
 
-private val NEVES_HEADER_BACKGROUND = Color(0xFF09090B)
-private val NEVES_HEADER_TEXT = Color.White
-private val NEVES_HEADER_MUTED = Color(0xFFA1A1AA)
-private val NEVES_HEADER_ACTION = Color(0xFFEF4444)
-private val ALERT_AMBER = Color(0xFFF59E0B)
+private fun moduleIcon(route: String): Int = when (route) {
+    "estoque" -> NevesIcons.Inventory
+    "conferencias" -> NevesIcons.Checklist
+    "entradas" -> NevesIcons.Entry
+    "compras" -> NevesIcons.Cart
+    "produtos" -> NevesIcons.Products
+    "fornecedores" -> NevesIcons.Suppliers
+    else -> NevesIcons.Inventory
+}
