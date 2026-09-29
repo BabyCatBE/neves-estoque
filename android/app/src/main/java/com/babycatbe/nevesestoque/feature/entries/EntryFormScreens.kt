@@ -521,7 +521,14 @@ private fun NewEntryScreen(
                     }),
                     modifier = Modifier.fillMaxWidth()
                         .focusRequester(productSearchFocus)
-                        .then(rememberKeepVisibleOnFocus()),
+                        // Reserva espaço abaixo do campo para que as sugestões continuem visíveis
+                        // acima do teclado do celular enquanto o nome do Produto é digitado.
+                        .then(
+                            rememberKeepVisibleOnFocus(
+                                visibleMarginTop = 24.dp,
+                                visibleMarginBottom = 280.dp,
+                            )
+                        ),
                 )
 
                 if (productSearch.isNotBlank()) {

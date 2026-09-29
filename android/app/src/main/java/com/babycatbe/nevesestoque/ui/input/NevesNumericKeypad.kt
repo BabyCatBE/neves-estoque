@@ -56,6 +56,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -104,13 +105,16 @@ private val VisibleMarginBottom = 24.dp
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun rememberKeepVisibleOnFocus(): Modifier {
+fun rememberKeepVisibleOnFocus(
+    visibleMarginTop: Dp = VisibleMarginTop,
+    visibleMarginBottom: Dp = VisibleMarginBottom,
+): Modifier {
     val requester = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     var size by remember { mutableStateOf(IntSize.Zero) }
-    val top = with(density) { VisibleMarginTop.toPx() }
-    val bottom = with(density) { VisibleMarginBottom.toPx() }
+    val top = with(density) { visibleMarginTop.toPx() }
+    val bottom = with(density) { visibleMarginBottom.toPx() }
     return Modifier
         .onSizeChanged { size = it }
         .bringIntoViewRequester(requester)
