@@ -1,5 +1,12 @@
 package com.babycatbe.nevesestoque.feature.home
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.heightIn
@@ -121,50 +128,83 @@ private fun NevesHeader(
         shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
-        ) {
-            Image(
-                painter = painterResource(R.drawable.neves_brand_icon),
-                contentDescription = "Panificadora Neves",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.size(44.dp),
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "Controle de Estoque",
-                    color = NevesColors.HeaderText,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                if (!displayName.isNullOrBlank()) {
-                    Text(
-                        listOfNotNull(displayName, roleName?.takeIf { it.isNotBlank() }).joinToString(" • "),
-                        color = NevesColors.HeaderMuted,
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-            }
-            val hasAlerts = (alertCount ?: 0) > 0
-            IconButton(onClick = onAlerts) {
-                BadgedBox(badge = {
-                    if (hasAlerts) Badge(containerColor = NevesColors.Alert, contentColor = NevesColors.Header) {
-                        Text(if (alertCount!! > 99) "99+" else alertCount.toString())
+        Column {
+            BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp)) {
+                val stacked = maxWidth < 324.dp || LocalDensity.current.fontScale > 1.2f
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Only the original image's empty red margins are cropped; artwork stays proportional.
+                        Image(
+                            painter = painterResource(R.drawable.neves_brand_horizontal),
+                            contentDescription = "Panificadora Neves",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(width = 88.dp, height = 44.dp).clip(RoundedCornerShape(10.dp)),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        if (stacked) Spacer(Modifier.weight(1f))
+                        else NevesHeaderIdentity(Modifier.weight(1f))
+                        NevesHeaderActions(alertCount, onAlerts, onSignOut)
                     }
-                }) {
-                    NevesIcon(
-                        NevesIcons.Alerts,
-                        if (hasAlerts) "Alertas: $alertCount" else "Alertas",
-                        tint = if (hasAlerts) NevesColors.Alert else NevesColors.HeaderText,
-                    )
+                    if (stacked) NevesHeaderIdentity(Modifier.padding(top = 10.dp))
+                    if (!displayName.isNullOrBlank()) {
+                        Text(
+                            listOfNotNull(displayName, roleName?.takeIf { it.isNotBlank() }).joinToString(" • "),
+                            color = NevesColors.HeaderMuted,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
                 }
             }
-            IconButton(onClick = onSignOut) {
-                NevesIcon(NevesIcons.Logout, "Sair da conta", tint = NevesColors.HeaderMuted)
+            Canvas(Modifier.fillMaxWidth().height(3.dp)) {
+                drawRect(NevesColors.Accent)
+                repeat(3) { index ->
+                    val x = (12 + index * 24).dp.toPx()
+                    drawLine(NevesColors.Alert, Offset(x, size.height), Offset(x + 4.dp.toPx(), 0f), strokeWidth = 6.dp.toPx())
+                    drawLine(NevesColors.HeaderText, Offset(x + 6.dp.toPx(), size.height), Offset(x + 10.dp.toPx(), 0f), strokeWidth = 4.dp.toPx())
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun NevesHeaderIdentity(modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(
+            "NEVES • ESTOQUE",
+            color = NevesColors.Accent,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+        )
+        Text(
+            "Neves Estoque",
+            color = NevesColors.HeaderText,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun NevesHeaderActions(alertCount: Int?, onAlerts: () -> Unit, onSignOut: () -> Unit) {
+    val hasAlerts = (alertCount ?: 0) > 0
+    IconButton(onClick = onAlerts) {
+        BadgedBox(badge = {
+            if (hasAlerts) Badge(containerColor = NevesColors.Alert, contentColor = NevesColors.Header) {
+                Text(if (alertCount!! > 99) "99+" else alertCount.toString())
+            }
+        }) {
+            NevesIcon(
+                NevesIcons.Alerts,
+                if (hasAlerts) "Alertas: $alertCount" else "Alertas",
+                tint = if (hasAlerts) NevesColors.Alert else NevesColors.HeaderText,
+            )
+        }
+    }
+    IconButton(onClick = onSignOut) {
+        NevesIcon(NevesIcons.Logout, "Sair da conta", tint = NevesColors.HeaderMuted)
     }
 }
 

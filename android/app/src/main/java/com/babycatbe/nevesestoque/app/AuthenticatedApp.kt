@@ -116,6 +116,9 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
         exitTransition = { NevesMotion.navigationExit },
         popEnterTransition = { NevesMotion.navigationEnter },
         popExitTransition = { NevesMotion.navigationExit },
+        // Predictive back has separate defaults (including scaleOut), independent of pop transitions.
+        predictivePopEnterTransition = { _ -> NevesMotion.navigationEnter },
+        predictivePopExitTransition = { _ -> NevesMotion.navigationExit },
     ) {
         composable(HOME_ROUTE) {
             val alertsViewModel: AlertsViewModel = viewModel()
