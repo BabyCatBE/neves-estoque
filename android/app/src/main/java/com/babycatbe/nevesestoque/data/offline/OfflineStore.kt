@@ -213,6 +213,7 @@ fun isNetworkFailure(error: Throwable): Boolean {
  * devolve a última cópia guardada. Erros que não são de rede continuam aparecendo normalmente.
  */
 suspend inline fun <reified T> offlineCachedList(key: String, crossinline fetch: suspend () -> List<T>): List<T> {
+    com.babycatbe.nevesestoque.data.supabase.awaitAuthSessionReady()
     return try {
         val rows = fetch()
         runCatching {
@@ -225,5 +226,20 @@ suspend inline fun <reified T> offlineCachedList(key: String, crossinline fetch:
         if (!isNetworkFailure(error)) throw error
         val cached = OfflineStore.readCache(key) ?: throw OfflineUnavailableException()
         withContext(Dispatchers.IO) { OfflineStore.json.decodeFromString<List<T>>(cached) }
+    }
+}
+
+/**
+ * Lê somente a cópia local guardada por [offlineCachedList], sem rede. Usada para mostrar dados na hora
+ * enquanto a leitura oficial acontece em segundo plano. Devolve null se não houver cópia ou se ela não
+ * puder ser lida (cópia antiga/corrompida nunca vira erro de tela).
+ */
+suspend inline fun <reified T> readCachedList(key: String): List<T>? {
+    return try {
+        val cached = OfflineStore.readCache(key) ?: return null
+        withContext(Dispatchers.IO) { OfflineStore.json.decodeFromString<List<T>>(cached) }
+    } catch (error: Throwable) {
+        if (error is kotlinx.coroutines.CancellationException) throw error
+        null
     }
 }

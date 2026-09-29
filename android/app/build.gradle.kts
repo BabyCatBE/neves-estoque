@@ -76,11 +76,11 @@ android {
         applicationId = "com.babycatbe.nevesestoque"
         minSdk = 26
         targetSdk = 36
-        versionCode = 28
-        versionName = "0.28.0-alpha01"
+        versionCode = 34
+        versionName = "0.34.0-alpha01"
 
         buildConfigField("String", "SYSTEM_VERSION", "\"0.26.0\"")
-        buildConfigField("String", "ANDROID_VERSION", "\"0.28.0-alpha01\"")
+        buildConfigField("String", "ANDROID_VERSION", "\"0.34.0-alpha01\"")
         buildConfigField("String", "SUPABASE_URL", quotedBuildConfig(appConfig("SUPABASE_URL")))
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", quotedBuildConfig(appConfig("SUPABASE_PUBLISHABLE_KEY")))
     }

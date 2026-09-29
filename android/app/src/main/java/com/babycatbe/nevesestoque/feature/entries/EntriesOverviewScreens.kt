@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.entries
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
@@ -20,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -60,7 +60,7 @@ fun EntriesHubScreen(
                 "Entrada representa mercadoria realmente recebida. Pedidos futuros não devem ser registrados aqui.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Card(onClick = onNewEntry) {
+            NevesContentCard(onClick = onNewEntry) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
                     NevesIcon(NevesIcons.Entry, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
                     Text("OPERAÇÃO", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
@@ -72,7 +72,7 @@ fun EntriesHubScreen(
                     )
                 }
             }
-            Card(onClick = onHistory) {
+            NevesContentCard(onClick = onHistory) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
                     NevesIcon(NevesIcons.History, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
                     Text("CONSULTA", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
@@ -84,7 +84,7 @@ fun EntriesHubScreen(
                     )
                 }
             }
-            Card(onClick = onTrash) {
+            NevesContentCard(onClick = onTrash) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
                     NevesIcon(NevesIcons.Trash, modifier = Modifier.padding(bottom = 10.dp), tint = MaterialTheme.colorScheme.primary)
                     Text("RECUPERAÇÃO", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
@@ -167,7 +167,7 @@ private fun EntriesHistoryScreen(
         ) {
             noticeMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -200,11 +200,11 @@ private fun EntriesHistoryScreen(
                 }
             }
             if (state.loading) {
-                item { Card { Text("Carregando Histórico…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Histórico…", modifier = Modifier.padding(18.dp)) } }
             }
             state.errorMessage?.let { error ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(error, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = onRefresh) { Text("Tentar novamente") }
@@ -214,7 +214,7 @@ private fun EntriesHistoryScreen(
             }
             if (!state.loading && state.errorMessage == null && filtered.isEmpty()) {
                 item {
-                    Card {
+                    NevesContentCard {
                         Text(
                             if (search.isBlank()) "Nenhuma Entrada registrada." else "Nenhuma Entrada encontrada.",
                             modifier = Modifier.fillMaxWidth().padding(18.dp),
@@ -223,7 +223,7 @@ private fun EntriesHistoryScreen(
                 }
             }
             items(filtered, key = { it.id }) { entry ->
-                Card(onClick = { onEntryClick(entry.id) }) {
+                NevesContentCard(onClick = { onEntryClick(entry.id) }) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Row(Modifier.fillMaxWidth()) {
                             Column(Modifier.weight(1f)) {
@@ -331,7 +331,7 @@ private fun EntryDetailScreen(
         ) {
             noticeMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -345,11 +345,11 @@ private fun EntryDetailScreen(
                 }
             }
             if (state.loading) {
-                item { Card { Text("Carregando Entrada…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Entrada…", modifier = Modifier.padding(18.dp)) } }
             }
             state.errorMessage?.let { error ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(error, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = onRefresh) { Text("Tentar novamente") }
@@ -358,7 +358,7 @@ private fun EntryDetailScreen(
                 }
             }
             state.actionError?.let { error ->
-                item { Card { Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) } }
+                item { NevesContentCard { Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) } }
             }
             if (!state.loading && state.errorMessage == null && entry != null) {
                 item {
@@ -387,7 +387,7 @@ private fun EntryDetailScreen(
                 }
                 if (entry.hasMissingPrice) {
                     item {
-                        Card {
+                        NevesContentCard {
                             Text(
                                 "* O total soma apenas itens com preço conhecido. Há pelo menos um item com preço não informado.",
                                 color = MaterialTheme.colorScheme.tertiary,
@@ -398,7 +398,7 @@ private fun EntryDetailScreen(
                 }
                 entry.observation?.let { observation ->
                     item {
-                        Card {
+                        NevesContentCard {
                             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                                 Text("OBSERVAÇÃO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(observation, modifier = Modifier.padding(top = 6.dp))
@@ -408,7 +408,7 @@ private fun EntryDetailScreen(
                 }
                 item { Text("Itens recebidos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 items(entry.items, key = { it.id }) { item ->
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(item.productName, fontWeight = FontWeight.Bold)
                             Text(item.unit, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -429,7 +429,7 @@ private fun EntryDetailScreen(
                     }
                 }
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text("Excluir Entrada", fontWeight = FontWeight.Bold)
                             Text(
@@ -491,7 +491,7 @@ fun EntryTopBar(title: String, onBack: () -> Unit) {
 
 @Composable
 fun EntryMetricCard(label: String, value: String, modifier: Modifier) {
-    Card(modifier) {
+    NevesContentCard(modifier) {
         Column(Modifier.fillMaxWidth().padding(14.dp)) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 5.dp))

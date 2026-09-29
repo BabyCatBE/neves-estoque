@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.home
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.height
@@ -8,7 +9,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Badge
@@ -37,8 +37,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -162,12 +160,15 @@ private fun NevesHeader(
                     }
                 }
             }
+            val stripeAccent = NevesColors.Accent
+            val stripeAlert = NevesColors.Alert
+            val stripeLight = NevesColors.HeaderText
             Canvas(Modifier.fillMaxWidth().height(3.dp)) {
-                drawRect(NevesColors.Accent)
+                drawRect(stripeAccent)
                 repeat(3) { index ->
                     val x = (12 + index * 24).dp.toPx()
-                    drawLine(NevesColors.Alert, Offset(x, size.height), Offset(x + 4.dp.toPx(), 0f), strokeWidth = 6.dp.toPx())
-                    drawLine(NevesColors.HeaderText, Offset(x + 6.dp.toPx(), size.height), Offset(x + 10.dp.toPx(), 0f), strokeWidth = 4.dp.toPx())
+                    drawLine(stripeAlert, Offset(x, size.height), Offset(x + 4.dp.toPx(), 0f), strokeWidth = 6.dp.toPx())
+                    drawLine(stripeLight, Offset(x + 6.dp.toPx(), size.height), Offset(x + 10.dp.toPx(), 0f), strokeWidth = 4.dp.toPx())
                 }
             }
         }
@@ -216,12 +217,9 @@ private fun NevesHeaderActions(alertCount: Int?, onAlerts: () -> Unit, onSignOut
 
 @Composable
 private fun ModuleCard(module: HomeModule, onClick: () -> Unit) {
-    Card(
+    NevesContentCard(
         onClick = onClick,
         shape = MaterialTheme.shapes.large,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth().heightIn(min = 148.dp),
     ) {
         Column(

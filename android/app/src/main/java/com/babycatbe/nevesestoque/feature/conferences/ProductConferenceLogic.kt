@@ -36,12 +36,8 @@ fun validateProductConferenceDraft(
     quantity: String,
     observation: String,
 ): ValidatedProductConferenceDraft {
-    val cleanResponsible = responsible.trim().replace(Regex("\\s+"), " ")
-    val responsibleError = when {
-        cleanResponsible.isEmpty() -> "Informe o responsável pela contagem física."
-        cleanResponsible.length > 160 -> "O responsável pode ter no máximo 160 caracteres."
-        else -> null
-    }
+    val cleanResponsible = cleanConferenceResponsible(responsible)
+    val responsibleError = conferenceResponsibleError(responsible)
     val quantityResult = parseConferenceQuantity(quantity, "Nova quantidade")
 
     return ValidatedProductConferenceDraft(

@@ -1,3 +1,11 @@
+## Regra de eficiência de contexto — 29/09/2026
+
+- O checkpoint consolidado mais recente deve ser suficiente para reconstruir o estado recente, mudanças, testes, pendências e próximo passo.
+- Novo chat/IA começa pelo checkpoint mais recente + arquivos `docs/contexto/` aplicáveis + fontes reais necessárias à tarefa.
+- O histórico antigo do Contexto Mestre permanece disponível para aprofundamento seletivo, mas não deve ser relido integralmente por formalidade quando decisões antigas já foram superadas.
+- Se faltar contexto ou houver conflito, aprofundar seletivamente no Contexto Mestre e nas fontes de autoridade.
+- Se um checkpoint não permitir continuidade segura sem reler toda a história, melhorar o checkpoint.
+
 # Memória técnica — Neves Estoque
 
 Este arquivo registra apenas decisões e aprendizados que continuam úteis. O histórico completo permanece no Contexto Mestre.
@@ -117,3 +125,51 @@ O aplicativo novo possui uma decisão posterior e aprovada no Contexto Mestre at
 **Interpretação correta:** não é inconsistência a ser “corrigida” automaticamente. A planilha legado continua sendo autoridade para o comportamento do sistema antigo e para dados/migração; o Contexto Mestre atual é autoridade para a regra funcional vigente do aplicativo novo.
 
 **Regra:** não alterar o legado para fazê-lo combinar com o aplicativo e não ressuscitar a regra antiga dentro do app sem nova decisão explícita.
+
+
+## 2026-09-29 — padrão operacional Android consolidado
+
+Elias aprovou em aparelho o fluxo operacional rápido introduzido no Android 31 e o refinamento da busca de Produto do Android 32.
+
+Decisões duradouras:
+- abertura deve ser imediata quando houver acesso local previamente validado; revalidação ocorre em segundo plano;
+- preload de abertura deve priorizar somente Estoque Atual e Produtos;
+- Conferência/Entrada usam avanço de foco e teclado numérico próprio;
+- botões −/+ pertencem somente à Conferência;
+- busca de Produto na Entrada deve manter campo e sugestões visíveis acima do teclado;
+- datas devem ser apresentadas ao usuário em `DD/MM/AAAA`, preservando ISO internamente.
+
+## 2026-09-29 — Dark Mode Android aprovado
+
+**Estado:** APROVADO / NÃO IMPLEMENTADO.
+
+Decisão de produto:
+- Configurações oferece seletor manual Claro/Escuro;
+- preferência local por aparelho, aplicada imediatamente;
+- tema claro atual não muda;
+- primeira versão não precisa seguir o tema do sistema.
+
+Paleta escura aprovada:
+- fundo `#181614`;
+- cards/superfícies `#211E1B`;
+- superfícies secundárias `#2A2622`;
+- elementos elevados `#302B27`;
+- texto principal `#F4F1ED`;
+- texto secundário `#B8B0A7`;
+- bordas quentes discretas;
+- vermelho Neves preservado como identidade.
+
+Direção visual: grafite/carvão quente, levemente amarronzado, confortável; evitar preto puro, cinza frio dominante e azul-marinho dominante. O Dark Mode exige auditoria de cores fixas e variantes semânticas, não mera inversão de cores.
+
+
+## 2026-09-29 — correção de continuidade: Bloco 11 foi integrado
+
+Entradas históricas deste arquivo registram corretamente que o sub-bloco 11.3 esteve por um período **NÃO INTEGRADO**. Esse estado foi posteriormente superado.
+
+Estado correto posterior:
+- Elias autorizou a integração dos sub-blocos 11.3–11.7;
+- PR #67 (`feat/android-11-performance-completion` → `fix/audit-device-id`) foi MERGED em 28/09/2026;
+- PR temporário #68 foi usado somente para validar por CI o HEAD integrado e foi fechado sem merge;
+- a cadeia Android 12+ foi construída depois desse fechamento integrado.
+
+Regra de leitura: marcações “NÃO INTEGRADO” de 11.3 em seções anteriores são históricas e não devem ser usadas como estado operacional atual.

@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -208,7 +208,7 @@ private fun ProductsListScreen(
         ) {
             noticeMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -224,7 +224,7 @@ private fun ProductsListScreen(
 
             reorderNotice?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -240,7 +240,7 @@ private fun ProductsListScreen(
 
             reorderError?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Text(
                             message,
                             color = MaterialTheme.colorScheme.error,
@@ -294,7 +294,7 @@ private fun ProductsListScreen(
                 }
             } else {
                 item {
-                    Card {
+                    NevesContentCard {
                         Text(
                             "Use Subir/Descer somente dentro da própria Categoria. " +
                                 "A nova ordem só vira oficial depois de Salvar.",
@@ -311,7 +311,7 @@ private fun ProductsListScreen(
 
             state.errorMessage?.let { error ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(error, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = onRefresh) { Text("Tentar novamente") }
@@ -388,7 +388,7 @@ private fun ProductOrderGroupCard(
     saving: Boolean,
     onMove: (String, Int) -> Unit,
 ) {
-    Card {
+    NevesContentCard {
         Column(Modifier.fillMaxWidth()) {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(group.categoryName, fontWeight = FontWeight.Bold)
@@ -441,7 +441,7 @@ private fun ProductGroupCard(
     var expanded by rememberSaveable(group.id) { mutableStateOf(false) }
     val open = forceOpen || expanded
 
-    Card {
+    NevesContentCard {
         Column {
             Column(
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = if (open) "Expandido" else "Recolhido" }.clickable(role = Role.Button) { expanded = !expanded }.padding(16.dp)
@@ -471,7 +471,7 @@ private fun ProductCard(
     categories: List<ProductCategoryRow>,
     onProductClick: (String) -> Unit,
 ) {
-    Card(onClick = { onProductClick(product.id) }) {
+    NevesContentCard(onClick = { onProductClick(product.id) }) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             ProductSummary(product, categories)
         }
@@ -529,7 +529,7 @@ private fun MetricSmall(label: String, value: String) {
 
 @Composable
 private fun StatusCard(text: String) {
-    Card {
+    NevesContentCard {
         Text(
             text,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

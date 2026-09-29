@@ -1,9 +1,17 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -19,14 +27,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,13 +57,55 @@ fun ProductFormRoute(
     productId: String?,
     onBack: () -> Unit,
     onSaved: (String) -> Unit,
+    onMerge: () -> Unit = {},
+    onDeleted: (String) -> Unit = {},
+    onProductChanged: () -> Unit = {},
 ) {
     val vm: ProductFormViewModel = viewModel(
         key = "product-form-${productId ?: "new"}",
         factory = ProductFormViewModel.Factory(productId),
     )
     val state by vm.uiState.collectAsStateWithLifecycle()
-    ProductFormScreen(productId, state, onBack, vm::save)
+    // The existing operation ViewModel is owned by this edit entry, including its dialogs.
+    val maintenanceVm: ProductDetailViewModel? = if (productId != null) viewModel(
+        key = "product-maintenance-$productId",
+        factory = ProductDetailViewModel.Factory(productId),
+    ) else null
+    val maintenanceState = maintenanceVm?.uiState?.collectAsStateWithLifecycle()?.value
+    val maintenanceBusy = maintenanceState?.let { it.deleting || it.deleted || it.convertingUnit } == true
+    val busy = state.saving || maintenanceBusy
+    BackHandler { if (!busy) onBack() }
+
+    LaunchedEffect(maintenanceState?.deleted) {
+        if (maintenanceState?.deleted == true) {
+            onDeleted("Produto enviado para a Lixeira. Ele pode ser restaurado por 7 dias.")
+        }
+    }
+    LaunchedEffect(maintenanceState?.conversionNotice) {
+        if (maintenanceState?.conversionNotice != null) onProductChanged()
+    }
+    ProductFormScreen(
+        productId = productId,
+        state = state,
+        onBack = onBack,
+        onSave = vm::save,
+        onRetry = vm::retryLoad,
+        busy = busy,
+        maintenanceContent = {
+            if (maintenanceVm != null && maintenanceState != null) {
+                ProductMaintenanceSection(
+                    state = maintenanceState,
+                    enabled = !state.saving,
+                    onMerge = onMerge,
+                    onDelete = maintenanceVm::deleteProduct,
+                    onConvertUnit = maintenanceVm::convertUnit,
+                    onClearConversionError = maintenanceVm::clearConversionError,
+                    onConsumeConversionNotice = maintenanceVm::consumeConversionNotice,
+                    onRefresh = maintenanceVm::refresh,
+                )
+            }
+        },
+    )
 
     LaunchedEffect(state.savedMessage) {
         state.savedMessage?.let { message ->
@@ -74,7 +121,11 @@ private fun ProductFormScreen(
     state: ProductFormUiState,
     onBack: () -> Unit,
     onSave: (String, String, String, String, String) -> Unit,
+    onRetry: () -> Unit,
+    busy: Boolean,
+    maintenanceContent: @Composable () -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
     val editing = productId != null
     var initialized by rememberSaveable(productId) { mutableStateOf(false) }
     var name by rememberSaveable(productId) { mutableStateOf("") }
@@ -82,11 +133,9 @@ private fun ProductFormScreen(
     var unit by rememberSaveable(productId) { mutableStateOf("") }
     var initialStock by rememberSaveable(productId) { mutableStateOf("") }
     var initialPrice by rememberSaveable(productId) { mutableStateOf("") }
-    var categoryMenu by remember { mutableStateOf(false) }
-    var unitMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.loading, state.product?.id) {
-        if (!state.loading && !initialized) {
+        if (!state.loading && !initialized && (state.product != null || !editing && state.errorMessage == null)) {
             state.product?.let { product ->
                 name = product.name
                 categoryId = product.categoryId.orEmpty()
@@ -97,15 +146,16 @@ private fun ProductFormScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             NevesTopBarSurface {
-                Row(Modifier.fillMaxWidth().padding(8.dp)) {
-                    TextButton(onClick = onBack, enabled = !state.saving) { NevesIcon(NevesIcons.Back, "Voltar") }
+                Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack, enabled = !busy) { NevesIcon(NevesIcons.Back, "Voltar") }
                     Text(
                         if (editing) "Editar Produto" else "Novo Produto",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f).padding(top = 10.dp),
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -113,52 +163,45 @@ private fun ProductFormScreen(
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxSize().padding(padding).imePadding()
+                .verticalScroll(rememberScrollState()).padding(16.dp),
         ) {
             if (state.loading) {
-                Card { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
                 return@Column
             }
 
             state.errorMessage?.let { message ->
-                Card {
-                    Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+                Text(message, color = MaterialTheme.colorScheme.error)
+                if (state.product == null && (editing || state.categories.isEmpty())) {
+                    TextButton(onClick = onRetry, enabled = !busy) { Text("Tentar novamente") }
                 }
             }
 
             if (state.categories.isNotEmpty() && (state.product != null || !editing)) {
+                ProductImagePlaceholder()
+                Text("Informações básicas", style = MaterialTheme.typography.titleMedium)
+                Text("Nome", style = MaterialTheme.typography.labelMedium)
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nome") },
                     supportingText = state.fieldErrors.name?.let { { Text(it) } },
                     isError = state.fieldErrors.name != null,
                     singleLine = true,
-                    enabled = !state.saving,
-                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Nome" },
                 )
 
                 Column {
                     Text("Categoria", style = MaterialTheme.typography.labelMedium)
-                    OutlinedButton(
-                        onClick = { categoryMenu = true },
-                        enabled = !state.saving,
-                        modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
-                    ) {
-                        Text(state.categories.firstOrNull { it.id == categoryId }?.name ?: "Escolher Categoria")
-                    }
-                    DropdownMenu(expanded = categoryMenu, onDismissRequest = { categoryMenu = false }) {
-                        state.categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category.name) },
-                                onClick = {
-                                    categoryId = category.id
-                                    categoryMenu = false
-                                },
-                            )
-                        }
-                    }
+                    ProductChoiceField(
+                        value = state.categories.firstOrNull { it.id == categoryId }?.name ?: "Escolher Categoria",
+                        options = state.categories.map { it.id to it.name },
+                        enabled = !busy,
+                        onSelect = { categoryId = it },
+                    )
                     state.fieldErrors.category?.let {
                         Text(
                             it,
@@ -169,35 +212,15 @@ private fun ProductFormScreen(
                     }
                 }
 
-                if (editing) {
-                    Card {
-                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                            Text("Unidade", style = MaterialTheme.typography.labelSmall)
-                            Text(unit, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 3.dp))
-                            Text(
-                                "A Unidade não é alterada nesta etapa.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                        }
-                    }
-                } else {
+                if (!editing) {
                     Column {
                         Text("Unidade", style = MaterialTheme.typography.labelMedium)
-                        OutlinedButton(
-                            onClick = { unitMenu = true },
-                            enabled = !state.saving,
-                            modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
-                        ) { Text(unit.ifBlank { "Escolher Unidade" }) }
-                        DropdownMenu(expanded = unitMenu, onDismissRequest = { unitMenu = false }) {
-                            PRODUCT_UNITS.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option) },
-                                    onClick = { unit = option; unitMenu = false },
-                                )
-                            }
-                        }
+                        ProductChoiceField(
+                            value = unit.ifBlank { "Escolher Unidade" },
+                            options = PRODUCT_UNITS.map { it to it },
+                            enabled = !busy,
+                            onSelect = { unit = it },
+                        )
                         state.fieldErrors.unit?.let {
                             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         }
@@ -213,7 +236,7 @@ private fun ProductFormScreen(
                         isError = state.fieldErrors.initialStock != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        enabled = !state.saving,
+                        enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
@@ -227,18 +250,22 @@ private fun ProductFormScreen(
                         isError = state.fieldErrors.initialPrice != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        enabled = !state.saving,
+                        enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
 
                 Button(
-                    onClick = { onSave(name, categoryId, unit, initialStock, initialPrice) },
-                    enabled = !state.saving,
+                    onClick = {
+                        focusManager.clearFocus()
+                        onSave(name, categoryId, unit, initialStock, initialPrice)
+                    },
+                    enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(if (state.saving) "Salvando…" else "Salvar Produto") }
+                if (editing) maintenanceContent()
             } else if (state.errorMessage == null) {
-                Card {
+                NevesContentCard {
                     Text(
                         "Cadastre ao menos uma Categoria antes de criar Produtos.",
                         modifier = Modifier.padding(16.dp),
@@ -323,12 +350,12 @@ fun CategoryFormRoute(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
-                Card { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
+                NevesContentCard { Text("Carregando cadastro…", modifier = Modifier.padding(18.dp)) }
                 return@Column
             }
 
             state.errorMessage?.let { message ->
-                Card {
+                NevesContentCard {
                     Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
                 }
             }
@@ -345,7 +372,7 @@ fun CategoryFormRoute(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         CategoryIllustrationEditor(
                             value = illustration,

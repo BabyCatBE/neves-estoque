@@ -87,38 +87,42 @@ Padrões atuais:
 
 ## Android
 
-### Tema atual
+### Tema claro atual
 
 `NevesTheme.kt` usa Material 3 com esquema claro:
 
 - `primary`: `#B91C1C`;
 - `onPrimary`: branco;
-- `primaryContainer`: `#FFE4E4`;
-- `onPrimaryContainer`: `#5C0000`;
+- `primaryContainer`: `#FEE2E2`;
+- `onPrimaryContainer`: `#991B1B`;
+- `secondary`: `#52525B`;
+- `secondaryContainer`: `#E4E4E7`;
 - `background`: `#F7F7F8`;
 - `onBackground`: `#18181B`;
 - `surface`: branco;
 - `onSurface`: `#18181B`;
 - `surfaceVariant`: `#F1F1F3`;
-- `onSurfaceVariant`: `#5F5F66`;
+- `onSurfaceVariant`: `#52525B`;
+- `outline`: `#71717A`;
+- `outlineVariant`: `#D4D4D8`;
 - `error`: `#B3261E`.
 
-Não existe tipografia customizada em arquivo próprio no estado atual; o app usa a tipografia padrão do Material 3 com pesos ajustados localmente.
+A tipografia parte de `Typography()` do Material 3 e reforça peso em `titleLarge`, `titleMedium` e `labelLarge`. Shapes compartilhados variam de 6 dp a 24 dp.
 
 ### Home Android
 
-`HomeScreen.kt` estabelece padrões atuais:
+`HomeScreen.kt` estabelece os padrões atuais:
 
-- `Scaffold` com fundo do tema;
-- header em `Surface` com elevação;
-- marca circular vermelha com `N`;
-- título `Controle de Estoque`, usuário/role e ações Alertas/Sair;
+- `Scaffold` com `MaterialTheme.colorScheme.background`;
+- header escuro `NevesColors.Header = #09090B`, com logo horizontal oficial da Panificadora Neves;
+- identidade textual `NEVES • ESTOQUE` + `Neves Estoque`;
+- usuário/role abaixo da identidade e ações Alertas/Sair à direita;
+- linha vermelha inferior com detalhes de identidade;
 - grid fixo de 2 colunas;
-- padding de conteúdo 16 dp;
-- espaçamento do grid 14 dp;
-- cards com raio 22 dp, elevação 2 dp e proporção aproximada 1.08;
-- marca do módulo em círculo `primaryContainer` de 56 dp;
-- versão Android/Sistema no rodapé;
+- padding de conteúdo 16 dp e espaçamento 14 dp;
+- módulos em `NevesContentCard`, com altura mínima 148 dp e faixa vermelha lateral aprovada;
+- ícone do módulo em superfície `primaryContainer` de 48 dp;
+- Configurações e versão Android/Sistema no rodapé;
 - Voltar na Home abre confirmação para sair.
 
 ### Alertas
@@ -143,3 +147,96 @@ Não existe tipografia customizada em arquivo próprio no estado atual; o app us
 ## Trabalho visual em andamento
 
 O Bloco Android 11 de 13 está revisando experiência, fluidez e performance. Qualquer mudança de animações, háptico, transições ou padrões visuais feita nesse bloco deve atualizar este arquivo quando se tornar padrão permanente.
+
+## Android — correção visual do PR #75 (29/09/2026)
+
+Padrão aprovado por Elias após teste do APK 29: cards operacionais brancos, borda avermelhada discreta, cantos arredondados e faixa vermelha de 4 dp à esquerda. `NevesContentCard` centraliza as variantes de conteúdo e clicável, mantendo a semântica Material. A faixa usa a altura medida do card completo, inclusive durante expansão/recolhimento; não pertence ao cabeçalho.
+
+Aplicado a Estoque (categoria, fornecedor, A–Z e resumo), Produtos/Categorias, Fornecedores, Entrada, Conferência, Compras, Home, Relatórios, Alertas, pendências Offline, Lixeira e card de versão em Configurações. Chips, campos, badges, menus, ilustrações e avisos semânticos conservam o tratamento próprio. Compras preserva o checkbox e distingue a seleção por borda vermelha mais forte sobre fundo branco.
+
+Implementação consolidada documentalmente no CHECKPOINT 245, branch `feat/android-17-product-maintenance-ux`, Android `0.30.0-alpha01 / 30`; Android CI #111 SUCCESS no commit funcional `2a09844ff64aa2592f9bebcf274ddcb610fa77eb`. Em 29/09/2026, Elias instalou o APK 30 no aparelho e aprovou o resultado visual e a fluidez do conjunto. A bateria funcional completa não foi declarada concluída. Web não alterada. Contexto Mestre e Notion sincronizados; isso não representa integração em main nem publicação de Release.
+
+
+## Android — abertura imediata e modo operacional rápido (CHECKPOINT 246 — 29/09/2026)
+
+Padrão atual do Android 31:
+- aparelho já validado pode abrir a interface imediatamente pelo último acesso local conhecido; acesso, perfil e dispositivo são revalidados em segundo plano;
+- confirmação em segundo plano usa indicador discreto de 2 dp; a tela bloqueante de verificação fica reservada para situações sem acesso local utilizável;
+- Estoque Atual e Produtos são as únicas áreas aquecidas na abertura: snapshot/cache local primeiro, leitura oficial depois, com reaproveitamento de carga em andamento;
+- campos numéricos operacionais de Conferência e Entrada usam teclado numérico próprio Neves integrado ao `bottomBar`;
+- o campo ativo deve permanecer visível acima do teclado por rolagem automática;
+- ao sair de campo numérico para texto, o teclado próprio some e o teclado Android volta a ser usado;
+- botões −/+ são padrão apenas para quantidade de Conferência, nunca para Entrada;
+- Conferência por categoria segue Data → Responsável → quantidades → Observação; Conferência de produto segue Responsável → Quantidade → Observação;
+- Entrada normal segue Fornecedor → Data → Produto → Quantidade → Preço → próximo Produto; quando iniciada por Produto, segue Fornecedor → Data → Quantidade → Preço → Observação;
+- Salvar permanece ação explícita; o último campo não salva automaticamente.
+
+Implementação funcional em `e204e06be0bf17db1f625ff9223430503024dd12`, Android `0.31.0-alpha01 / 31`, CI #115 SUCCESS. Teste funcional em aparelho ainda A VERIFICAR. Web não alterada.
+
+
+## Android — refinamentos após CHECKPOINT 246 (29/09/2026)
+
+### Entrada — busca de Produto acima do teclado
+Android `0.32.0-alpha01 / 32`, commit funcional `b9cb75b0e462db279e19fe3d564454bcfced1f5c`, CI #117 SUCCESS.
+
+A busca “Adicionar Produto” da Nova Entrada passou a reservar mais espaço abaixo do campo e a trazê-lo para uma posição mais alta quando o teclado do celular está aberto, mantendo as sugestões visíveis durante a digitação. Elias testou em aparelho e aprovou o resultado: campo e sugestões ficaram na posição desejada e o fluxo Produto → Quantidade → Preço ficou confortável.
+
+Estado: **IMPLEMENTADO / CI APROVADA / APROVADO EM APARELHO**.
+
+### Datas — padrão brasileiro + calendário visual
+Android `0.33.0-alpha01 / 33`, commit funcional `e2b980dc4d412a91e528a88efcdd75898eb65f35`, CI #118 SUCCESS.
+
+Padrão implementado:
+- data visível no Android em `DD/MM/AAAA`;
+- armazenamento/API permanecem em ISO `AAAA-MM-DD`;
+- data atual continua preenchida por padrão onde já existia essa regra;
+- campo de data passa a ser somente leitura para o usuário, com ícone de calendário;
+- alteração via seletor Material/Android;
+- datas futuras continuam indisponíveis;
+- após confirmar a data em fluxos sequenciais, o foco avança para o próximo campo lógico;
+- aplicado em Nova Entrada, Editar Entrada, Nova Conferência, Corrigir Conferência e edição de pendência Offline.
+
+Estado: **IMPLEMENTADO / CI APROVADA / APROVADO EM APARELHO**.
+
+## Android — Modo Escuro (Android 34, 29/09/2026)
+
+Elias aprovou visualmente a proposta de Dark Mode; implementada no Android `0.34.0-alpha01`.
+
+### Regra de produto
+- Configurações terá seção **Aparência** com escolha manual entre **Claro** e **Escuro**.
+- A preferência deve mudar o app imediatamente e persistir localmente neste aparelho.
+- Não sincronizar a preferência com Supabase/usuário.
+- Nesta primeira versão, não incluir “Seguir sistema”; manter apenas Claro/Escuro.
+- O tema claro atual deve permanecer visualmente inalterado.
+
+### Paleta escura aprovada
+- fundo geral: `#181614`;
+- cards/superfícies principais: `#211E1B`;
+- superfícies secundárias: `#2A2622`;
+- elementos elevados: `#302B27`;
+- texto principal: `#F4F1ED`;
+- texto secundário: `#B8B0A7`;
+- bordas: cinza/marrom quente discreto e de baixo contraste;
+- vermelho Neves permanece como cor de identidade/destaque.
+
+A direção é **grafite/carvão quente**, confortável e levemente amarronzado. Não usar preto puro como base, não usar azul-marinho dominante e não fazer simples inversão de cores.
+
+### Aplicação visual aprovada
+- header continua mais escuro que o conteúdo, mas dentro da mesma família quente;
+- cards operacionais escuros preservam faixa vermelha lateral e identidade aprovada do `NevesContentCard`;
+- ícones podem usar superfícies elevadas/avermelhadas discretas, mantendo vermelho como destaque;
+- teclado numérico próprio, calendário, dialogs, dropdowns, campos, filtros, chips, menus, histórico, Estoque, Produtos, Entrada, Conferência, Compras, Relatórios, Alertas, Offline, Lixeira e Configurações devem respeitar o tema;
+- estados semânticos de sucesso/alerta/erro devem ganhar variantes escuras próprias; não confundir vermelho de erro com vermelho institucional;
+- fazer auditoria de cores fixas (`Color.White`, `NevesColors.Header`, containers claros etc.) antes de considerar o Dark Mode concluído.
+
+### Implementação (Android 34)
+- **Configurações → Aparência**: card no topo com rótulo “Claro”/“Escuro” e seletor em cápsula (60×32 dp visual, alvo de toque ≥ 48 dp): Sol à esquerda, Lua à direita, indicador circular vermelho Neves que desliza para o lado ativo; ícone ativo branco sobre o indicador, inativo discreto. Trilho/borda usam `surfaceVariant`/`outlineVariant`, portanto a cápsula é clara no Claro e escura no Escuro.
+- **Transição**: 300 ms, `FastOutSlowInEasing`. O indicador desliza, Sol/Lua trocam destaque e a paleta inteira interpola ao mesmo tempo; sem flash, onda, zoom ou recriação de tela; navegação inalterada.
+- **Header escuro**: `#110F0D` (mais escuro que o fundo `#181614`), texto `#F4F1ED`, secundário `#B8B0A7`; faixa decorativa e `Accent #EF4444` preservados.
+- **Vermelho Neves no Escuro**: `primary #D93A3A` (branco sobre ele ≥ 4.5:1; legível sobre cards). No Claro continua `#B91C1C`.
+- **Superfícies escuras**: background `#181614`; surface/cards `#211E1B`; surfaceVariant/surfaceContainer `#2A2622`; surfaceContainerHigh (dialogs, calendário) `#302B27`; surfaceContainerHighest `#3A3430`; outline `#8A8078`; outlineVariant/divisores `#3D3732`; borda de card `#3A2A27`.
+- **Semânticas escuras**: alerta `#3A2C12`/`#F5CF8A`; sucesso `#173323`/`#9BE3B8`; erro container `#4A1F1B`/`#FFB4AB`; `error #F2B8B5` (distinto do vermelho institucional); faixa Offline `#5C3A10`/`#FDE7C2`.
+- **Login no Escuro**: a arte oficial de fundo branco vira placa arredondada centralizada; no Claro o layout é o anterior.
+- Tema claro: mesmos valores de antes (cobertos por teste unitário).
+
+Estado: **TESTADO / APROVADO EM APARELHO**. Elias aprovou visual, transição Claro↔Escuro e persistência após fechar completamente e reabrir o app. CI funcional #122 SUCCESS.

@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
 import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
 import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -212,7 +212,7 @@ fun CategoriesScreen(
         ) {
             noticeMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -228,7 +228,7 @@ fun CategoriesScreen(
 
             actionNotice?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Text(
                                 message,
@@ -244,7 +244,7 @@ fun CategoriesScreen(
 
             actionError?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Text(
                             message,
                             color = MaterialTheme.colorScheme.error,
@@ -276,12 +276,12 @@ fun CategoriesScreen(
             }
 
             if (loading) {
-                item { Card { Text("Carregando Categorias…", modifier = Modifier.padding(18.dp)) } }
+                item { NevesContentCard { Text("Carregando Categorias…", modifier = Modifier.padding(18.dp)) } }
             }
 
             error?.let {
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(it, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = { scope.launch { load() } }) {
@@ -293,12 +293,12 @@ fun CategoriesScreen(
             }
 
             if (!loading && error == null && visibleCategories.isEmpty()) {
-                item { Card { NevesStatusMessage("Nenhuma Categoria cadastrada.") } }
+                item { NevesContentCard { NevesStatusMessage("Nenhuma Categoria cadastrada.") } }
             }
 
             items(visibleCategories, key = { it.id }) { category ->
                 val index = visibleCategories.indexOfFirst { it.id == category.id }
-                Card {
+                NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Row(Modifier.fillMaxWidth()) {
                             if (!reordering) {

@@ -4,6 +4,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import com.babycatbe.nevesestoque.ui.theme.LocalNevesDarkTheme
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import com.babycatbe.nevesestoque.R
@@ -49,11 +53,20 @@ fun LoginScreen(
 
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 24.dp)) {
+            // A arte oficial tem fundo branco: no Escuro ela vira uma placa arredondada centralizada,
+            // em vez de um retângulo branco solto. No Claro o layout é o mesmo de antes.
+            val darkTheme = LocalNevesDarkTheme.current
             Image(
                 painter = painterResource(R.drawable.neves_brand_light),
                 contentDescription = "Panificadora Neves",
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth().height(140.dp),
+                modifier = if (darkTheme) {
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .height(140.dp)
+                        .aspectRatio(BRAND_LIGHT_ASPECT_RATIO)
+                        .clip(RoundedCornerShape(16.dp))
+                } else Modifier.fillMaxWidth().height(140.dp),
             )
             Text(
                 text = "NEVES • ESTOQUE",
@@ -137,3 +150,5 @@ fun LoginScreen(
     }
 }
 
+/** Proporção da arte neves_brand_light (1536 × 1048). */
+private const val BRAND_LIGHT_ASPECT_RATIO = 1536f / 1048f

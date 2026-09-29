@@ -1,11 +1,13 @@
 package com.babycatbe.nevesestoque.feature.offline
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
 import com.babycatbe.nevesestoque.ui.theme.NevesColors
 import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import com.babycatbe.nevesestoque.ui.components.NevesTopBarSurface
+import com.babycatbe.nevesestoque.ui.input.NevesDateField
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,7 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -88,7 +89,7 @@ fun PendingListRoute(
         }
         (notice ?: noticeMessage)?.let { message ->
             item {
-                Card {
+                NevesContentCard {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                         Text(message, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         TextButton(onClick = { notice = null; onDismissNotice() }) { Text("Fechar") }
@@ -111,7 +112,7 @@ fun PendingListRoute(
             item { Text("Carregando pendências locais…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else if (pending.isEmpty() && problems.isEmpty()) {
             item {
-                Card {
+                NevesContentCard {
                     Text(
                         "Nenhuma pendência local neste aparelho.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -121,7 +122,7 @@ fun PendingListRoute(
             }
         }
         items(pending, key = { it.localId }) { operation ->
-            Card {
+            NevesContentCard {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     Text(operation.kindLabel.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Text(operation.summaryTitle, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
@@ -228,7 +229,12 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
         }
         if (operation.kind != PendingKind.ProductConference) {
             item {
-                Field("Data (AAAA-MM-DD)", draft.date) { draft = draft.copy(date = it) }
+                NevesDateField(
+                    value = draft.date,
+                    onValueChange = { draft = draft.copy(date = it) },
+                    label = "Data *",
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
         if (operation.kind != PendingKind.Entry) {
@@ -276,7 +282,7 @@ private fun LazyListScope.editItems(
                 val key = index.toString()
                 val removed = index in draft.removedItems
                 item(key = "entry-$index") {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("${item.productName} (${item.unit})", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))

@@ -1,5 +1,6 @@
 package com.babycatbe.nevesestoque.feature.alerts
 
+import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.theme.NevesColors
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -82,6 +82,7 @@ class AlertsRepository {
     }
 
     suspend fun loadCounts(): AlertCounts = coroutineScope {
+        com.babycatbe.nevesestoque.data.supabase.awaitAuthSessionReady()
         val trash = async { trashRepository.loadRestorableTrash().size }
         val suppliers = async { suppliersRepository.loadActiveSuppliers().count { it.isPending } }
         val products = async { pendingProducts() }
@@ -159,10 +160,10 @@ fun AlertsRoute(
                     onClick = onLocalPending,
                 )
             }
-            if (state.loading) item { Card { Text("Carregando Alertas…", modifier = Modifier.padding(18.dp)) } }
+            if (state.loading) item { NevesContentCard { Text("Carregando Alertas…", modifier = Modifier.padding(18.dp)) } }
             state.errorMessage?.let { message ->
                 item {
-                    Card {
+                    NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(message, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = vm::refresh) { Text("Tentar novamente") }
@@ -189,7 +190,7 @@ fun AlertsRoute(
                 }
                 if (counts.pendingTotal == 0) {
                     item {
-                        Card {
+                        NevesContentCard {
                             Text(
                                 "Nenhum cadastro pendente no momento.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -237,7 +238,7 @@ private fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 private fun AlertCard(title: String, count: Int, description: String, tone: Tone, onClick: () -> Unit) {
-    Card(onClick = onClick) {
+    NevesContentCard(onClick = onClick) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))

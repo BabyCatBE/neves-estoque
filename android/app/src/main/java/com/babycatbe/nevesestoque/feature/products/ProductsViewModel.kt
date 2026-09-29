@@ -1,6 +1,7 @@
 package com.babycatbe.nevesestoque.feature.products
 
 import com.babycatbe.nevesestoque.ui.load.LatestLoad
+import com.babycatbe.nevesestoque.ui.load.SharedSnapshotLoad
 import com.babycatbe.nevesestoque.ui.load.loadCatching
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -19,32 +20,60 @@ data class ProductsUiState(
     val errorMessage: String? = null,
 )
 
+/**
+ * Catálogo de Produtos compartilhado entre o pré-carregamento da abertura do app e a lista.
+ * Mesma leitura do [ProductsRepository.loadCatalog]; só evita consulta repetida e abre na hora.
+ */
+object CatalogWarmLoad {
+    private val repository = ProductsRepository()
+    val shared = SharedSnapshotLoad(
+        loadOfficial = { repository.loadCatalog() },
+        loadSnapshot = { repository.loadCatalogSnapshot() },
+    )
+}
+
 class ProductsViewModel : ViewModel() {
     private val repository = ProductsRepository()
-    private val _uiState = MutableStateFlow(ProductsUiState())
+    private val shared = CatalogWarmLoad.shared
+    private val _uiState = MutableStateFlow(
+        shared.peek()?.let { ProductsUiState(loading = false, refreshing = true, data = it) } ?: ProductsUiState()
+    )
     val uiState: StateFlow<ProductsUiState> = _uiState.asStateFlow()
     private val latestLoad = LatestLoad()
 
-    init { refresh() }
+    init {
+        latestLoad.launch(viewModelScope) {
+            if (_uiState.value.data == null) {
+                shared.snapshotOrNull()?.let { snapshot ->
+                    if (_uiState.value.data == null) {
+                        _uiState.value = ProductsUiState(loading = false, refreshing = true, data = snapshot)
+                    }
+                }
+            }
+            load(reuseInFlight = true)
+        }
+    }
 
     fun refresh() {
-        latestLoad.launch(viewModelScope) {
-            val hasData = _uiState.value.data != null
-            _uiState.value = _uiState.value.copy(
-                loading = !hasData,
-                refreshing = hasData,
-                errorMessage = null,
-            )
-            loadCatching { repository.loadCatalog() }
-                .onSuccess { _uiState.value = ProductsUiState(loading = false, data = it) }
-                .onFailure {
-                    _uiState.value = _uiState.value.copy(
-                        loading = false,
-                        refreshing = false,
-                        errorMessage = "Não foi possível carregar os Produtos.",
-                    )
-                }
-        }
+        latestLoad.launch(viewModelScope) { load(reuseInFlight = false) }
+    }
+
+    private suspend fun load(reuseInFlight: Boolean) {
+        val hasData = _uiState.value.data != null
+        _uiState.value = _uiState.value.copy(
+            loading = !hasData,
+            refreshing = hasData,
+            errorMessage = null,
+        )
+        loadCatching { shared.load(reuseInFlight) }
+            .onSuccess { _uiState.value = ProductsUiState(loading = false, data = it) }
+            .onFailure {
+                _uiState.value = _uiState.value.copy(
+                    loading = false,
+                    refreshing = false,
+                    errorMessage = "Não foi possível carregar os Produtos.",
+                )
+            }
     }
 
     suspend fun saveProductOrder(changes: List<ProductOrderChange>): Boolean {
@@ -59,6 +88,7 @@ class ProductsViewModel : ViewModel() {
         return try {
             repository.reorderProducts(changes)
             val official = repository.loadCatalog()
+            shared.remember(official)
             _uiState.value = ProductsUiState(loading = false, data = official)
             true
         } catch (error: Throwable) {
@@ -258,6 +288,12 @@ class ProductFormViewModel(
     val uiState: StateFlow<ProductFormUiState> = _uiState.asStateFlow()
 
     init { load() }
+
+    fun retryLoad() {
+        if (_uiState.value.saving || _uiState.value.loading) return
+        _uiState.value = _uiState.value.copy(loading = true, errorMessage = null)
+        load()
+    }
 
     private fun load() {
         viewModelScope.launch {

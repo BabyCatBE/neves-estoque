@@ -15,19 +15,25 @@ Antes de realizar alterações técnicas relevantes neste projeto, leia os arqui
 
 O **Contexto Mestre no Google Drive** continua sendo a fonte consolidada de continuidade geral. GitHub é autoridade para código, CI e migrations versionadas; Supabase é autoridade para o estado operacional real do banco.
 
-## Estado atual
+## Estado atual — 29/09/2026
 
-**EM IMPLEMENTAÇÃO / TESTES**.
+**IMPLEMENTAÇÃO INCREMENTAL / TESTES / PR EMPILHADO AINDA NÃO INTEGRADO À LINHA PRINCIPAL**.
 
-- Web: `0.26.0`;
-- Android: `0.21.0-alpha01` (versionCode 21);
-- branch operacional: `fix/audit-device-id`;
-- Bloco Android 11 de 13 em andamento;
-- sub-blocos 11.1 e 11.2 concluídos;
-- próximo trabalho: definir/executar 11.3 a partir do diagnóstico;
-- testes funcionais, Offline e performance em aparelho continuam `A VERIFICAR`.
+- Web/System: `0.26.0`;
+- Android: `0.34.0-alpha01` (versionCode 34);
+- linha de trabalho atual: `feat/android-17-product-maintenance-ux`;
+- PR atual: #75 — DRAFT / OPEN / NÃO INTEGRADO, base `feat/android-launcher-icon`;
+- o HEAD atual deve ser consultado diretamente no GitHub; commits documentais posteriores ao último commit funcional não alteram o estado funcional;
+- último commit funcional: `e7928813f757c45f19454f0fd9ac460b76c1aacd`;
+- Android CI funcional #122: SUCCESS;
+- commits exclusivamente documentais também podem disparar Android CI; a referência funcional permanece a CI do último commit funcional;
+- Android 32: busca de Produto da Nova Entrada APROVADA EM APARELHO;
+- Android 33: seletor visual de data `DD/MM/AAAA` APROVADO EM APARELHO;
+- Android 34: **Modo Escuro** (Configurações → Aparência, seletor Sol/Lua, transição de ~300 ms, preferência local) TESTADO / APROVADO EM APARELHO.
 
-Para o estado mais recente, use `docs/contexto/task.md` e o cabeçalho do Contexto Mestre; não use snapshots históricos deste README como substituto.
+A cadeia atual é empilhada: PRs #69–#75 permanecem abertos/em rascunho em suas bases sucessivas. Não confundir “presente na branch atual” com “integrado em main/develop”.
+
+Para o estado mais recente, use `docs/contexto/task.md` e o cabeçalho do Contexto Mestre.
 
 ## Stack
 
@@ -48,15 +54,24 @@ Para o estado mais recente, use `docs/contexto/task.md` e o cabeçalho do Contex
 - Kotlin + Jetpack Compose + Material 3
 - Navigation Compose
 - Supabase Kotlin + Ktor Android
-- armazenamento Offline atual em arquivos JSON internos privados
+- armazenamento Offline em arquivos JSON internos privados
+- atualizador interno por GitHub Releases públicas, com SHA-256 obrigatório
+- workflow de publicação de Release versionada e assinada, acionado conscientemente
 
-## Branches
+## Branches e PRs
 
-- `fix/audit-device-id`: branch operacional atual;
+- `feat/android-17-product-maintenance-ux`: linha de trabalho atual / PR #75;
+- `feat/android-launcher-icon`: base do PR #75 / PR #74;
+- `feat/android-16-release-automation`: PR #73;
+- `feat/android-15-in-app-updater`: PR #72;
+- `feat/android-14-ux-design-motion`: PR #71;
+- `feat/android-13-production-readiness`: PR #70;
+- `feat/android-12-release-preparation`: PR #69;
+- `fix/audit-device-id`: base operacional histórica que recebeu a integração do Bloco 11;
 - `develop`: integração/DEV;
 - `main`: produção.
 
-Não fazer merge ou release sem seguir o estado consolidado e a instrução explícita da etapa.
+Não fazer merge, release ou reescrita da cadeia sem seguir o estado consolidado e uma decisão explícita de Elias.
 
 ## Segurança
 
