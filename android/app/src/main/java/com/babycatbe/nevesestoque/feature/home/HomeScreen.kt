@@ -27,7 +27,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -144,22 +143,19 @@ private fun NevesHeader(
                 }
             }
             val hasAlerts = (alertCount ?: 0) > 0
-            TextButton(
-                onClick = onAlerts,
-                colors = TextButtonDefaults.textButtonColors(
-                    contentColor = if (hasAlerts) ALERT_AMBER else NEVES_HEADER_ACTION,
-                ),
-            ) {
+            TextButton(onClick = onAlerts) {
                 Text(
                     if (hasAlerts) "Alertas ($alertCount)" else "Alertas",
+                    color = if (hasAlerts) ALERT_AMBER else NEVES_HEADER_ACTION,
                     fontWeight = if (hasAlerts) FontWeight.Bold else FontWeight.SemiBold,
                 )
             }
-            TextButton(
-                onClick = onSignOut,
-                colors = TextButtonDefaults.textButtonColors(contentColor = NEVES_HEADER_ACTION),
-            ) {
-                Text("Sair", fontWeight = FontWeight.SemiBold)
+            TextButton(onClick = onSignOut) {
+                Text(
+                    "Sair",
+                    color = NEVES_HEADER_ACTION,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         }
     }
