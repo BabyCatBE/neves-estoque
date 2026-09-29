@@ -93,3 +93,20 @@ Atualizar quando mudar fase, objetivo, prioridade, próxima tarefa, bloqueio, br
 - Commit funcional consolidado: `2a09844ff64aa2592f9bebcf274ddcb610fa77eb`. Artifact signed: `neves-estoque-android-signed-0.30.0-alpha01-61242324520c69b547925e9c65db1fe13a8699d2`. CI não equivale a teste funcional em aparelho.
 - Teste em aparelho: APK 30 instalado por Elias e **visual/fluidez APROVADOS** em 29/09/2026. A bateria funcional completa do roteiro continua A VERIFICAR; não inferir que todos os fluxos foram testados apenas pela aprovação visual.
 - Contexto Mestre e Notion sincronizados no CHECKPOINT 245. Sem merge em main, Release, mudança Web, Supabase/migrations/dados. Próximo passo: continuar a validação funcional do APK 30 e corrigir apenas achados reais.
+
+
+## Continuidade Android — CHECKPOINT 246: abertura imediata, preload e fluxo operacional rápido (29/09/2026)
+
+- Branch: `feat/android-17-product-maintenance-ux`; PR #75 DRAFT / OPEN / NÃO INTEGRADO.
+- Base do bloco: `485840e4bf974b2b45bdad69b2809eadc03cc4dd`.
+- Commit principal: `d3e4ef9568da3358746f798347a332ef0337b5aa`; ajuste final: `e204e06be0bf17db1f625ff9223430503024dd12`.
+- Android `0.31.0-alpha01 / versionCode 31`; Web/System `0.26.0`.
+- Implementado: abertura pelo acesso local previamente validado com revalidação em segundo plano; preload somente de Estoque Atual e Produtos; snapshot local + refresh oficial; teclado numérico próprio; foco/rolagem em Conferência e Entrada; −/+ somente em Conferência.
+- Fluxos: Conferência categoria = Data → Responsável → quantidades → Observação; produto único = Responsável → Quantidade → Observação; Entrada normal = Fornecedor → Data → Produto → Quantidade → Preço → busca; Entrada por Produto = Fornecedor → Data → Quantidade → Preço → Observação.
+- Observação da Nova Entrada foi movida para depois dos itens. Corrigir Conferência usa teclado próprio com −/+; Editar Entrada usa teclado próprio sem −/+.
+- Enter nas buscas de Fornecedor/Produto seleciona automaticamente apenas se houver exatamente um resultado; comportamento A VERIFICAR em aparelho.
+- CI #114 falhou em `LatestLoadTest.newerLoadCancelsOlderAndOlderResultNeverWins`; CI #115 / run `36617635332` passou integralmente. Registrar o teste antigo como risco de intermitência.
+- Artifact signed: `neves-estoque-android-signed-0.31.0-alpha01-bf8d45b1ea6ac6ecaf63f52c760898f8b6049778`.
+- Nenhuma alteração de Web, Supabase, migrations ou dados.
+- Estado: IMPLEMENTADO / CI APROVADA / TESTE FUNCIONAL EM APARELHO A VERIFICAR.
+- Próximo passo: instalar APK 31 e validar abertura imediata, preload, teclado, foco/rolagem, buscas e regressões online/offline. Corrigir apenas achados reais.

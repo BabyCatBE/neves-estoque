@@ -151,3 +151,20 @@ Padrão aprovado por Elias após teste do APK 29: cards operacionais brancos, bo
 Aplicado a Estoque (categoria, fornecedor, A–Z e resumo), Produtos/Categorias, Fornecedores, Entrada, Conferência, Compras, Home, Relatórios, Alertas, pendências Offline, Lixeira e card de versão em Configurações. Chips, campos, badges, menus, ilustrações e avisos semânticos conservam o tratamento próprio. Compras preserva o checkbox e distingue a seleção por borda vermelha mais forte sobre fundo branco.
 
 Implementação consolidada documentalmente no CHECKPOINT 245, branch `feat/android-17-product-maintenance-ux`, Android `0.30.0-alpha01 / 30`; Android CI #111 SUCCESS no commit funcional `2a09844ff64aa2592f9bebcf274ddcb610fa77eb`. Em 29/09/2026, Elias instalou o APK 30 no aparelho e aprovou o resultado visual e a fluidez do conjunto. A bateria funcional completa não foi declarada concluída. Web não alterada. Contexto Mestre e Notion sincronizados; isso não representa integração em main nem publicação de Release.
+
+
+## Android — abertura imediata e modo operacional rápido (CHECKPOINT 246 — 29/09/2026)
+
+Padrão atual do Android 31:
+- aparelho já validado pode abrir a interface imediatamente pelo último acesso local conhecido; acesso, perfil e dispositivo são revalidados em segundo plano;
+- confirmação em segundo plano usa indicador discreto de 2 dp; a tela bloqueante de verificação fica reservada para situações sem acesso local utilizável;
+- Estoque Atual e Produtos são as únicas áreas aquecidas na abertura: snapshot/cache local primeiro, leitura oficial depois, com reaproveitamento de carga em andamento;
+- campos numéricos operacionais de Conferência e Entrada usam teclado numérico próprio Neves integrado ao `bottomBar`;
+- o campo ativo deve permanecer visível acima do teclado por rolagem automática;
+- ao sair de campo numérico para texto, o teclado próprio some e o teclado Android volta a ser usado;
+- botões −/+ são padrão apenas para quantidade de Conferência, nunca para Entrada;
+- Conferência por categoria segue Data → Responsável → quantidades → Observação; Conferência de produto segue Responsável → Quantidade → Observação;
+- Entrada normal segue Fornecedor → Data → Produto → Quantidade → Preço → próximo Produto; quando iniciada por Produto, segue Fornecedor → Data → Quantidade → Preço → Observação;
+- Salvar permanece ação explícita; o último campo não salva automaticamente.
+
+Implementação funcional em `e204e06be0bf17db1f625ff9223430503024dd12`, Android `0.31.0-alpha01 / 31`, CI #115 SUCCESS. Teste funcional em aparelho ainda A VERIFICAR. Web não alterada.
