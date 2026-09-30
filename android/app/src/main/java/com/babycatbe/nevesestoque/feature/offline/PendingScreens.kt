@@ -350,7 +350,7 @@ private fun LazyListScope.editItems(
                                         label = "Quantidade",
                                         keypad = keypad,
                                         enabled = enabled,
-                                        focusRequester = fields.getOrPut("$key-q") { FocusRequester() },
+                                        focusRequester = remember(fields, key) { fields.getOrPut("$key-q") { FocusRequester() } },
                                         onConfirm = { onNext("$key-q") },
                                         modifier = Modifier.weight(1f),
                                     )
@@ -360,7 +360,7 @@ private fun LazyListScope.editItems(
                                         label = "Preço (R$)",
                                         keypad = keypad,
                                         enabled = enabled,
-                                        focusRequester = fields.getOrPut("$key-p") { FocusRequester() },
+                                        focusRequester = remember(fields, key) { fields.getOrPut("$key-p") { FocusRequester() } },
                                         onConfirm = { onNext("$key-p") },
                                         placeholder = "Não informado",
                                         modifier = Modifier.weight(1f),
@@ -379,7 +379,7 @@ private fun LazyListScope.editItems(
             items(payload.items, key = { "conf-${it.productId}" }) { item ->
                 QuantityRow(
                     "${item.productName} (${item.unit})", draft.quantities[item.productId].orEmpty(),
-                    keypad, fields.getOrPut(item.productId) { FocusRequester() }, { onNext(item.productId) }, enabled,
+                    keypad, remember(fields, item.productId) { fields.getOrPut(item.productId) { FocusRequester() } }, { onNext(item.productId) }, enabled,
                 ) {
                     onChange(draft.copy(quantities = draft.quantities + (item.productId to it)))
                 }
@@ -390,7 +390,7 @@ private fun LazyListScope.editItems(
             item(key = "unit-${payload.productId}") {
                 QuantityRow(
                     "Nova quantidade (${payload.unit})", draft.quantities[payload.productId].orEmpty(),
-                    keypad, fields.getOrPut(payload.productId) { FocusRequester() }, { onNext(payload.productId) }, enabled,
+                    keypad, remember(fields, payload.productId) { fields.getOrPut(payload.productId) { FocusRequester() } }, { onNext(payload.productId) }, enabled,
                 ) {
                     onChange(draft.copy(quantities = draft.quantities + (payload.productId to it)))
                 }

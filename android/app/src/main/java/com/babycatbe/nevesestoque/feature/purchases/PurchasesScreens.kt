@@ -425,7 +425,7 @@ fun PurchaseListRoute(
                 PurchaseItemCard(
                     item = item,
                     keypad = keypad,
-                    focusRequester = quantityFocus.getOrPut(item.productId) { FocusRequester() },
+                    focusRequester = remember(quantityFocus, item.productId) { quantityFocus.getOrPut(item.productId) { FocusRequester() } },
                     isLast = item.productId == items.lastOrNull()?.productId,
                     onNext = {
                         val index = items.indexOfFirst { it.productId == item.productId }
