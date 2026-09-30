@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,9 +38,23 @@ import java.util.concurrent.ConcurrentHashMap
  * decidindo tudo quando a conexão volta.
  */
 object OfflineStore {
+    /**
+     * Geração do cache reconstruível. Quando muda, a primeira abertura da nova versão apaga
+     * SOMENTE a pasta `cache/` (nunca `pending/` nem `access/`) antes de qualquer leitura local.
+     *
+     * 2 = troca dos dados de teste pelo catálogo real da Panificadora (Bloco 252, 30/09/2026):
+     * impede que Produtos, Categorias, Fornecedores, estoque ou preços do período de testes
+     * reapareçam a partir da cópia local. Só incrementar por decisão consciente.
+     */
+    const val CACHE_GENERATION = 2
+
     private lateinit var root: File
     private val fileMutexes = ConcurrentHashMap<String, Mutex>()
     private val _lastSnapshotAt = MutableStateFlow<Long?>(null)
+
+    /** Liberado ao fim de [prepare]: nenhuma leitura/gravação de cache acontece antes da invalidação. */
+    @Volatile
+    private var ready = CompletableDeferred<Unit>()
 
     /** Momento da última cópia de leitura salva com sucesso (para a faixa "Sem internet"). */
     val lastSnapshotAt: StateFlow<Long?> = _lastSnapshotAt.asStateFlow()
@@ -53,18 +68,38 @@ object OfflineStore {
         root = File(context.applicationContext.filesDir, "offline")
     }
 
-    internal fun initializeForTests(filesDir: File) {
+    /** Testes: pasta isolada; o portão já nasce liberado, salvo se o teste for exercitar [prepare]. */
+    internal fun initializeForTests(filesDir: File, awaitPrepare: Boolean = false) {
         root = File(filesDir, "offline")
         _lastSnapshotAt.value = null
         fileMutexes.clear()
+        ready = CompletableDeferred<Unit>().also { if (!awaitPrepare) it.complete(Unit) }
     }
 
-    /** Cria as pastas e carrega metadados locais fora da thread da interface. */
+    /**
+     * Cria as pastas, invalida o cache de geração antiga e carrega metadados locais fora da
+     * thread da interface. Sempre libera o portão, mesmo em falha (cache é só otimização).
+     */
     suspend fun prepare() = withContext(Dispatchers.IO) {
-        cacheDir().mkdirs()
-        pendingDir().mkdirs()
-        accessDir().mkdirs()
-        _lastSnapshotAt.value = cacheDir().listFiles()?.maxOfOrNull { it.lastModified() }?.takeIf { it > 0 }
+        try {
+            cacheDir().mkdirs()
+            pendingDir().mkdirs()
+            accessDir().mkdirs()
+            invalidateCacheIfGenerationChanged()
+            _lastSnapshotAt.value = cacheDir().listFiles()?.maxOfOrNull { it.lastModified() }?.takeIf { it > 0 }
+        } finally {
+            ready.complete(Unit)
+        }
+    }
+
+    private fun generationFile(): File = File(root, "cache-generation")
+
+    /** Apaga apenas `cache/` quando a geração gravada difere de [CACHE_GENERATION]. */
+    private suspend fun invalidateCacheIfGenerationChanged() {
+        val stored = runCatching { readTextFile(generationFile())?.trim()?.toIntOrNull() }.getOrNull()
+        if (stored == CACHE_GENERATION) return
+        cacheDir().listFiles()?.forEach { file -> fileMutex(file).withLock { file.delete() } }
+        writeAtomic(generationFile(), CACHE_GENERATION.toString().toByteArray(Charsets.UTF_8))
     }
 
     fun cacheDir(): File = File(root, "cache")
@@ -74,22 +109,29 @@ object OfflineStore {
     private fun safeName(key: String): String = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
 
     suspend fun writeCache(key: String, text: String) {
+        ready.await()
         writeAtomic(File(cacheDir(), safeName(key) + ".json"), text.toByteArray(Charsets.UTF_8))
         _lastSnapshotAt.value = System.currentTimeMillis()
     }
 
-    suspend fun readCache(key: String): String? =
-        readTextFile(File(cacheDir(), safeName(key) + ".json"))
+    suspend fun readCache(key: String): String? {
+        ready.await()
+        return readTextFile(File(cacheDir(), safeName(key) + ".json"))
+    }
 
     suspend fun writeCacheBytes(key: String, bytes: ByteArray) {
+        ready.await()
         writeAtomic(File(cacheDir(), "bin-" + sha256(key)), bytes)
     }
 
-    suspend fun readCacheBytes(key: String): ByteArray? =
-        readBytesFile(File(cacheDir(), "bin-" + sha256(key)))
+    suspend fun readCacheBytes(key: String): ByteArray? {
+        ready.await()
+        return readBytesFile(File(cacheDir(), "bin-" + sha256(key)))
+    }
 
     /** Apaga somente o cache reconstruível. Pendências locais são preservadas. */
     suspend fun clearCache() = withContext(Dispatchers.IO) {
+        ready.await()
         cacheDir().listFiles()?.forEach { file -> fileMutex(file).withLock { file.delete() } }
         _lastSnapshotAt.value = null
     }
