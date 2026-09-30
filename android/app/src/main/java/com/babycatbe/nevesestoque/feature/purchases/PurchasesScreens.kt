@@ -30,6 +30,7 @@ import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -580,7 +581,11 @@ private fun PurchaseItemCard(
                     Text("ESTOQUE ATUAL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(formatPurchaseStock(item.currentQuantity, item.unit), fontWeight = FontWeight.SemiBold)
                 }
-                OutlinedButton(onClick = { onStep(-1) }, modifier = Modifier.width(48.dp).focusProperties { canFocus = false }) { NevesIcon(NevesIcons.Remove, "Diminuir quantidade") }
+                OutlinedButton(
+                    onClick = { onStep(-1) },
+                    modifier = Modifier.width(48.dp).focusProperties { canFocus = false },
+                    contentPadding = PaddingValues(0.dp),
+                ) { NevesIcon(NevesIcons.Remove, "Diminuir quantidade", tint = MaterialTheme.colorScheme.primary) }
                 NevesNumericField(
                     value = quantity,
                     onValueChange = onQuantity,
@@ -593,7 +598,11 @@ private fun PurchaseItemCard(
                     confirmLabel = if (isLast) "Concluir" else "Próximo",
                     modifier = Modifier.width(96.dp).padding(horizontal = 6.dp),
                 )
-                OutlinedButton(onClick = { onStep(1) }, modifier = Modifier.width(48.dp).focusProperties { canFocus = false }) { NevesIcon(NevesIcons.Add, "Aumentar quantidade") }
+                OutlinedButton(
+                    onClick = { onStep(1) },
+                    modifier = Modifier.width(48.dp).focusProperties { canFocus = false },
+                    contentPadding = PaddingValues(0.dp),
+                ) { NevesIcon(NevesIcons.Add, "Aumentar quantidade", tint = MaterialTheme.colorScheme.primary) }
             }
             if (invalid) {
                 Text(
