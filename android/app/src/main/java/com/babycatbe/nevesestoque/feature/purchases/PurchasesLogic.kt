@@ -247,6 +247,10 @@ fun parsePurchaseQuantity(value: String): Double? {
     return normalized.toDoubleOrNull()?.takeIf { it.isFinite() }
 }
 
+/** A edição seleciona somente quantidades positivas; o checkbox continua podendo ser usado. */
+fun selectPurchaseQuantity(selected: Set<String>, productId: String, value: String): Set<String> =
+    if ((parsePurchaseQuantity(value) ?: 0.0) > 0.0) selected + productId else selected - productId
+
 /** Valor editável: até 2 casas, vírgula decimal, sem separador de milhar. */
 fun formatEditablePurchaseQuantity(value: Double): String =
     BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_EVEN).stripTrailingZeros()

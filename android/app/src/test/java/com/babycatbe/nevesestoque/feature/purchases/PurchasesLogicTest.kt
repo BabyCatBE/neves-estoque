@@ -172,6 +172,22 @@ class PurchasesLogicTest {
     }
 
     @Test
+    fun typedQuantitiesSelectAndBuildTheSameCopyAndShareText() {
+        val items = listOf(
+            PurchaseListItem("a", "Farinha", "KG", 10.0, null),
+            PurchaseListItem("b", "Açúcar", "KG", 5.0, null),
+        )
+        var selected = selectPurchaseQuantity(emptySet(), "a", "10")
+        selected = selectPurchaseQuantity(selected, "b", "5,5")
+        val result = buildPurchaseOrderText("Lista", items, selected, mapOf("a" to "10", "b" to "5,5"))
+        assertEquals("Lista\n\nFarinha — 10 — KG\nAçúcar — 5,5 — KG", (result as PurchaseOrderResult.Ready).text)
+        for (invalid in listOf("", "0", "-1", "abc", "NaN", "Infinity")) {
+            assertEquals(setOf("b"), selectPurchaseQuantity(selected, "a", invalid))
+        }
+        assertEquals(setOf("a", "b"), selectPurchaseQuantity(setOf("b"), "a", "0,5"))
+    }
+
+    @Test
     fun messagesAndSuggestionFill() {
         val recommended = PurchaseListItem(
             "a", "Farinha", "KG", 1.0,

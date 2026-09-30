@@ -154,6 +154,7 @@ fun NevesNumericField(
     stepper: Boolean = false,
     stepSubject: String? = null,
     allowDecimal: Boolean = true,
+    supportingMessage: String? = null,
 ) {
     val currentValue by rememberUpdatedState(value)
     val currentOnValueChange by rememberUpdatedState(onValueChange)
@@ -185,7 +186,7 @@ fun NevesNumericField(
             label = { Text(label) },
             placeholder = placeholder?.let { hint -> { Text(hint) } },
             isError = errorMessage != null,
-            supportingText = errorMessage?.let { message -> { Text(message) } },
+            supportingText = (errorMessage ?: supportingMessage)?.let { message -> { Text(message) } },
             singleLine = true,
             textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             modifier = fieldModifier

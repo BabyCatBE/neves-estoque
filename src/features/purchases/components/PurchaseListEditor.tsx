@@ -146,6 +146,13 @@ function PurchaseListEditor({
 
   const updateQuantity = (productId: string, value: string) => {
     setQuantities((current) => ({ ...current, [productId]: value }));
+    setSelected((current) => {
+      const next = new Set(current);
+      const quantity = parseQuantity(value);
+      if (quantity !== null && quantity > 0) next.add(productId);
+      else next.delete(productId);
+      return next;
+    });
     clearInvalid(productId);
     setActionError(null);
   };
@@ -156,17 +163,12 @@ function PurchaseListEditor({
     updateQuantity(productId, formatEditableQuantity(nextValue));
   };
 
-  const focusNextSelectedQuantity = (productId: string) => {
+  const focusNextQuantity = (productId: string) => {
     const currentIndex = items.findIndex((product) => product.productId === productId);
     if (currentIndex < 0) return;
-
-    for (let index = currentIndex + 1; index < items.length; index += 1) {
-      const nextProduct = items[index];
-      if (nextProduct && selected.has(nextProduct.productId)) {
-        document.getElementById(`purchase-quantity-${nextProduct.productId}`)?.focus();
-        return;
-      }
-    }
+    const nextProduct = items[currentIndex + 1];
+    if (nextProduct) focusQuantity(nextProduct.productId, true);
+    else document.getElementById(`purchase-quantity-${productId}`)?.blur();
   };
 
   const buildOrderText = () => {
@@ -267,7 +269,7 @@ function PurchaseListEditor({
           <div className="border-b border-zinc-100 px-5 py-4">
             <h3 className="font-semibold">{listTitle}</h3>
             <p className="mt-1 text-xs text-zinc-500">
-              Todos começam desmarcados. Ao marcar uma recomendação, a quantidade sugerida é preenchida e continua editável.
+              Todos começam desmarcados. Digite uma quantidade maior que zero para selecionar. Ao marcar uma recomendação, a sugestão é preenchida e continua editável.
             </p>
           </div>
 
@@ -331,7 +333,6 @@ function PurchaseListEditor({
                     <div className="mt-1 grid grid-cols-[44px_minmax(72px,1fr)_44px] items-stretch gap-1">
                       <button
                         type="button"
-                        disabled={!checked}
                         onClick={() => stepQuantity(product.productId, -1)}
                         aria-label={`Reduzir quantidade de ${product.productName}`}
                         className="min-h-11 rounded-xl border border-red-200 bg-white text-xl font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
@@ -342,13 +343,12 @@ function PurchaseListEditor({
                         id={`purchase-quantity-${product.productId}`}
                         type="text"
                         inputMode="decimal"
-                        enterKeyHint="next"
+                        aria-label={`Quantidade de ${product.productName}`}
+                        aria-invalid={hasInvalidQuantity}
+                        enterKeyHint={product === items[items.length - 1] ? "done" : "next"}
                         value={quantities[product.productId] ?? ""}
-                        disabled={!checked}
                         onChange={(event) => updateQuantity(product.productId, event.target.value)}
                         onKeyDown={(event) => {
-                          if (!checked) return;
-
                           if (event.key === "ArrowUp") {
                             event.preventDefault();
                             stepQuantity(product.productId, 1);
@@ -363,17 +363,16 @@ function PurchaseListEditor({
 
                           if (event.key === "Enter") {
                             event.preventDefault();
-                            focusNextSelectedQuantity(product.productId);
+                            focusNextQuantity(product.productId);
                           }
                         }}
-                        placeholder={checked ? "Ex.: 5" : "Selecione"}
+                        placeholder="Ex.: 5"
                         className={`min-h-11 w-full rounded-xl border bg-white px-2 py-2 text-center text-sm font-semibold outline-none transition disabled:bg-zinc-100 disabled:text-zinc-400 ${hasInvalidQuantity
                           ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
                           : "border-zinc-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"}`}
                       />
                       <button
                         type="button"
-                        disabled={!checked}
                         onClick={() => stepQuantity(product.productId, 1)}
                         aria-label={`Aumentar quantidade de ${product.productName}`}
                         className="min-h-11 rounded-xl border border-red-200 bg-white text-xl font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"

@@ -1,5 +1,13 @@
 package com.babycatbe.nevesestoque.feature.suppliers
 
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import com.babycatbe.nevesestoque.ui.input.NevesNumericField
+import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
+import com.babycatbe.nevesestoque.ui.input.rememberNumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesRefreshIcon
 import com.babycatbe.nevesestoque.ui.components.NevesActionLabel
@@ -514,6 +522,11 @@ private fun SupplierFormScreen(
     onBack: () -> Unit,
     onSave: (String, String, String, String, String, String, String, String) -> Unit,
 ) {
+    val keypad = rememberNumericKeypadState()
+    val focusManager = LocalFocusManager.current
+    val deliveryFocus = remember { FocusRequester() }
+    val marginFocus = remember { FocusRequester() }
+    val observationFocus = remember { FocusRequester() }
     val editing = supplierId != null
     var initialized by rememberSaveable(supplierId) { mutableStateOf(false) }
     var initialSignature by rememberSaveable(supplierId) { mutableStateOf("") }
@@ -559,6 +572,7 @@ private fun SupplierFormScreen(
     val dirty = initialized && signature() != initialSignature
 
     fun submit() {
+        focusManager.clearFocus()
         onSave(
             name,
             company,
@@ -592,11 +606,12 @@ private fun SupplierFormScreen(
                     )
                 }
             }
-        }
+        },
+        bottomBar = { NevesNumericKeypad(keypad) },
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
+            modifier = Modifier.fillMaxSize().padding(padding).imePadding().padding(16.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
             if (state.loading) {
@@ -654,16 +669,16 @@ private fun SupplierFormScreen(
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Configuração de compra", fontWeight = FontWeight.Bold)
 
-                        OutlinedTextField(
+                        NevesNumericField(
                             value = purchaseFrequencyDays,
                             onValueChange = { purchaseFrequencyDays = it },
-                            label = { Text("Frequência de compra (dias)") },
-                            placeholder = { Text("Ex.: 7") },
-                            supportingText = state.fieldErrors.purchaseFrequencyDays?.let { { Text(it) } },
-                            isError = state.fieldErrors.purchaseFrequencyDays != null,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keypad = keypad,
+                            label = "Frequência de compra (dias)",
+                            placeholder = "Ex.: 7",
+                            errorMessage = state.fieldErrors.purchaseFrequencyDays,
+                            allowDecimal = false,
+                            onConfirm = { deliveryFocus.requestFocusSafely() },
                             enabled = !state.saving,
-                            singleLine = true,
                             modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                         )
 
@@ -710,28 +725,30 @@ private fun SupplierFormScreen(
                             )
                         }
 
-                        OutlinedTextField(
+                        NevesNumericField(
                             value = averageDeliveryDays,
                             onValueChange = { averageDeliveryDays = it },
-                            label = { Text("Prazo de entrega (dias)") },
-                            placeholder = { Text("Ex.: 2") },
-                            supportingText = state.fieldErrors.averageDeliveryDays?.let { { Text(it) } },
-                            isError = state.fieldErrors.averageDeliveryDays != null,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keypad = keypad,
+                            label = "Prazo de entrega (dias)",
+                            placeholder = "Ex.: 2",
+                            errorMessage = state.fieldErrors.averageDeliveryDays,
+                            allowDecimal = false,
+                            focusRequester = deliveryFocus,
+                            onConfirm = { marginFocus.requestFocusSafely() },
                             enabled = !state.saving,
-                            singleLine = true,
                             modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                         )
-                        OutlinedTextField(
+                        NevesNumericField(
                             value = safetyMarginDays,
                             onValueChange = { safetyMarginDays = it },
-                            label = { Text("Margem de segurança (dias)") },
-                            placeholder = { Text("Ex.: 1") },
-                            supportingText = state.fieldErrors.safetyMarginDays?.let { { Text(it) } },
-                            isError = state.fieldErrors.safetyMarginDays != null,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keypad = keypad,
+                            label = "Margem de segurança (dias)",
+                            placeholder = "Ex.: 1",
+                            errorMessage = state.fieldErrors.safetyMarginDays,
+                            allowDecimal = false,
+                            focusRequester = marginFocus,
+                            onConfirm = { observationFocus.requestFocusSafely() },
                             enabled = !state.saving,
-                            singleLine = true,
                             modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                         )
                         OutlinedTextField(
@@ -743,7 +760,7 @@ private fun SupplierFormScreen(
                             isError = state.fieldErrors.observation != null,
                             enabled = !state.saving,
                             minLines = 3,
-                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp).focusRequester(observationFocus),
                         )
                     }
                 }
