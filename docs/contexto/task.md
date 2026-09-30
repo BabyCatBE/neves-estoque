@@ -1,8 +1,45 @@
 # Estado operacional — Neves Estoque
 
-> Atualizado em 29/09/2026. Este arquivo é operacional e deve refletir o trabalho vigente; detalhes históricos ficam nos checkpoints do Contexto Mestre e em `memory.md`.
+> Atualizado em 30/09/2026 (Bloco 252). Este arquivo é operacional e deve refletir o trabalho vigente; detalhes históricos ficam nos checkpoints do Contexto Mestre e em `memory.md`.
 
 ## Fase atual
+
+`GO-LIVE CONTROLADO NO ANDROID — CATÁLOGO REAL PREPARADO` (Bloco 252, 29–30/09/2026).
+
+## Estado real
+
+- `develop` integra toda a cadeia Android (CHECKPOINT 251): `develop@cd4acdb72c017726672078a3c775411c5f6ad83a`; `main` intocada em `e0c15eb45fda2f6c68f58ed6f4ccdd24feb20635`.
+- Os PRs #69–#75 aparecem OPEN/DRAFT, mas seus commits já estão em `develop`: pendência administrativa, não código ausente.
+- Trabalho do Bloco 252: branch `fix/android-go-live-v1` → PR #76 para `develop`; Android `0.35.0-alpha01` / versionCode 35; Web/System `0.26.0`.
+- Supabase *Neves Estoque*: 42 migrations (sem mudança de schema). Dados de teste removidos em 30/09/2026 (~02:26 UTC) e substituídos pelo catálogo real: 13 Categorias, 146 Produtos, 0 Fornecedores, 0 Entradas, 0 Conferências, sem estoque/preço inicial. Snapshot pré-reset entregue a Elias no CHECKPOINT 252.
+- Estado dos dados: `CATÁLOGO REAL PREPARADO`. Quando Elias mantiver o primeiro registro operacional, passa a `DADOS REAIS EM USO`: a partir daí é proibido resetar, limpar, substituir catálogo ou rodar teste destrutivo sem nova autorização explícita.
+
+## Correções do Bloco 252 (Android 35)
+
+- Cache do período de testes invalidado uma única vez (`OfflineStore.CACHE_GENERATION = 2`), somente `cache/`; pendências e acesso preservados.
+- Leituras históricas que liam a tabela inteira e filtravam no aparelho passaram a filtrar no servidor / paginar por cursor (detalhe do Produto, histórico de Entradas, última Conferência por Categoria, revisão de consumo, conflito de pendência, Lixeira).
+- Estado: IMPLEMENTADO / CI no PR #76 / TESTE EM APARELHO A VERIFICAR.
+
+## Pendências conhecidas
+
+- **Web: mesmas leituras sem filtro no servidor** (paridade do item acima) — A CORRIGIR em bloco próprio; não bloqueia o go-live Android.
+- Antes de instalar a nova build no celular: confirmar **Pendências locais = 0** (pendências de teste não podem ser enviadas; referenciam IDs removidos).
+- Supabase Auth: proteção contra senhas vazadas desativada (aviso do advisor, pré-existente) — A DEFINIR.
+- Splash Android 12+ claro com tema Escuro: LIMITAÇÃO CONHECIDA.
+- Pendências Offline ao trocar de usuário no mesmo aparelho: A DEFINIR.
+- CI aprovada não substitui teste funcional em aparelho.
+
+## Critério para atualizar este arquivo
+
+Atualizar quando mudar fase, objetivo, prioridade, próxima tarefa, bloqueio, branch de trabalho, pendência operacional ou estado de integração. Histórico detalhado deve ficar no Contexto Mestre/checkpoints; decisões duradouras ficam em `memory.md`.
+
+---
+
+# HISTÓRICO — superado pelos CHECKPOINTS 251/252
+
+> As seções abaixo descrevem estados anteriores (branch `feat/android-17-product-maintenance-ux`, PR #75 não integrado etc.). Estão preservadas apenas como histórico e **não** representam o estado atual.
+
+## (histórico) Fase anterior
 
 `IMPLEMENTAÇÃO INCREMENTAL / TESTES / PR EMPILHADO AINDA NÃO INTEGRADO À LINHA PRINCIPAL`
 
