@@ -69,6 +69,8 @@ data class ProductConferenceItemRow(
     @SerialName("conference_id") val conferenceId: String,
     @SerialName("product_id") val productId: String,
     val quantity: Double,
+    /** Chave do cursor de paginação; leituras que não selecionam `id` continuam válidas. */
+    val id: String = "",
 )
 
 @Serializable
