@@ -1,4 +1,7 @@
-import { fetchAllByIdKeyset } from "../../../shared/lib/keysetPagination";
+import {
+  fetchAllByIdKeyset,
+  fetchByIdChunks
+} from "../../../shared/lib/keysetPagination";
 import { supabase } from "../../../shared/lib/supabase";
 import {
   OFFLINE_CACHE_KEYS,
@@ -128,28 +131,44 @@ export async function listConferenceCategories(): Promise<ConferenceCategorySumm
 
 async function listConferenceCategoriesFromServer(): Promise<ConferenceCategorySummary[]> {
   const client = requireClient();
-  const [categories, conferencesResult] = await Promise.all([
+  const [categories, conferences] = await Promise.all([
     listActiveCategories(),
-    client
-      .from("conferences")
-      .select("id,category_id,effective_at,created_at")
-      .eq("scope_type", "category")
-      .is("deleted_at", null)
-      .order("effective_at", { ascending: false })
-      .order("created_at", { ascending: false })
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("conferences")
+        .select("id,category_id,effective_at,created_at")
+        .eq("scope_type", "category")
+        .is("deleted_at", null);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    })
   ]);
 
-  if (conferencesResult.error) throw conferencesResult.error;
-
-  const latestByCategory = new Map<string, string>();
-  for (const conference of conferencesResult.data ?? []) {
-    if (!conference.category_id || latestByCategory.has(conference.category_id)) continue;
-    latestByCategory.set(conference.category_id, conference.effective_at);
+  const latestByCategory = new Map<
+    string,
+    { effectiveAt: string; createdAt: string }
+  >();
+  for (const conference of conferences) {
+    if (!conference.category_id) continue;
+    const current = latestByCategory.get(conference.category_id);
+    const isNewer =
+      !current ||
+      Date.parse(conference.effective_at) > Date.parse(current.effectiveAt) ||
+      (
+        Date.parse(conference.effective_at) === Date.parse(current.effectiveAt) &&
+        Date.parse(conference.created_at) > Date.parse(current.createdAt)
+      );
+    if (isNewer) {
+      latestByCategory.set(conference.category_id, {
+        effectiveAt: conference.effective_at,
+        createdAt: conference.created_at
+      });
+    }
   }
 
   const today = localDateInputValue();
   return categories.map((category) => {
-    const lastConferenceAt = latestByCategory.get(category.id) ?? null;
+    const lastConferenceAt = latestByCategory.get(category.id)?.effectiveAt ?? null;
     return {
       id: category.id,
       name: category.name,
@@ -388,58 +407,66 @@ export async function listSameDayCategoryConferences(
 ): Promise<ConferenceHistoryItem[]> {
   const client = requireClient();
   const { start, end } = localDayRange(dateValue);
-  const { data, error } = await client
-    .from("conferences")
-    .select("id,category_id,effective_at,created_at,physical_responsible,observation")
-    .eq("scope_type", "category")
-    .eq("category_id", categoryId)
-    .is("deleted_at", null)
-    .gte("effective_at", start)
-    .lt("effective_at", end)
-    .order("effective_at", { ascending: false })
-    .order("created_at", { ascending: false });
+  const rows = await fetchAllByIdKeyset(({ afterId, limit }) => {
+    let query = client
+      .from("conferences")
+      .select("id,category_id,effective_at,created_at,physical_responsible,observation")
+      .eq("scope_type", "category")
+      .eq("category_id", categoryId)
+      .is("deleted_at", null)
+      .gte("effective_at", start)
+      .lt("effective_at", end);
+    if (afterId !== null) query = query.gt("id", afterId);
+    return query.order("id", { ascending: true }).limit(limit);
+  });
 
-  if (error) throw error;
-  return (data ?? []).flatMap((row) =>
-    row.category_id
-      ? [{
-          id: row.id,
-          categoryId: row.category_id,
-          effectiveAt: row.effective_at,
-          createdAt: row.created_at,
-          physicalResponsible: row.physical_responsible,
-          observation: row.observation
-        }]
-      : []
-  );
+  return rows
+    .filter((row) => Boolean(row.category_id))
+    .sort(
+      (left, right) =>
+        Date.parse(right.effective_at) - Date.parse(left.effective_at) ||
+        Date.parse(right.created_at) - Date.parse(left.created_at)
+    )
+    .map((row) => ({
+      id: row.id,
+      categoryId: row.category_id!,
+      effectiveAt: row.effective_at,
+      createdAt: row.created_at,
+      physicalResponsible: row.physical_responsible,
+      observation: row.observation
+    }));
 }
 
 export async function listCategoryConferenceHistory(
   categoryId: string
 ): Promise<ConferenceHistoryItem[]> {
   const client = requireClient();
-  const { data, error } = await client
-    .from("conferences")
-    .select("id,category_id,effective_at,created_at,physical_responsible,observation")
-    .eq("scope_type", "category")
-    .eq("category_id", categoryId)
-    .is("deleted_at", null)
-    .order("effective_at", { ascending: false })
-    .order("created_at", { ascending: false });
+  const rows = await fetchAllByIdKeyset(({ afterId, limit }) => {
+    let query = client
+      .from("conferences")
+      .select("id,category_id,effective_at,created_at,physical_responsible,observation")
+      .eq("scope_type", "category")
+      .eq("category_id", categoryId)
+      .is("deleted_at", null);
+    if (afterId !== null) query = query.gt("id", afterId);
+    return query.order("id", { ascending: true }).limit(limit);
+  });
 
-  if (error) throw error;
-  return (data ?? []).flatMap((row) =>
-    row.category_id
-      ? [{
-          id: row.id,
-          categoryId: row.category_id,
-          effectiveAt: row.effective_at,
-          createdAt: row.created_at,
-          physicalResponsible: row.physical_responsible,
-          observation: row.observation
-        }]
-      : []
-  );
+  return rows
+    .filter((row) => Boolean(row.category_id))
+    .sort(
+      (left, right) =>
+        Date.parse(right.effective_at) - Date.parse(left.effective_at) ||
+        Date.parse(right.created_at) - Date.parse(left.created_at)
+    )
+    .map((row) => ({
+      id: row.id,
+      categoryId: row.category_id!,
+      effectiveAt: row.effective_at,
+      createdAt: row.created_at,
+      physicalResponsible: row.physical_responsible,
+      observation: row.observation
+    }));
 }
 
 export async function getConferenceDetails(conferenceId: string): Promise<ConferenceDetails> {
@@ -456,30 +483,30 @@ export async function getConferenceDetails(conferenceId: string): Promise<Confer
     throw new Error("Conferência de categoria não encontrada.");
   }
 
-  const [categoryResult, itemsResult] = await Promise.all([
+  const [categoryResult, items] = await Promise.all([
     client
       .from("categories")
       .select("id,name")
       .eq("id", conference.category_id)
       .maybeSingle(),
-    client
-      .from("conference_items")
-      .select("id,product_id,quantity,position")
-      .eq("conference_id", conference.id)
-      .order("position", { ascending: true })
+    fetchAllByIdKeyset(({ afterId, limit }) => {
+      let query = client
+        .from("conference_items")
+        .select("id,product_id,quantity,position")
+        .eq("conference_id", conference.id);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    })
   ]);
 
   if (categoryResult.error) throw categoryResult.error;
-  if (itemsResult.error) throw itemsResult.error;
 
-  const productIds = [...new Set((itemsResult.data ?? []).map((item) => item.product_id))];
-  const productsResult = productIds.length
-    ? await client.from("products").select("id,name,unit").in("id", productIds)
-    : { data: [], error: null };
-
-  if (productsResult.error) throw productsResult.error;
+  const productIds = [...new Set(items.map((item) => item.product_id))];
+  const products = await fetchByIdChunks(productIds, (ids) =>
+    client.from("products").select("id,name,unit").in("id", ids)
+  );
   const productById = new Map(
-    (productsResult.data ?? []).map((product) => [product.id, product] as const)
+    products.map((product) => [product.id, product] as const)
   );
 
   return {
@@ -490,7 +517,7 @@ export async function getConferenceDetails(conferenceId: string): Promise<Confer
     createdAt: conference.created_at,
     physicalResponsible: conference.physical_responsible,
     observation: conference.observation,
-    items: (itemsResult.data ?? []).map((item) => ({
+    items: [...items].sort((a, b) => a.position - b.position).map((item) => ({
       id: item.id,
       productId: item.product_id,
       productName: productById.get(item.product_id)?.name ?? "Produto não disponível",
