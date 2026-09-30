@@ -1,3 +1,7 @@
+import {
+  fetchAllByIdKeyset,
+  fetchByIdChunks
+} from "../../../shared/lib/keysetPagination";
 import { supabase } from "../../../shared/lib/supabase";
 import {
   OFFLINE_CACHE_KEYS,
@@ -231,67 +235,68 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
   if (stockResult.error) throw stockResult.error;
   if (!productResult.data) throw new Error("Produto não encontrado.");
 
-  const { data: priceItems, error: priceItemsError } = await client
-    .from("entry_items")
-    .select("id,entry_id,quantity,unit_price,position")
-    .eq("product_id", productId);
+  // Itens históricos do Produto podem ultrapassar o teto de linhas do servidor.
+  // A leitura por cursor evita truncar silenciosamente preço e consumo.
+  const priceItems = await fetchAllByIdKeyset(({ afterId, limit }) => {
+    let query = client
+      .from("entry_items")
+      .select("id,entry_id,quantity,unit_price,position")
+      .eq("product_id", productId);
+    if (afterId !== null) query = query.gt("id", afterId);
+    return query.order("id", { ascending: true }).limit(limit);
+  });
 
-  if (priceItemsError) throw priceItemsError;
+  const entryIds = [...new Set(priceItems.map((item) => item.entry_id))];
+  const entries = await fetchByIdChunks(entryIds, (ids) =>
+    client
+      .from("entries")
+      .select("id,effective_at,created_at,supplier_id")
+      .in("id", ids)
+      .is("deleted_at", null)
+  );
 
-  const entryIds = [...new Set((priceItems ?? []).map((item) => item.entry_id))];
-  const entriesResult = entryIds.length
-    ? await client
-        .from("entries")
-        .select("id,effective_at,created_at,supplier_id")
-        .in("id", entryIds)
-        .is("deleted_at", null)
-        .order("effective_at", { ascending: false })
-        .order("created_at", { ascending: false })
-    : { data: [], error: null };
-
-  if (entriesResult.error) throw entriesResult.error;
-
-  const supplierIds = [...new Set((entriesResult.data ?? []).map((entry) => entry.supplier_id))];
-  const suppliersResult = supplierIds.length
-    ? await client.from("suppliers").select("id,name").in("id", supplierIds)
-    : { data: [], error: null };
-
-  if (suppliersResult.error) throw suppliersResult.error;
+  const orderedEntries = [...entries].sort(
+    (left, right) =>
+      Date.parse(right.effective_at) - Date.parse(left.effective_at) ||
+      Date.parse(right.created_at) - Date.parse(left.created_at)
+  );
+  const supplierIds = [...new Set(orderedEntries.map((entry) => entry.supplier_id))];
+  const suppliers = await fetchByIdChunks(supplierIds, (ids) =>
+    client.from("suppliers").select("id,name").in("id", ids)
+  );
 
   const entryById = new Map(
-    (entriesResult.data ?? []).map((entry, index) => [entry.id, { ...entry, order: index }] as const)
+    orderedEntries.map((entry, index) => [entry.id, { ...entry, order: index }] as const)
   );
   const supplierById = new Map(
-    (suppliersResult.data ?? []).map((supplier) => [supplier.id, supplier.name] as const)
+    suppliers.map((supplier) => [supplier.id, supplier.name] as const)
   );
 
-  const { data: conferenceItems, error: conferenceItemsError } = await client
-    .from("conference_items")
-    .select("conference_id,quantity")
-    .eq("product_id", productId);
-
-  if (conferenceItemsError) throw conferenceItemsError;
+  const conferenceItems = await fetchAllByIdKeyset(({ afterId, limit }) => {
+    let query = client
+      .from("conference_items")
+      .select("id,conference_id,quantity")
+      .eq("product_id", productId);
+    if (afterId !== null) query = query.gt("id", afterId);
+    return query.order("id", { ascending: true }).limit(limit);
+  });
 
   const conferenceIds = [
-    ...new Set((conferenceItems ?? []).map((item) => item.conference_id))
+    ...new Set(conferenceItems.map((item) => item.conference_id))
   ];
-  const conferencesResult = conferenceIds.length
-    ? await client
-        .from("conferences")
-        .select("id,effective_at,created_at")
-        .in("id", conferenceIds)
-        .is("deleted_at", null)
-        .order("effective_at", { ascending: true })
-        .order("created_at", { ascending: true })
-    : { data: [], error: null };
-
-  if (conferencesResult.error) throw conferencesResult.error;
-
-  const conferenceById = new Map(
-    (conferencesResult.data ?? []).map((conference) => [conference.id, conference] as const)
+  const conferences = await fetchByIdChunks(conferenceIds, (ids) =>
+    client
+      .from("conferences")
+      .select("id,effective_at,created_at")
+      .in("id", ids)
+      .is("deleted_at", null)
   );
 
-  const priceHistory: ProductPriceHistoryItem[] = (priceItems ?? [])
+  const conferenceById = new Map(
+    conferences.map((conference) => [conference.id, conference] as const)
+  );
+
+  const priceHistory: ProductPriceHistoryItem[] = priceItems
     .filter((item) => entryById.has(item.entry_id))
     .sort((a, b) => {
       const entryA = entryById.get(a.entry_id);
@@ -315,7 +320,7 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
     });
 
   const usageInsights = calculateProductUsageInsights({
-    conferences: (conferenceItems ?? [])
+    conferences: conferenceItems
       .filter((item) => conferenceById.has(item.conference_id))
       .map((item) => {
         const conference = conferenceById.get(item.conference_id)!;
@@ -325,7 +330,7 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
           quantity: Number(item.quantity)
         };
       }),
-    entries: (priceItems ?? [])
+    entries: priceItems
       .filter((item) => entryById.has(item.entry_id))
       .map((item) => ({
         effectiveAt: entryById.get(item.entry_id)!.effective_at,
