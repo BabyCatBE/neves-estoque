@@ -21,12 +21,17 @@ vi.mock("../../../shared/lib/supabase", () => ({
 // Dependências do módulo que não participam da revisão de consumo.
 vi.mock("../../../shared/offline/offlineCache", () => ({
   OFFLINE_CACHE_KEYS: { conferenceCategories: "conferences.categories" },
-  readThroughOfflineCache: vi.fn()
+  readThroughOfflineCache: vi.fn(async (_key: string, loader: () => Promise<unknown>) => loader())
 }));
 vi.mock("../../categories/api/categories", () => ({ listActiveCategories: vi.fn() }));
 vi.mock("../../products/api/products", () => ({ listActiveProducts: vi.fn() }));
 
-import { reviewConferenceConsumption } from "./conferences";
+import { listActiveCategories } from "../../categories/api/categories";
+import {
+  listCategoryConferenceHistory,
+  listConferenceCategories,
+  reviewConferenceConsumption
+} from "./conferences";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CANDIDATE_TIME = Date.parse("2026-09-20T12:00:00.000Z");
@@ -183,5 +188,115 @@ describe("reviewConferenceConsumption — leitura histórica completa", () => {
       reviewConferenceConsumption({ effectiveAt: at(0), items: [] })
     ).resolves.toEqual([]);
     expect(fake.requests).toHaveLength(0);
+  });
+});
+
+
+describe("conference listings — paginação", () => {
+  const categoryId = testUuid(50, 1);
+
+  beforeEach(() => {
+    mocked.current = null;
+    vi.mocked(listActiveCategories).mockResolvedValue([
+      {
+        id: categoryId,
+        name: "PANIFICACAO",
+        sort_order: 1,
+        illustration_source: null,
+        illustration_key: null,
+        illustration_position_x: 50,
+        illustration_position_y: 50,
+        illustrationUrl: null,
+        productCount: 20
+      }
+    ]);
+  });
+
+  function listingTables(): Record<string, FakeRow[]> {
+    return {
+      conferences: [
+        {
+          id: testUuid(51, 1),
+          category_id: categoryId,
+          scope_type: "category",
+          effective_at: "2026-09-30T18:00:00.000Z",
+          created_at: "2026-09-30T18:01:00.000Z",
+          physical_responsible: "Elias",
+          observation: null,
+          deleted_at: null
+        },
+        {
+          id: testUuid(51, 2),
+          category_id: categoryId,
+          scope_type: "category",
+          effective_at: "2026-09-27T12:00:00.000Z",
+          created_at: "2026-09-27T12:01:00.000Z",
+          physical_responsible: "Elias",
+          observation: null,
+          deleted_at: null
+        },
+        {
+          id: testUuid(51, 3),
+          category_id: categoryId,
+          scope_type: "category",
+          effective_at: "2026-09-29T12:00:00.000Z",
+          created_at: "2026-09-29T12:01:00.000Z",
+          physical_responsible: "Elias",
+          observation: null,
+          deleted_at: null
+        },
+        {
+          id: testUuid(51, 4),
+          category_id: categoryId,
+          scope_type: "category",
+          effective_at: "2026-09-28T12:00:00.000Z",
+          created_at: "2026-09-28T12:01:00.000Z",
+          physical_responsible: "Elias",
+          observation: null,
+          deleted_at: null
+        },
+        {
+          id: testUuid(51, 5),
+          category_id: categoryId,
+          scope_type: "category",
+          effective_at: "2026-09-26T12:00:00.000Z",
+          created_at: "2026-09-26T12:01:00.000Z",
+          physical_responsible: "Elias",
+          observation: null,
+          deleted_at: null
+        }
+      ]
+    };
+  }
+
+  it("Última Conferência não depende da primeira página do servidor", async () => {
+    const fake = createFakePostgrest({ tables: listingTables(), maxRows: 2 });
+    mocked.current = fake.client;
+
+    const categories = await listConferenceCategories();
+
+    expect(categories).toHaveLength(1);
+    expect(categories[0]).toMatchObject({
+      id: categoryId,
+      lastConferenceAt: "2026-09-30T18:00:00.000Z",
+      conferredToday: true
+    });
+    expect(fake.requestsFor("conferences").map((request) => request.returned)).toEqual([2, 2, 1, 0]);
+  });
+
+  it("histórico por Categoria lê todas as páginas e preserva ordem cronológica decrescente", async () => {
+    const fake = createFakePostgrest({ tables: listingTables(), maxRows: 2 });
+    mocked.current = fake.client;
+
+    const history = await listCategoryConferenceHistory(categoryId);
+
+    expect(history).toHaveLength(5);
+    expect(history.map((item) => item.effectiveAt)).toEqual([
+      "2026-09-30T18:00:00.000Z",
+      "2026-09-29T12:00:00.000Z",
+      "2026-09-28T12:00:00.000Z",
+      "2026-09-27T12:00:00.000Z",
+      "2026-09-26T12:00:00.000Z"
+    ]);
   });
 });
