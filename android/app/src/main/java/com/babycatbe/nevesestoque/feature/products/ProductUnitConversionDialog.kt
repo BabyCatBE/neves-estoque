@@ -1,16 +1,21 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import com.babycatbe.nevesestoque.ui.input.NevesNumericField
+import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
+import com.babycatbe.nevesestoque.ui.input.rememberNumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,7 +25,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import java.text.NumberFormat
 import java.util.Locale
@@ -33,6 +37,9 @@ fun ProductUnitConversionDialog(
     onDismiss: () -> Unit,
     onConfirm: (ProductUnitConversionDraft) -> Unit,
 ) {
+    val keypad = rememberNumericKeypadState()
+    val focusManager = LocalFocusManager.current
+    val newQuantityFocus = remember { FocusRequester() }
     var preview by rememberSaveable { mutableStateOf(false) }
     var newUnit by rememberSaveable { mutableStateOf("") }
     var oldText by rememberSaveable { mutableStateOf("1") }
@@ -57,6 +64,7 @@ fun ProductUnitConversionDialog(
         if (unitError == null && oldResult.value != null && newResult.value != null) {
             oldValue = oldResult.value
             newValue = newResult.value
+            focusManager.clearFocus()
             preview = true
         }
     }
@@ -69,115 +77,122 @@ fun ProductUnitConversionDialog(
         onDismissRequest = { if (!converting) onDismiss() },
         title = { Text("Alterar unidade de ${product.name}") },
         text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-             ) {
-                Text(
-                    "ALTERAÇÃO PROTEGIDA",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                if (!preview || factor == null) {
+            Column {
+                Column(
+                    modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                ) {
                     Text(
-                        "Informe uma equivalência real. Exemplo: 12 UN = 1 CX.",
-                        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
-                    )
-                    OutlinedTextField(
-                        value = oldText,
-                        onValueChange = { oldText = it; oldError = null },
-                        label = { Text("Quantidade em ${product.unit}") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = oldError != null,
-                        supportingText = oldError?.let { value -> { Text(value) } },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text("Nova unidade", modifier = Modifier.padding(top = 6.dp))
-                    ProductChoiceField(
-                        value = newUnit.ifBlank { "Selecionar…" },
-                        options = PRODUCT_UNITS.filter { it != product.unit }.map { it to it },
-                        enabled = !converting,
-                        onSelect = { newUnit = it; unitError = null },
-                    )
-                    unitError?.let {
-                        Text(it, color = MaterialTheme.colorScheme.error)
-                    }
-                    OutlinedTextField(
-                        value = newText,
-                        onValueChange = { newText = it; newError = null },
-                        label = { Text("Quantidade em ${newUnit.ifBlank { "nova unidade" }}") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = newError != null,
-                        supportingText = newError?.let { value -> { Text(value) } },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        "A conversão é retroativa: estoque inicial, Entradas, preços e Conferências são convertidos, inclusive registros excluídos/restauráveis.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                } else {
-                    Text(
-                        "${fmt(oldValue!!)} ${product.unit} = ${fmt(newValue!!)} $newUnit",
+                        "ALTERAÇÃO PROTEGIDA",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp),
                     )
-                    PreviewValue(
-                        "Estoque atual",
-                        if (product.stockRequiresConference) "Conferência necessária"
-                        else "${fmtNullable(product.currentQuantity)} ${product.unit}",
-                        if (product.stockRequiresConference) "Conferência necessária"
-                        else "${fmtNullable(convertQuantityForUnit(product.currentQuantity, factor))} $newUnit",
-                    )
-                    PreviewValue(
-                        "Preço atual",
-                        price(product.currentPrice, product.unit),
-                        price(convertPriceForUnit(product.currentPrice, factor), newUnit),
-                    )
-                    product.initialStockQuantity?.let {
-                        PreviewValue(
-                            "Estoque inicial",
-                            "${fmt(it)} ${product.unit}",
-                            "${fmt(convertQuantityForUnit(it, factor)!!)} $newUnit",
-                        )
-                    }
-                    product.initialPrice?.let {
-                        PreviewValue(
-                            "Preço inicial",
-                            price(it, product.unit),
-                            price(convertPriceForUnit(it, factor), newUnit),
-                        )
-                    }
-                    Text(
-                        if (product.currentValue != null) {
-                            "Valor atual preservado: ${money(product.currentValue)}. Preços usam a razão inversa para preservar a equivalência financeira."
-                        } else {
-                            "Preços usam a razão inversa para preservar a equivalência financeira."
-                        },
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    if (product.stockRequiresConference) {
+                    if (!preview || factor == null) {
                         Text(
-                            "A exigência de Conferência física criada pela mescla permanece após a conversão.",
-                            color = MaterialTheme.colorScheme.tertiary,
+                            "Informe uma equivalência real. Exemplo: 12 UN = 1 CX.",
+                            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                        )
+                        NevesNumericField(
+                            value = oldText,
+                            onValueChange = { oldText = it; oldError = null },
+                            label = "Quantidade em ${product.unit}",
+                            keypad = keypad,
+                            onConfirm = { newQuantityFocus.requestFocusSafely() },
+                            errorMessage = oldError,
+                            enabled = !converting,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text("Nova unidade", modifier = Modifier.padding(top = 6.dp))
+                        ProductChoiceField(
+                            value = newUnit.ifBlank { "Selecionar…" },
+                            options = PRODUCT_UNITS.filter { it != product.unit }.map { it to it },
+                            enabled = !converting,
+                            onSelect = { newUnit = it; unitError = null },
+                        )
+                        unitError?.let {
+                            Text(it, color = MaterialTheme.colorScheme.error)
+                        }
+                        NevesNumericField(
+                            value = newText,
+                            onValueChange = { newText = it; newError = null },
+                            label = "Quantidade em ${newUnit.ifBlank { "nova unidade" }}",
+                            keypad = keypad,
+                            focusRequester = newQuantityFocus,
+                            onConfirm = { validatePreview() },
+                            confirmLabel = "Concluir",
+                            errorMessage = newError,
+                            enabled = !converting,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            "A conversão é retroativa: estoque inicial, Entradas, preços e Conferências são convertidos, inclusive registros excluídos/restauráveis.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    } else {
+                        Text(
+                            "${fmt(oldValue!!)} ${product.unit} = ${fmt(newValue!!)} $newUnit",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        PreviewValue(
+                            "Estoque atual",
+                            if (product.stockRequiresConference) "Conferência necessária"
+                            else "${fmtNullable(product.currentQuantity)} ${product.unit}",
+                            if (product.stockRequiresConference) "Conferência necessária"
+                            else "${fmtNullable(convertQuantityForUnit(product.currentQuantity, factor))} $newUnit",
+                        )
+                        PreviewValue(
+                            "Preço atual",
+                            price(product.currentPrice, product.unit),
+                            price(convertPriceForUnit(product.currentPrice, factor), newUnit),
+                        )
+                        product.initialStockQuantity?.let {
+                            PreviewValue(
+                                "Estoque inicial",
+                                "${fmt(it)} ${product.unit}",
+                                "${fmt(convertQuantityForUnit(it, factor)!!)} $newUnit",
+                            )
+                        }
+                        product.initialPrice?.let {
+                            PreviewValue(
+                                "Preço inicial",
+                                price(it, product.unit),
+                                price(convertPriceForUnit(it, factor), newUnit),
+                            )
+                        }
+                        Text(
+                            if (product.currentValue != null) {
+                                "Valor atual preservado: ${money(product.currentValue)}. Preços usam a razão inversa para preservar a equivalência financeira."
+                            } else {
+                                "Preços usam a razão inversa para preservar a equivalência financeira."
+                            },
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        if (product.stockRequiresConference) {
+                            Text(
+                                "A exigência de Conferência física criada pela mescla permanece após a conversão.",
+                                color = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                        Text(
+                            "O banco cria backup antes da conversão e atualiza Produto, Entradas e Conferências em uma única transação auditada.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 8.dp),
                         )
                     }
-                    Text(
-                        "O banco cria backup antes da conversão e atualiza Produto, Entradas e Conferências em uma única transação auditada.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
+                    backendError?.let {
+                        Text(
+                            it,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 10.dp),
+                        )
+                    }
                 }
-                backendError?.let {
-                    Text(
-                        it,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 10.dp),
-                    )
-                }
+                NevesNumericKeypad(keypad)
             }
         },
         confirmButton = {

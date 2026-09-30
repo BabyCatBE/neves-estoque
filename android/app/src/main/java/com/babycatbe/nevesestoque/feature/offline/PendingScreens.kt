@@ -1,5 +1,17 @@
 package com.babycatbe.nevesestoque.feature.offline
 
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import com.babycatbe.nevesestoque.ui.input.NumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.NevesNumericField
+import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
+import com.babycatbe.nevesestoque.ui.input.rememberNumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesStatusMessage
 import com.babycatbe.nevesestoque.ui.theme.NevesColors
@@ -21,7 +33,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +51,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.babycatbe.nevesestoque.data.offline.ConnectivityMonitor
 import java.time.OffsetDateTime
@@ -214,8 +224,41 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
     var draft by remember(localId, operation.updatedAt) { mutableStateOf(initialEditDraft(operation)) }
     var errors by remember { mutableStateOf<List<String>>(emptyList()) }
     var saving by remember { mutableStateOf(false) }
+    val keypad = rememberNumericKeypadState()
+    val focusManager = LocalFocusManager.current
+    val listState = rememberLazyListState()
+    val fields = remember { mutableMapOf<String, FocusRequester>() }
+    val observationFocus = remember { FocusRequester() }
+    val rows = when (operation.kind) {
+        PendingKind.Entry -> operation.entry?.items.orEmpty().indices.map { "entry-$it" }
+        PendingKind.CategoryConference -> operation.categoryConference?.items.orEmpty().map { "conf-${it.productId}" }
+        PendingKind.ProductConference -> listOf("unit-${operation.productConference?.productId}")
+    }
+    val order = when (operation.kind) {
+        PendingKind.Entry -> operation.entry?.items.orEmpty().indices
+            .filterNot { it in draft.removedItems }
+            .flatMap { listOf("$it-q" to "entry-$it", "$it-p" to "entry-$it") }
+        PendingKind.CategoryConference -> operation.categoryConference?.items.orEmpty()
+            .map { it.productId to "conf-${it.productId}" }
+        PendingKind.ProductConference -> operation.productConference?.let { listOf(it.productId to "unit-${it.productId}") }.orEmpty()
+    }
+    fun focusAfter(fieldId: String) {
+        val index = order.indexOfFirst { it.first == fieldId }
+        val current = order.getOrNull(index) ?: return
+        val next = order.getOrNull(index + 1)
+        scope.launch {
+            val row = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == current.second }
+            if (row != null && next?.second != current.second) {
+                val nextRowIndex = next?.let { rows.indexOf(it.second) } ?: rows.size
+                listState.scrollToItem(row.index + nextRowIndex - rows.indexOf(current.second))
+            }
+            withFrameNanos { }
+            if (next == null) observationFocus.requestFocusSafely()
+            else fields[next.first]?.requestFocusSafely()
+        }
+    }
 
-    PendingScaffold(title = "Editar pendência", onBack = onBack) {
+    PendingScaffold(title = "Editar pendência", onBack = onBack, keypad = keypad, listState = listState) {
         item {
             Column {
                 Text(operation.kindLabel.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -240,14 +283,19 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
         if (operation.kind != PendingKind.Entry) {
             item { Field("Responsável pela contagem física", draft.responsible) { draft = draft.copy(responsible = it) } }
         }
-        editItems(operation, draft) { draft = it }
-        item { Field("Observação", draft.observation, singleLine = false) { draft = draft.copy(observation = it) } }
+        editItems(operation, draft, keypad, fields, ::focusAfter, !saving) { draft = it }
+        item(key = "observation") {
+            Field("Observação", draft.observation, singleLine = false, modifier = Modifier.focusRequester(observationFocus)) {
+                draft = draft.copy(observation = it)
+            }
+        }
         if (errors.isNotEmpty()) {
             item { Warning(errors.joinToString("\n")) }
         }
         item {
             Button(
                 onClick = {
+                    focusManager.clearFocus()
                     val result = applyPendingEdit(operation, draft)
                     val updated = result.operation
                     if (updated == null) {
@@ -273,6 +321,10 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
 private fun LazyListScope.editItems(
     operation: PendingOperation,
     draft: PendingEditDraft,
+    keypad: NumericKeypadState,
+    fields: MutableMap<String, FocusRequester>,
+    onNext: (String) -> Unit,
+    enabled: Boolean,
     onChange: (PendingEditDraft) -> Unit,
 ) {
     when (operation.kind) {
@@ -292,21 +344,25 @@ private fun LazyListScope.editItems(
                             }
                             if (!removed) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedTextField(
+                                    NevesNumericField(
                                         value = draft.quantities[key].orEmpty(),
                                         onValueChange = { onChange(draft.copy(quantities = draft.quantities + (key to it))) },
-                                        label = { Text("Quantidade") },
-                                        singleLine = true,
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                        label = "Quantidade",
+                                        keypad = keypad,
+                                        enabled = enabled,
+                                        focusRequester = remember(fields, key) { fields.getOrPut("$key-q") { FocusRequester() } },
+                                        onConfirm = { onNext("$key-q") },
                                         modifier = Modifier.weight(1f),
                                     )
-                                    OutlinedTextField(
+                                    NevesNumericField(
                                         value = draft.prices[key].orEmpty(),
                                         onValueChange = { onChange(draft.copy(prices = draft.prices + (key to it))) },
-                                        label = { Text("Preço (R$)") },
-                                        placeholder = { Text("Não informado") },
-                                        singleLine = true,
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                        label = "Preço (R$)",
+                                        keypad = keypad,
+                                        enabled = enabled,
+                                        focusRequester = remember(fields, key) { fields.getOrPut("$key-p") { FocusRequester() } },
+                                        onConfirm = { onNext("$key-p") },
+                                        placeholder = "Não informado",
                                         modifier = Modifier.weight(1f),
                                     )
                                 }
@@ -321,7 +377,10 @@ private fun LazyListScope.editItems(
         PendingKind.CategoryConference -> {
             val payload = operation.categoryConference ?: return
             items(payload.items, key = { "conf-${it.productId}" }) { item ->
-                QuantityRow("${item.productName} (${item.unit})", draft.quantities[item.productId].orEmpty()) {
+                QuantityRow(
+                    "${item.productName} (${item.unit})", draft.quantities[item.productId].orEmpty(),
+                    keypad, remember(fields, item.productId) { fields.getOrPut(item.productId) { FocusRequester() } }, { onNext(item.productId) }, enabled,
+                ) {
                     onChange(draft.copy(quantities = draft.quantities + (item.productId to it)))
                 }
             }
@@ -329,7 +388,10 @@ private fun LazyListScope.editItems(
         PendingKind.ProductConference -> {
             val payload = operation.productConference ?: return
             item(key = "unit-${payload.productId}") {
-                QuantityRow("Nova quantidade (${payload.unit})", draft.quantities[payload.productId].orEmpty()) {
+                QuantityRow(
+                    "Nova quantidade (${payload.unit})", draft.quantities[payload.productId].orEmpty(),
+                    keypad, remember(fields, payload.productId) { fields.getOrPut(payload.productId) { FocusRequester() } }, { onNext(payload.productId) }, enabled,
+                ) {
                     onChange(draft.copy(quantities = draft.quantities + (payload.productId to it)))
                 }
             }
@@ -338,27 +400,38 @@ private fun LazyListScope.editItems(
 }
 
 @Composable
-private fun QuantityRow(label: String, value: String, onChange: (String) -> Unit) {
+private fun QuantityRow(
+    label: String,
+    value: String,
+    keypad: NumericKeypadState,
+    focusRequester: FocusRequester,
+    onNext: () -> Unit,
+    enabled: Boolean,
+    onChange: (String) -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f))
-        OutlinedTextField(
+        NevesNumericField(
             value = value,
             onValueChange = onChange,
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            keypad = keypad,
+            label = "Quantidade",
+            focusRequester = focusRequester,
+            onConfirm = onNext,
+            enabled = enabled,
             modifier = Modifier.width(110.dp),
         )
     }
 }
 
 @Composable
-private fun Field(label: String, value: String, singleLine: Boolean = true, onChange: (String) -> Unit) {
+private fun Field(label: String, value: String, singleLine: Boolean = true, modifier: Modifier = Modifier, onChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
         singleLine = singleLine,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     )
 }
 
@@ -370,7 +443,13 @@ internal fun Warning(text: String) {
 }
 
 @Composable
-internal fun PendingScaffold(title: String, onBack: () -> Unit, content: LazyListScope.() -> Unit) {
+internal fun PendingScaffold(
+    title: String,
+    onBack: () -> Unit,
+    keypad: NumericKeypadState? = null,
+    listState: LazyListState = rememberLazyListState(),
+    content: LazyListScope.() -> Unit,
+) {
     Scaffold(
         topBar = {
             NevesTopBarSurface {
@@ -379,11 +458,13 @@ internal fun PendingScaffold(title: String, onBack: () -> Unit, content: LazyLis
                     Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 }
             }
-        }
+        },
+        bottomBar = { keypad?.let { NevesNumericKeypad(it) } },
     ) { padding ->
         LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).imePadding().padding(horizontal = 16.dp),
         ) {
             item { Spacer(Modifier.height(4.dp)) }
             content()

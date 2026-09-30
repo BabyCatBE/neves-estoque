@@ -1,5 +1,10 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import androidx.compose.ui.focus.FocusRequester
+import com.babycatbe.nevesestoque.ui.input.NevesNumericField
+import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
+import com.babycatbe.nevesestoque.ui.input.rememberNumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
@@ -45,7 +50,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
@@ -126,6 +130,8 @@ private fun ProductFormScreen(
     maintenanceContent: @Composable () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
+    val keypad = rememberNumericKeypadState()
+    val priceFocus = remember { FocusRequester() }
     val editing = productId != null
     var initialized by rememberSaveable(productId) { mutableStateOf(false) }
     var name by rememberSaveable(productId) { mutableStateOf("") }
@@ -159,7 +165,8 @@ private fun ProductFormScreen(
                     )
                 }
             }
-        }
+        },
+        bottomBar = { NevesNumericKeypad(keypad) },
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -226,32 +233,28 @@ private fun ProductFormScreen(
                         }
                     }
 
-                    OutlinedTextField(
+                    NevesNumericField(
                         value = initialStock,
                         onValueChange = { initialStock = it },
-                        label = { Text("Estoque inicial (opcional)") },
-                        supportingText = {
-                            Text(state.fieldErrors.initialStock ?: "Vazio significa não informado.")
-                        },
-                        isError = state.fieldErrors.initialStock != null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
+                        keypad = keypad,
+                        label = "Estoque inicial (opcional)",
+                        supportingMessage = "Vazio significa não informado.",
+                        errorMessage = state.fieldErrors.initialStock,
+                        onConfirm = { priceFocus.requestFocusSafely() },
                         enabled = !busy,
-                        modifier = Modifier.fillMaxWidth(),
                     )
 
-                    OutlinedTextField(
+                    NevesNumericField(
                         value = initialPrice,
                         onValueChange = { initialPrice = it },
-                        label = { Text("Preço inicial (opcional)") },
-                        supportingText = {
-                            Text(state.fieldErrors.initialPrice ?: "Vazio significa não informado; zero é permitido.")
-                        },
-                        isError = state.fieldErrors.initialPrice != null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
+                        keypad = keypad,
+                        label = "Preço inicial (opcional)",
+                        supportingMessage = "Vazio significa não informado; zero é permitido.",
+                        errorMessage = state.fieldErrors.initialPrice,
+                        focusRequester = priceFocus,
+                        onConfirm = { focusManager.clearFocus() },
+                        confirmLabel = "Concluir",
                         enabled = !busy,
-                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
 

@@ -1,5 +1,19 @@
 package com.babycatbe.nevesestoque.feature.purchases
 
+import android.app.Activity
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import com.babycatbe.nevesestoque.ui.input.NumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.NevesNumericField
+import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
+import com.babycatbe.nevesestoque.ui.input.rememberNumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 import androidx.compose.foundation.BorderStroke
 import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.theme.NevesColors
@@ -16,6 +30,7 @@ import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +41,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -49,7 +63,6 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -225,6 +238,11 @@ fun PurchaseListRoute(
     val state by vm.uiState.collectAsStateWithLifecycle()
     val data = state.data
     val context = LocalContext.current
+    val keypad = rememberNumericKeypadState()
+    val focusManager = LocalFocusManager.current
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val quantityFocus = remember { mutableMapOf<String, FocusRequester>() }
 
     var selected by remember { mutableStateOf(setOf<String>()) }
     var quantities by remember { mutableStateOf(mapOf<String, String>()) }
@@ -303,6 +321,7 @@ fun PurchaseListRoute(
 
     fun updateQuantity(productId: String, value: String) {
         quantities = quantities + (productId to value)
+        selected = selectPurchaseQuantity(selected, productId, value)
         invalid = invalid - productId
         actionError = null
     }
@@ -319,7 +338,7 @@ fun PurchaseListRoute(
         }
     }
 
-    PurchaseScaffold(title = title, onBack = ::requestExit, onRefresh = vm::refresh) {
+    PurchaseScaffold(title = title, onBack = ::requestExit, onRefresh = vm::refresh, keypad = keypad, listState = listState) {
         loadingAndError(state, vm::refresh)
 
         if (data != null) {
@@ -385,7 +404,7 @@ fun PurchaseListRoute(
                         PurchaseMode.Supplier -> "Produtos com histórico deste fornecedor. Recomendados aparecem primeiro."
                         PurchaseMode.Stock -> "A sugestão usa consumo ponderado, estoque atual, ciclo de compra, prazo de entrega e margem de segurança. Você continua podendo alterar qualquer quantidade."
                         PurchaseMode.Category -> "A ordem manual da categoria é preservada. Quando houver histórico e configuração suficientes, a quantidade sugerida aparece automaticamente."
-                    } + " Todos começam desmarcados; ao marcar uma recomendação, a quantidade sugerida é preenchida e continua editável.",
+                    } + " Todos começam desmarcados. Digite uma quantidade maior que zero para selecionar; ao marcar uma recomendação, a sugestão é preenchida e continua editável.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -406,6 +425,23 @@ fun PurchaseListRoute(
             items(items, key = { it.productId }) { item ->
                 PurchaseItemCard(
                     item = item,
+                    keypad = keypad,
+                    focusRequester = remember(quantityFocus, item.productId) { quantityFocus.getOrPut(item.productId) { FocusRequester() } },
+                    isLast = item.productId == items.lastOrNull()?.productId,
+                    onNext = {
+                        val index = items.indexOfFirst { it.productId == item.productId }
+                        val next = items.getOrNull(index + 1)
+                        if (next == null) {
+                            focusManager.clearFocus()
+                        } else {
+                            scope.launch {
+                                val row = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == item.productId }
+                                if (row != null) listState.scrollToItem(row.index + 1)
+                                withFrameNanos { }
+                                quantityFocus[next.productId]?.requestFocusSafely()
+                            }
+                        }
+                    },
                     checked = item.productId in selected,
                     quantity = quantities[item.productId].orEmpty(),
                     invalid = item.productId in invalid,
@@ -426,6 +462,7 @@ fun PurchaseListRoute(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
+                                focusManager.clearFocus()
                                 orderText()?.let { text ->
                                     notice = if (copyPurchaseText(context, orderTitle, text)) {
                                         "Texto copiado."
@@ -440,6 +477,7 @@ fun PurchaseListRoute(
                         ) { Text("Copiar texto") }
                         OutlinedButton(
                             onClick = {
+                                focusManager.clearFocus()
                                 orderText()?.let { text ->
                                     if (sharePurchaseText(context, orderTitle, text)) {
                                         notice = null
@@ -493,6 +531,10 @@ fun PurchaseListRoute(
 @Composable
 private fun PurchaseItemCard(
     item: PurchaseListItem,
+    keypad: NumericKeypadState,
+    focusRequester: FocusRequester,
+    isLast: Boolean,
+    onNext: () -> Unit,
     checked: Boolean,
     quantity: String,
     invalid: Boolean,
@@ -539,18 +581,28 @@ private fun PurchaseItemCard(
                     Text("ESTOQUE ATUAL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(formatPurchaseStock(item.currentQuantity, item.unit), fontWeight = FontWeight.SemiBold)
                 }
-                OutlinedButton(onClick = { onStep(-1) }, enabled = checked, modifier = Modifier.width(48.dp)) { NevesIcon(NevesIcons.Remove, "Diminuir quantidade") }
-                OutlinedTextField(
+                OutlinedButton(
+                    onClick = { onStep(-1) },
+                    modifier = Modifier.width(48.dp).focusProperties { canFocus = false },
+                    contentPadding = PaddingValues(0.dp),
+                ) { NevesIcon(NevesIcons.Remove, "Diminuir quantidade", tint = MaterialTheme.colorScheme.primary) }
+                NevesNumericField(
                     value = quantity,
                     onValueChange = onQuantity,
-                    enabled = checked,
-                    singleLine = true,
-                    isError = invalid,
-                    placeholder = { Text(if (checked) "Qtd." else "—") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keypad = keypad,
+                    label = "Qtd.",
+                    placeholder = "Ex.: 5",
+                    errorMessage = if (invalid) "Quantidade maior que zero" else null,
+                    focusRequester = focusRequester,
+                    onConfirm = onNext,
+                    confirmLabel = if (isLast) "Concluir" else "Próximo",
                     modifier = Modifier.width(96.dp).padding(horizontal = 6.dp),
                 )
-                OutlinedButton(onClick = { onStep(1) }, enabled = checked, modifier = Modifier.width(48.dp)) { NevesIcon(NevesIcons.Add, "Aumentar quantidade") }
+                OutlinedButton(
+                    onClick = { onStep(1) },
+                    modifier = Modifier.width(48.dp).focusProperties { canFocus = false },
+                    contentPadding = PaddingValues(0.dp),
+                ) { NevesIcon(NevesIcons.Add, "Aumentar quantidade", tint = MaterialTheme.colorScheme.primary) }
             }
             if (invalid) {
                 Text(
@@ -621,7 +673,9 @@ internal fun sharePurchaseText(context: Context, title: String, text: String): B
         putExtra(Intent.EXTRA_SUBJECT, title)
         putExtra(Intent.EXTRA_TEXT, text)
     }
-    context.startActivity(Intent.createChooser(send, "Compartilhar lista de compras"))
+    val chooser = Intent.createChooser(send, "Compartilhar lista de compras")
+    if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(chooser)
 }.isSuccess
 
 // ---------- Componentes ----------
@@ -631,6 +685,8 @@ private fun PurchaseScaffold(
     title: String,
     onBack: () -> Unit,
     onRefresh: (() -> Unit)? = null,
+    keypad: NumericKeypadState? = null,
+    listState: LazyListState = rememberLazyListState(),
     content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     Scaffold(
@@ -642,11 +698,13 @@ private fun PurchaseScaffold(
                     if (onRefresh != null) TextButton(onClick = onRefresh) { NevesIcon(NevesIcons.Refresh, "Atualizar") }
                 }
             }
-        }
+        },
+        bottomBar = { keypad?.let { NevesNumericKeypad(it) } },
     ) { padding ->
         LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).imePadding().padding(horizontal = 16.dp),
         ) {
             item { Spacer(Modifier.height(4.dp)) }
             content()

@@ -1,5 +1,11 @@
 package com.babycatbe.nevesestoque.feature.products
 
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import com.babycatbe.nevesestoque.ui.input.NevesNumericField
+import com.babycatbe.nevesestoque.ui.input.NevesNumericKeypad
+import com.babycatbe.nevesestoque.ui.input.rememberNumericKeypadState
+import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 import com.babycatbe.nevesestoque.ui.components.NevesContentCard
 import com.babycatbe.nevesestoque.ui.components.NevesIcons
 import com.babycatbe.nevesestoque.ui.components.NevesIcon
@@ -15,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -32,11 +37,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
@@ -95,6 +100,10 @@ private fun ProductMergeScreen(
     var priceSourceWire by rememberSaveable { mutableStateOf(MergeInitialPriceSource.None.wireValue) }
     var formError by rememberSaveable { mutableStateOf<String?>(null) }
     var priceMenuOpen by rememberSaveable { mutableStateOf(false) }
+
+    val keypad = rememberNumericKeypadState()
+    val focusManager = LocalFocusManager.current
+    val absorbedFocus = remember { FocusRequester() }
 
     val source = state.source
     val candidate = state.candidate
@@ -155,7 +164,8 @@ private fun ProductMergeScreen(
                     )
                 }
             }
-        }
+        },
+        bottomBar = { NevesNumericKeypad(keypad) },
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -383,28 +393,30 @@ private fun ProductMergeScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodySmall,
                                 )
-                                OutlinedTextField(
+                                NevesNumericField(
                                     value = survivorEquivalentQuantity,
                                     onValueChange = {
                                         survivorEquivalentQuantity = it
                                         formError = null
                                     },
-                                    label = { Text("Quantidade em " + pair.survivor.unit) },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    label = "Quantidade em " + pair.survivor.unit,
+                                    keypad = keypad,
+                                    onConfirm = { absorbedFocus.requestFocusSafely() },
                                     enabled = !state.merging,
-                                    singleLine = true,
                                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                 )
-                                OutlinedTextField(
+                                NevesNumericField(
                                     value = absorbedEquivalentQuantity,
                                     onValueChange = {
                                         absorbedEquivalentQuantity = it
                                         formError = null
                                     },
-                                    label = { Text("Quantidade em " + pair.absorbed.unit) },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    label = "Quantidade em " + pair.absorbed.unit,
+                                    keypad = keypad,
+                                    focusRequester = absorbedFocus,
+                                    onConfirm = { focusManager.clearFocus() },
+                                    confirmLabel = "Concluir",
                                     enabled = !state.merging,
-                                    singleLine = true,
                                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                 )
                             } else {
