@@ -9,7 +9,7 @@
 ## Estado real
 
 - Último checkpoint consolidado: **CHECKPOINT 253 — PARIDADE WEB: LEITURAS HISTÓRICAS SEM TRUNCAMENTO**.
-- Estado seguro atual: `develop@7d9cee677353ecbb20d22d45c1467da2a727513c`; `main` permanece intocada em `e0c15eb45fda2f6c68f58ed6f4ccdd24feb20635`.
+- Último merge funcional: `7d9cee677353ecbb20d22d45c1467da2a727513c`; HEAD atual de `develop` inclui apenas a consolidação documental posterior deste arquivo. `main` permanece intocada em `e0c15eb45fda2f6c68f58ed6f4ccdd24feb20635`.
 - PR #77 (`fix/web-history-pagination` → `develop`): **MERGED** em 30/09/2026.
 - Web/System: `0.26.1`.
 - Android: `0.35.0-alpha01` / versionCode 35 — TESTADO / APROVADO EM APARELHO por Elias no escopo de go-live do CHECKPOINT 252.
