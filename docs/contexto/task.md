@@ -1,33 +1,74 @@
 # Estado operacional — Neves Estoque
 
-> Atualizado em 30/09/2026 (Bloco 252). Este arquivo é operacional e deve refletir o trabalho vigente; detalhes históricos ficam nos checkpoints do Contexto Mestre e em `memory.md`.
+> Atualizado em 30/09/2026 (Bloco 253). Este arquivo é operacional e deve refletir o trabalho vigente; detalhes históricos ficam nos checkpoints do Contexto Mestre e em `memory.md`.
 
 ## Fase atual
 
-`GO-LIVE CONTROLADO NO ANDROID — CATÁLOGO REAL PREPARADO` (Bloco 252, 29–30/09/2026).
+`PARIDADE WEB DE HISTÓRICOS CORRIGIDA / GO-LIVE ANDROID MANTIDO` (Bloco 253, 30/09/2026).
 
 ## Estado real
 
-- `develop` integra toda a cadeia Android (CHECKPOINT 251): `develop@cd4acdb72c017726672078a3c775411c5f6ad83a`; `main` intocada em `e0c15eb45fda2f6c68f58ed6f4ccdd24feb20635`.
-- Os PRs #69–#75 aparecem OPEN/DRAFT, mas seus commits já estão em `develop`: pendência administrativa, não código ausente.
-- Trabalho do Bloco 252: branch `fix/android-go-live-v1` → PR #76 para `develop`; Android `0.35.0-alpha01` / versionCode 35; Web/System `0.26.0`.
-- Supabase *Neves Estoque*: 42 migrations (sem mudança de schema). Dados de teste removidos em 30/09/2026 (~02:26 UTC) e substituídos pelo catálogo real: 13 Categorias, 146 Produtos, 0 Fornecedores, 0 Entradas, 0 Conferências, sem estoque/preço inicial. Snapshot pré-reset entregue a Elias no CHECKPOINT 252.
-- Estado dos dados: `CATÁLOGO REAL PREPARADO`. Quando Elias mantiver o primeiro registro operacional, passa a `DADOS REAIS EM USO`: a partir daí é proibido resetar, limpar, substituir catálogo ou rodar teste destrutivo sem nova autorização explícita.
+- Último checkpoint consolidado: **CHECKPOINT 253 — PARIDADE WEB: LEITURAS HISTÓRICAS SEM TRUNCAMENTO**.
+- Estado seguro atual: `develop@7d9cee677353ecbb20d22d45c1467da2a727513c`; `main` permanece intocada em `e0c15eb45fda2f6c68f58ed6f4ccdd24feb20635`.
+- PR #77 (`fix/web-history-pagination` → `develop`): **MERGED** em 30/09/2026.
+- Web/System: `0.26.1`.
+- Android: `0.35.0-alpha01` / versionCode 35 — TESTADO / APROVADO EM APARELHO por Elias no escopo de go-live do CHECKPOINT 252.
+- CI final do PR #77: **CI #147 / run 36692488491 — SUCCESS**; typecheck, lint, 32 arquivos / 185 testes e build Web/PWA aprovados.
+- Deploy Preview do PR #77 no Netlify: SUCCESS.
+- O conector desta consolidação não expôs um workflow de `push` separado para o merge commit; não registrar CI pós-merge adicional sem evidência.
+- Supabase *Neves Estoque*: 42 migrations; estado verificado nesta consolidação: 13 Categorias, 146 Produtos, 0 Fornecedores, 0 Entradas, 0 itens de Entrada, 0 Conferências e 0 itens de Conferência; 3 app_users e 16 devices.
+- Nenhuma migration, schema, RLS, policy, RPC ou dado operacional foi alterado pelo Bloco 253.
+- Estado dos dados: `CATÁLOGO REAL PREPARADO`. Quando Elias mantiver o primeiro registro operacional real, passa a `DADOS REAIS EM USO`; a partir daí é proibido resetar, limpar, substituir catálogo ou rodar teste destrutivo sem nova autorização explícita.
 
-## Correções do Bloco 252 (Android 35)
+## Correções consolidadas
+
+### Android 35 — CHECKPOINT 252
 
 - Cache do período de testes invalidado uma única vez (`OfflineStore.CACHE_GENERATION = 2`), somente `cache/`; pendências e acesso preservados.
-- Leituras históricas que liam a tabela inteira e filtravam no aparelho passaram a filtrar no servidor / paginar por cursor (detalhe do Produto, histórico de Entradas, última Conferência por Categoria, revisão de consumo, conflito de pendência, Lixeira).
-- Estado: IMPLEMENTADO / CI no PR #76 / TESTE EM APARELHO A VERIFICAR.
+- Leituras históricas críticas passaram a filtrar/paginar no servidor.
+- Teste físico de go-live no celular: **APROVADO**.
+- PR #76: MERGED em `develop`.
+
+### Web 0.26.1 — CHECKPOINT 253
+
+Foi eliminado o risco de históricos silenciosamente incompletos quando o PostgREST/Supabase devolve menos linhas do que o cliente solicita.
+
+Protegidos:
+- resumo de Última Conferência / Conferida hoje;
+- histórico de Conferências por Categoria e do mesmo dia;
+- detalhe de Conferência com muitos itens;
+- conflito Entrada × Conferência, inclusive no fluxo de envio consciente de pendências Offline;
+- histórico de Entradas e seus itens;
+- detalhe do Produto: histórico de preço e consumo;
+- Lixeira de Produtos, Categorias, Fornecedores, Entradas e Conferências.
+
+Infraestrutura:
+- `fetchAllByIdKeyset` preservado;
+- helpers adicionados para filtros `in (...)` em blocos e paginação por `id` dentro dos blocos;
+- erro em qualquer página/bloco falha a leitura inteira em vez de devolver histórico parcial;
+- testes de regressão simulam teto de linhas menor que o pedido do cliente.
+
+Falha intermediária relevante:
+- CI #144 falhou em um teste novo porque o cliente PostgREST falso não possuía `.gte()`;
+- a limitação da infraestrutura de teste foi corrigida;
+- CI final #147 passou integralmente.
 
 ## Pendências conhecidas
 
-- **Web: mesmas leituras sem filtro no servidor** (paridade do item acima) — A CORRIGIR em bloco próprio; não bloqueia o go-live Android.
-- Antes de instalar a nova build no celular: confirmar **Pendências locais = 0** (pendências de teste não podem ser enviadas; referenciam IDs removidos).
-- Supabase Auth: proteção contra senhas vazadas desativada (aviso do advisor, pré-existente) — A DEFINIR.
-- Splash Android 12+ claro com tema Escuro: LIMITAÇÃO CONHECIDA.
+- Web 0.26.1: correção lógica/automatizada **CI APROVADA**, mas smoke test funcional manual autenticado no navegador DEV ainda pode ser executado se Elias quiser classificar esse escopo especificamente como TESTADO manualmente.
+- Supabase Auth: proteção contra senhas vazadas desativada (aviso pré-existente do advisor) — A DEFINIR.
+- Splash Android 12+ claro com tema Escuro: LIMITAÇÃO CONHECIDA não bloqueante.
 - Pendências Offline ao trocar de usuário no mesmo aparelho: A DEFINIR.
-- CI aprovada não substitui teste funcional em aparelho.
+- Testes Offline agrupados/finais anteriormente deferidos continuam pendência separada.
+- Se a Web for aberta em navegador usado nos testes antigos, conferir cache/IndexedDB e Pendências locais antes de enviar qualquer operação antiga.
+
+## Próximo passo
+
+O Bloco 253 está tecnicamente concluído e integrado.
+
+Próximo passo funcional: **A DEFINIR conforme a prioridade vigente e o uso real do sistema**. Um smoke test manual da Web 0.26.1 em DEV pode ser feito antes de classificá-la como TESTADA manualmente, mas não bloqueia o Android 35 já aprovado para uso.
+
+Não mover `main`, publicar PROD ou criar Release automaticamente. Não executar reset/limpeza/substituição do catálogo ou teste destrutivo no Supabase sem nova autorização explícita de Elias.
 
 ## Critério para atualizar este arquivo
 
@@ -35,7 +76,7 @@ Atualizar quando mudar fase, objetivo, prioridade, próxima tarefa, bloqueio, br
 
 ---
 
-# HISTÓRICO — superado pelos CHECKPOINTS 251/252
+# HISTÓRICO — superado pelos CHECKPOINTS 251/252/253
 
 > As seções abaixo descrevem estados anteriores (branch `feat/android-17-product-maintenance-ux`, PR #75 não integrado etc.). Estão preservadas apenas como histórico e **não** representam o estado atual.
 
