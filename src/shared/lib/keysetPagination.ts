@@ -15,6 +15,7 @@
 
 export const DEFAULT_KEYSET_PAGE_SIZE = 500;
 export const DEFAULT_KEYSET_MAX_PAGES = 10_000;
+export const DEFAULT_ID_CHUNK_SIZE = 100;
 
 export type KeysetPageResult<T> = {
   data: T[] | null;
@@ -127,4 +128,69 @@ export function fetchAllByNumericIdKeyset<T extends { id: number }>(
   options: KeysetOptions = {}
 ): Promise<T[]> {
   return fetchAllByKeyset<T, number>(fetchPage, (row) => row.id, options);
+}
+
+
+export type IdChunkOptions = {
+  chunkSize?: number;
+};
+
+/**
+ * Divide uma lista de ids em blocos pequenos para filtros `in (...)`.
+ *
+ * Útil para tabelas em que cada id solicitado devolve no máximo uma linha
+ * (cabeçalhos de Entrada/Conferência, Produtos, Fornecedores etc.). Evita URLs
+ * enormes e respostas cortadas pelo teto de linhas do servidor.
+ */
+export async function fetchByIdChunks<T>(
+  ids: Iterable<string>,
+  fetchChunk: (ids: string[]) => PromiseLike<KeysetPageResult<T>>,
+  options: IdChunkOptions = {}
+): Promise<T[]> {
+  const chunkSize = options.chunkSize ?? DEFAULT_ID_CHUNK_SIZE;
+  if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
+    throw new RangeError("chunkSize deve ser um inteiro positivo.");
+  }
+
+  const distinctIds = [...new Set(ids)];
+  if (distinctIds.length === 0) return [];
+
+  const rows: T[] = [];
+  for (let index = 0; index < distinctIds.length; index += chunkSize) {
+    const chunk = distinctIds.slice(index, index + chunkSize);
+    const result = await fetchChunk(chunk);
+    if (result.error) throw result.error;
+    rows.push(...(result.data ?? []));
+  }
+  return rows;
+}
+
+/**
+ * Variante para tabelas-filhas em que um id de filtro pode devolver várias linhas.
+ * Cada bloco de ids é paginado por `id`, portanto continua correto mesmo quando
+ * o servidor limita uma resposta a menos linhas que o solicitado.
+ */
+export async function fetchAllByIdKeysetInChunks<T extends { id: string }>(
+  ids: Iterable<string>,
+  fetchPage: (ids: string[], request: KeysetPageRequest) => PromiseLike<KeysetPageResult<T>>,
+  options: KeysetOptions & IdChunkOptions = {}
+): Promise<T[]> {
+  const chunkSize = options.chunkSize ?? DEFAULT_ID_CHUNK_SIZE;
+  if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
+    throw new RangeError("chunkSize deve ser um inteiro positivo.");
+  }
+
+  const distinctIds = [...new Set(ids)];
+  if (distinctIds.length === 0) return [];
+
+  const rows: T[] = [];
+  for (let index = 0; index < distinctIds.length; index += chunkSize) {
+    const chunk = distinctIds.slice(index, index + chunkSize);
+    const chunkRows = await fetchAllByIdKeyset<T>(
+      (request) => fetchPage(chunk, request),
+      options
+    );
+    rows.push(...chunkRows);
+  }
+  return rows;
 }

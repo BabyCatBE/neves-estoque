@@ -1,3 +1,7 @@
+import {
+  fetchAllByIdKeyset,
+  fetchByIdChunks
+} from "../../../shared/lib/keysetPagination";
 import { supabase } from "../../../shared/lib/supabase";
 import { restoreEntry } from "../../entries/api/entries";
 import { restoreProduct } from "../../products/api/products";
@@ -34,68 +38,101 @@ export async function listRestorableTrashItems(): Promise<TrashItem[]> {
   const client = requireClient();
   const now = new Date().toISOString();
 
-  const [productsResult, categoriesResult, suppliersResult, entriesResult, conferencesResult] = await Promise.all([
-    client.from("products").select("id,name,unit,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now).is("permanently_deleted_at", null),
-    client.from("categories").select("id,name,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now).is("permanently_deleted_at", null),
-    client.from("suppliers").select("id,name,company,phone,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now).is("permanently_deleted_at", null),
-    client.from("entries").select("id,supplier_id,effective_at,deleted_at,restore_until").not("deleted_at", "is", null).gt("restore_until", now).is("permanently_deleted_at", null),
-    client
-      .from("conferences")
-      .select("id,scope_type,category_id,scope_product_id,effective_at,physical_responsible,deleted_at,restore_until")
-      .not("deleted_at", "is", null)
-      .gt("restore_until", now)
-  ]);
+  const [productRows, categoryRows, supplierRows, entryRows, conferenceRows] =
+    await Promise.all([
+      fetchAllByIdKeyset(({ afterId, limit }) => {
+        let query = client
+          .from("products")
+          .select("id,name,unit,deleted_at,restore_until")
+          .not("deleted_at", "is", null)
+          .gt("restore_until", now)
+          .is("permanently_deleted_at", null);
+        if (afterId !== null) query = query.gt("id", afterId);
+        return query.order("id", { ascending: true }).limit(limit);
+      }),
+      fetchAllByIdKeyset(({ afterId, limit }) => {
+        let query = client
+          .from("categories")
+          .select("id,name,deleted_at,restore_until")
+          .not("deleted_at", "is", null)
+          .gt("restore_until", now)
+          .is("permanently_deleted_at", null);
+        if (afterId !== null) query = query.gt("id", afterId);
+        return query.order("id", { ascending: true }).limit(limit);
+      }),
+      fetchAllByIdKeyset(({ afterId, limit }) => {
+        let query = client
+          .from("suppliers")
+          .select("id,name,company,phone,deleted_at,restore_until")
+          .not("deleted_at", "is", null)
+          .gt("restore_until", now)
+          .is("permanently_deleted_at", null);
+        if (afterId !== null) query = query.gt("id", afterId);
+        return query.order("id", { ascending: true }).limit(limit);
+      }),
+      fetchAllByIdKeyset(({ afterId, limit }) => {
+        let query = client
+          .from("entries")
+          .select("id,supplier_id,effective_at,deleted_at,restore_until")
+          .not("deleted_at", "is", null)
+          .gt("restore_until", now)
+          .is("permanently_deleted_at", null);
+        if (afterId !== null) query = query.gt("id", afterId);
+        return query.order("id", { ascending: true }).limit(limit);
+      }),
+      fetchAllByIdKeyset(({ afterId, limit }) => {
+        let query = client
+          .from("conferences")
+          .select(
+            "id,scope_type,category_id,scope_product_id,effective_at,physical_responsible,deleted_at,restore_until"
+          )
+          .not("deleted_at", "is", null)
+          .gt("restore_until", now);
+        if (afterId !== null) query = query.gt("id", afterId);
+        return query.order("id", { ascending: true }).limit(limit);
+      })
+    ]);
 
-  if (productsResult.error) throw productsResult.error;
-  if (categoriesResult.error) throw categoriesResult.error;
-  if (suppliersResult.error) throw suppliersResult.error;
-  if (entriesResult.error) throw entriesResult.error;
-  if (conferencesResult.error) throw conferencesResult.error;
-
-  const entrySupplierIds = [...new Set((entriesResult.data ?? []).map((entry) => entry.supplier_id))];
+  const entrySupplierIds = [...new Set(entryRows.map((entry) => entry.supplier_id))];
   const conferenceCategoryIds = [
     ...new Set(
-      (conferencesResult.data ?? [])
+      conferenceRows
         .map((conference) => conference.category_id)
         .filter((id): id is string => Boolean(id))
     )
   ];
   const conferenceProductIds = [
     ...new Set(
-      (conferencesResult.data ?? [])
+      conferenceRows
         .map((conference) => conference.scope_product_id)
         .filter((id): id is string => Boolean(id))
     )
   ];
 
-  const [entrySuppliersResult, conferenceCategoriesResult, conferenceProductsResult] =
+  const [entrySuppliers, conferenceCategories, conferenceProducts] =
     await Promise.all([
-      entrySupplierIds.length
-        ? client.from("suppliers").select("id,name").in("id", entrySupplierIds)
-        : Promise.resolve({ data: [], error: null }),
-      conferenceCategoryIds.length
-        ? client.from("categories").select("id,name").in("id", conferenceCategoryIds)
-        : Promise.resolve({ data: [], error: null }),
-      conferenceProductIds.length
-        ? client.from("products").select("id,name").in("id", conferenceProductIds)
-        : Promise.resolve({ data: [], error: null })
+      fetchByIdChunks(entrySupplierIds, (ids) =>
+        client.from("suppliers").select("id,name").in("id", ids)
+      ),
+      fetchByIdChunks(conferenceCategoryIds, (ids) =>
+        client.from("categories").select("id,name").in("id", ids)
+      ),
+      fetchByIdChunks(conferenceProductIds, (ids) =>
+        client.from("products").select("id,name").in("id", ids)
+      )
     ]);
 
-  if (entrySuppliersResult.error) throw entrySuppliersResult.error;
-  if (conferenceCategoriesResult.error) throw conferenceCategoriesResult.error;
-  if (conferenceProductsResult.error) throw conferenceProductsResult.error;
-
   const entrySupplierById = new Map(
-    (entrySuppliersResult.data ?? []).map((supplier) => [supplier.id, supplier.name] as const)
+    entrySuppliers.map((supplier) => [supplier.id, supplier.name] as const)
   );
   const conferenceCategoryById = new Map(
-    (conferenceCategoriesResult.data ?? []).map((category) => [category.id, category.name] as const)
+    conferenceCategories.map((category) => [category.id, category.name] as const)
   );
   const conferenceProductById = new Map(
-    (conferenceProductsResult.data ?? []).map((product) => [product.id, product.name] as const)
+    conferenceProducts.map((product) => [product.id, product.name] as const)
   );
 
-  const products: TrashItem[] = (productsResult.data ?? [])
+  const products: TrashItem[] = productRows
     .filter((item) => item.deleted_at && item.restore_until)
     .map((item) => ({
       id: item.id,
@@ -106,7 +143,7 @@ export async function listRestorableTrashItems(): Promise<TrashItem[]> {
       restoreUntil: item.restore_until as string
     }));
 
-  const categories: TrashItem[] = (categoriesResult.data ?? [])
+  const categories: TrashItem[] = categoryRows
     .filter((item) => item.deleted_at && item.restore_until)
     .map((item) => ({
       id: item.id,
@@ -117,7 +154,7 @@ export async function listRestorableTrashItems(): Promise<TrashItem[]> {
       restoreUntil: item.restore_until as string
     }));
 
-  const suppliers: TrashItem[] = (suppliersResult.data ?? [])
+  const suppliers: TrashItem[] = supplierRows
     .filter((item) => item.deleted_at && item.restore_until)
     .map((item) => ({
       id: item.id,
@@ -128,7 +165,7 @@ export async function listRestorableTrashItems(): Promise<TrashItem[]> {
       restoreUntil: item.restore_until as string
     }));
 
-  const entries: TrashItem[] = (entriesResult.data ?? [])
+  const entries: TrashItem[] = entryRows
     .filter((item) => item.deleted_at && item.restore_until)
     .map((item) => ({
       id: item.id,
@@ -139,7 +176,7 @@ export async function listRestorableTrashItems(): Promise<TrashItem[]> {
       restoreUntil: item.restore_until as string
     }));
 
-  const conferences: TrashItem[] = (conferencesResult.data ?? [])
+  const conferences: TrashItem[] = conferenceRows
     .filter((item) => item.deleted_at && item.restore_until)
     .map((item) => {
       const scopeName =

@@ -29,6 +29,7 @@ export type FakeQueryBuilder = PromiseLike<FakeResponse> & {
   lt(column: string, value: unknown): FakeQueryBuilder;
   lte(column: string, value: unknown): FakeQueryBuilder;
   gt(column: string, value: unknown): FakeQueryBuilder;
+  gte(column: string, value: unknown): FakeQueryBuilder;
   in(column: string, values: readonly unknown[]): FakeQueryBuilder;
   order(column: string, config?: { ascending?: boolean }): FakeQueryBuilder;
   limit(count: number): FakeQueryBuilder;
@@ -94,6 +95,11 @@ export function createFakePostgrest(options: FakePostgrestOptions) {
       gt(column: string, value: unknown) {
         filters.push((row) => compareValues(column, row[column], value) > 0);
         filterLabels.push(`${column}.gt.${String(value)}`);
+        return builder;
+      },
+      gte(column: string, value: unknown) {
+        filters.push((row) => compareValues(column, row[column], value) >= 0);
+        filterLabels.push(`${column}.gte.${String(value)}`);
         return builder;
       },
       in(column: string, values: readonly unknown[]) {

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createFakePostgrest, testUuid, type FakeRow } from "../testing/fakePostgrest";
 import {
   fetchAllByIdKeyset,
+  fetchAllByIdKeysetInChunks,
+  fetchByIdChunks,
   IncompletePaginationError,
   type KeysetPageRequest
 } from "./keysetPagination";
@@ -155,6 +157,89 @@ describe("fetchAllByIdKeyset", () => {
   it("rejeita pageSize inválido", async () => {
     await expect(
       fetchAllByIdKeyset<Row>(async () => ({ data: [], error: null }), { pageSize: 0 })
+    ).rejects.toBeInstanceOf(RangeError);
+  });
+});
+
+
+describe("id chunk helpers", () => {
+  it("fetchByIdChunks divide ids, remove duplicados e junta os resultados", async () => {
+    const calls: string[][] = [];
+    const rows = await fetchByIdChunks(
+      ["a", "b", "b", "c", "d", "e"],
+      async (ids) => {
+        calls.push(ids);
+        return {
+          data: ids.map((id) => ({ id, value: id.toUpperCase() })),
+          error: null
+        };
+      },
+      { chunkSize: 2 }
+    );
+
+    expect(calls).toEqual([["a", "b"], ["c", "d"], ["e"]]);
+    expect(rows.map((row) => row.id)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("fetchByIdChunks propaga erro e não devolve resultado parcial", async () => {
+    let calls = 0;
+    await expect(
+      fetchByIdChunks(
+        ["a", "b", "c"],
+        async (ids) => {
+          calls += 1;
+          if (calls === 2) return { data: null, error: new Error("falha no bloco 2") };
+          return { data: ids.map((id) => ({ id })), error: null };
+        },
+        { chunkSize: 2 }
+      )
+    ).rejects.toThrow("falha no bloco 2");
+    expect(calls).toBe(2);
+  });
+
+  it("fetchAllByIdKeysetInChunks pagina cada bloco até resposta vazia", async () => {
+    const rows = [
+      { id: testUuid(7, 1), parent: "a" },
+      { id: testUuid(7, 2), parent: "a" },
+      { id: testUuid(7, 3), parent: "a" },
+      { id: testUuid(7, 4), parent: "b" },
+      { id: testUuid(7, 5), parent: "c" }
+    ];
+    const calls: Array<{ ids: string[]; afterId: string | null }> = [];
+
+    const result = await fetchAllByIdKeysetInChunks(
+      ["a", "b", "c"],
+      async (ids, { afterId, limit }) => {
+        calls.push({ ids, afterId });
+        const filtered = rows
+          .filter((row) => ids.includes(row.parent) && (afterId === null || row.id > afterId))
+          .sort((left, right) => (left.id < right.id ? -1 : 1))
+          .slice(0, Math.min(limit, 2));
+        return { data: filtered, error: null };
+      },
+      { chunkSize: 2, pageSize: 500 }
+    );
+
+    expect(result.map((row) => row.id)).toEqual(rows.map((row) => row.id));
+    expect(calls.map((call) => call.ids)).toEqual([
+      ["a", "b"],
+      ["a", "b"],
+      ["a", "b"],
+      ["c"],
+      ["c"]
+    ]);
+  });
+
+  it("helpers de bloco rejeitam chunkSize inválido", async () => {
+    await expect(
+      fetchByIdChunks([], async () => ({ data: [], error: null }), { chunkSize: 0 })
+    ).rejects.toBeInstanceOf(RangeError);
+    await expect(
+      fetchAllByIdKeysetInChunks(
+        [],
+        async () => ({ data: [], error: null }),
+        { chunkSize: 0 }
+      )
     ).rejects.toBeInstanceOf(RangeError);
   });
 });
