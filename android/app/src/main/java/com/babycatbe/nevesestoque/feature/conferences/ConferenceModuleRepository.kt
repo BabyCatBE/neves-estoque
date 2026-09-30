@@ -5,10 +5,12 @@ import kotlinx.coroutines.async
 import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
+import com.babycatbe.nevesestoque.data.supabase.fetchAllByIdKeyset
 import com.babycatbe.nevesestoque.feature.products.ProductsRepository
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -34,21 +36,28 @@ class ConferenceModuleRepository {
         }
 
         val conferencesAsync = async {
-            client.from("conferences")
-                .select(
-                    Columns.list(
-                        "id", "effective_at", "created_at", "physical_responsible",
-                        "observation", "scope_type", "category_id", "scope_product_id",
-                        "idempotency_key", "deleted_at",
-                    )
-                ) {
-                    attachRegisteredDevice()
-                    filter {
-                        eq("scope_type", "category")
-                        exact("deleted_at", null)
+            // Cursor por id: a "Última conferência" de cada Categoria não pode sumir quando o
+            // histórico passar do teto de linhas do servidor.
+            fetchAllByIdKeyset(ConferenceRow::id) { afterId, pageLimit ->
+                client.from("conferences")
+                    .select(
+                        Columns.list(
+                            "id", "effective_at", "created_at", "physical_responsible",
+                            "observation", "scope_type", "category_id", "scope_product_id",
+                            "idempotency_key", "deleted_at",
+                        )
+                    ) {
+                        attachRegisteredDevice()
+                        filter {
+                            eq("scope_type", "category")
+                            exact("deleted_at", null)
+                            if (afterId != null) gt("id", afterId)
+                        }
+                        order("id", Order.ASCENDING)
+                        limit(pageLimit)
                     }
-                }
-                .decodeList<ConferenceRow>()
+                    .decodeList<ConferenceRow>()
+            }
         }
 
         val categories = categoriesAsync.await()

@@ -80,3 +80,24 @@ suspend fun <T, K : Comparable<K>> fetchAllByKeyset(
     }
     return rows
 }
+
+/** Tamanho de bloco para filtros `in (...)` por id: mantém a URL curta e cada resposta abaixo do teto. */
+const val DEFAULT_ID_CHUNK_SIZE = 100
+
+/**
+ * Busca linhas por uma lista de ids em blocos (filtro `in` no servidor), em vez de ler a
+ * tabela inteira e filtrar no aparelho — leitura que trunca em silêncio quando a tabela passa
+ * do teto `max-rows`. Ids repetidos são ignorados; lista vazia não faz chamada.
+ * Com blocos de até 100 ids, cada resposta fica abaixo do teto quando cada id devolve no máximo
+ * uma linha (uso previsto: cabeçalhos de Entradas/Conferências por id).
+ */
+suspend fun <T> fetchByIdChunks(
+    ids: Collection<String>,
+    chunkSize: Int = DEFAULT_ID_CHUNK_SIZE,
+    fetchChunk: suspend (List<String>) -> List<T>,
+): List<T> {
+    require(chunkSize > 0) { "chunkSize deve ser positivo." }
+    val distinct = ids.distinct()
+    if (distinct.isEmpty()) return emptyList()
+    return distinct.chunked(chunkSize).flatMap { fetchChunk(it) }
+}

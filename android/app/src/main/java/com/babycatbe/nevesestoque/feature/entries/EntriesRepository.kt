@@ -6,9 +6,11 @@ import com.babycatbe.nevesestoque.data.offline.offlineCachedList
 import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
+import com.babycatbe.nevesestoque.data.supabase.fetchAllByIdKeyset
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -94,15 +96,26 @@ class EntriesRepository {
 
     suspend fun loadHistory(): List<EntryHistoryItem> {
         val client = client()
-        val entries = client.from("entries")
-            .select(
-                Columns.list(
-                    "id", "supplier_id", "effective_at", "observation",
-                    "idempotency_key", "deleted_at",
-                )
-            ) { attachRegisteredDevice() }
-            .decodeList<EntryRow>()
-            .filter { it.deletedAt == null }
+        // Histórico completo por cursor de id: sem isso, a lista pararia de mostrar Entradas
+        // (ou itens) quando a tabela passasse do teto de linhas do servidor.
+        val entries = fetchAllByIdKeyset(EntryRow::id) { afterId, pageLimit ->
+            client.from("entries")
+                .select(
+                    Columns.list(
+                        "id", "supplier_id", "effective_at", "observation",
+                        "idempotency_key", "deleted_at",
+                    )
+                ) {
+                    attachRegisteredDevice()
+                    filter {
+                        exact("deleted_at", null)
+                        if (afterId != null) gt("id", afterId)
+                    }
+                    order("id", Order.ASCENDING)
+                    limit(pageLimit)
+                }
+                .decodeList<EntryRow>()
+        }.filter { it.deletedAt == null }
 
         if (entries.isEmpty()) return emptyList()
 
@@ -114,14 +127,20 @@ class EntriesRepository {
             .decodeList<EntrySupplierRow>()
             .associateBy { it.id }
 
-        val items = client.from("entry_items")
-            .select(
-                Columns.list(
-                    "id", "entry_id", "product_id", "quantity", "unit_price", "position"
-                )
-            ) { attachRegisteredDevice() }
-            .decodeList<EntryItemRow>()
-            .filter { it.entryId in entryIds }
+        val items = fetchAllByIdKeyset(EntryItemRow::id) { afterId, pageLimit ->
+            client.from("entry_items")
+                .select(
+                    Columns.list(
+                        "id", "entry_id", "product_id", "quantity", "unit_price", "position"
+                    )
+                ) {
+                    attachRegisteredDevice()
+                    if (afterId != null) filter { gt("id", afterId) }
+                    order("id", Order.ASCENDING)
+                    limit(pageLimit)
+                }
+                .decodeList<EntryItemRow>()
+        }.filter { it.entryId in entryIds }
 
         val products = client.from("products")
             .select(

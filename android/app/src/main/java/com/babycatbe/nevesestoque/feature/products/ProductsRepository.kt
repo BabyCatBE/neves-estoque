@@ -8,9 +8,12 @@ import com.babycatbe.nevesestoque.data.offline.readCachedList
 import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
+import com.babycatbe.nevesestoque.data.supabase.fetchAllByIdKeyset
+import com.babycatbe.nevesestoque.data.supabase.fetchByIdChunks
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import io.ktor.http.ContentType
 import kotlinx.serialization.json.JsonNull
@@ -450,20 +453,35 @@ class ProductsRepository {
             .decodeList<ProductStockRow>()
             .firstOrNull { it.productId == productId }
 
-        val entryItems = client.from("entry_items")
-            .select(
-                Columns.list("id", "entry_id", "product_id", "quantity", "unit_price", "position")
-            ) { attachRegisteredDevice() }
-            .decodeList<ProductEntryItemRow>()
-            .filter { it.productId == productId }
+        // Filtro no servidor + cursor por id: ler a tabela inteira e filtrar no aparelho truncaria
+        // em silêncio o histórico quando a tabela passasse do teto de linhas do servidor.
+        val entryItems = fetchAllByIdKeyset(ProductEntryItemRow::id) { afterId, pageLimit ->
+            client.from("entry_items")
+                .select(
+                    Columns.list("id", "entry_id", "product_id", "quantity", "unit_price", "position")
+                ) {
+                    attachRegisteredDevice()
+                    filter {
+                        eq("product_id", productId)
+                        if (afterId != null) gt("id", afterId)
+                    }
+                    order("id", Order.ASCENDING)
+                    limit(pageLimit)
+                }
+                .decodeList<ProductEntryItemRow>()
+        }
 
         val entryIds = entryItems.map { it.entryId }.toSet()
-        val entries = client.from("entries")
-            .select(
-                Columns.list("id", "effective_at", "created_at", "supplier_id", "deleted_at")
-            ) { attachRegisteredDevice() }
-            .decodeList<ProductEntryRow>()
-            .filter { it.id in entryIds && it.deletedAt == null }
+        val entries = fetchByIdChunks(entryIds) { ids ->
+            client.from("entries")
+                .select(
+                    Columns.list("id", "effective_at", "created_at", "supplier_id", "deleted_at")
+                ) {
+                    attachRegisteredDevice()
+                    filter { isIn("id", ids) }
+                }
+                .decodeList<ProductEntryRow>()
+        }.filter { it.deletedAt == null }
 
         val supplierById = client.from("suppliers")
             .select(Columns.list("id", "name")) { attachRegisteredDevice() }
@@ -496,20 +514,30 @@ class ProductsRepository {
                 )
             }
 
-        val conferenceItems = client.from("conference_items")
-            .select(Columns.list("conference_id", "product_id", "quantity")) {
-                attachRegisteredDevice()
-            }
-            .decodeList<ProductConferenceItemRow>()
-            .filter { it.productId == productId }
+        val conferenceItems = fetchAllByIdKeyset(ProductConferenceItemRow::id) { afterId, pageLimit ->
+            client.from("conference_items")
+                .select(Columns.list("id", "conference_id", "product_id", "quantity")) {
+                    attachRegisteredDevice()
+                    filter {
+                        eq("product_id", productId)
+                        if (afterId != null) gt("id", afterId)
+                    }
+                    order("id", Order.ASCENDING)
+                    limit(pageLimit)
+                }
+                .decodeList<ProductConferenceItemRow>()
+        }
 
         val conferenceIds = conferenceItems.map { it.conferenceId }.toSet()
-        val conferenceById = client.from("conferences")
-            .select(Columns.list("id", "effective_at", "created_at", "deleted_at")) {
-                attachRegisteredDevice()
-            }
-            .decodeList<ProductConferenceRow>()
-            .filter { it.id in conferenceIds && it.deletedAt == null }
+        val conferenceById = fetchByIdChunks(conferenceIds) { ids ->
+            client.from("conferences")
+                .select(Columns.list("id", "effective_at", "created_at", "deleted_at")) {
+                    attachRegisteredDevice()
+                    filter { isIn("id", ids) }
+                }
+                .decodeList<ProductConferenceRow>()
+        }
+            .filter { it.deletedAt == null }
             .associateBy { it.id }
 
         val usage = calculateProductUsageInsights(

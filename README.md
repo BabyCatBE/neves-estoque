@@ -20,7 +20,7 @@ O **Contexto Mestre no Google Drive** continua sendo a fonte consolidada de cont
 **IMPLEMENTAÇÃO INCREMENTAL / TESTES / PR EMPILHADO AINDA NÃO INTEGRADO À LINHA PRINCIPAL**.
 
 - Web/System: `0.26.0`;
-- Android: `0.34.0-alpha01` (versionCode 34);
+- Android: `0.35.0-alpha01` (versionCode 35);
 - linha de trabalho atual: `feat/android-17-product-maintenance-ux`;
 - PR atual: #75 — DRAFT / OPEN / NÃO INTEGRADO, base `feat/android-launcher-icon`;
 - o HEAD atual deve ser consultado diretamente no GitHub; commits documentais posteriores ao último commit funcional não alteram o estado funcional;

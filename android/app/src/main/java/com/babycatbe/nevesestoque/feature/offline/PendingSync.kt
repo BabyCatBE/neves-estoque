@@ -3,6 +3,7 @@ package com.babycatbe.nevesestoque.feature.offline
 import com.babycatbe.nevesestoque.data.device.DeviceIdentityStore
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
+import com.babycatbe.nevesestoque.data.supabase.fetchByIdChunks
 import com.babycatbe.nevesestoque.feature.conferences.ConferenceConsumptionWarning
 import com.babycatbe.nevesestoque.feature.conferences.ConferenceHistoryItem
 import com.babycatbe.nevesestoque.feature.conferences.ConferenceModuleRepository
@@ -157,17 +158,31 @@ class PendingSyncRepository {
         val start = day.atStartOfDay(zone).toInstant().toEpochMilli()
         val end = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
 
+        // Somente o dia da Entrada, filtrado no servidor: ler todas as Conferências e todos os
+        // itens e filtrar no aparelho perderia conflitos em silêncio acima do teto de linhas.
         val sameDay = client().from("conferences")
-            .select(Columns.list("id", "effective_at", "physical_responsible", "deleted_at")) { attachRegisteredDevice() }
+            .select(Columns.list("id", "effective_at", "physical_responsible", "deleted_at")) {
+                attachRegisteredDevice()
+                filter {
+                    exact("deleted_at", null)
+                    gte("effective_at", Instant.ofEpochMilli(start).toString())
+                    lt("effective_at", Instant.ofEpochMilli(end).toString())
+                }
+            }
             .decodeList<ConflictConferenceRow>()
             .filter { it.deletedAt == null && epoch(it.effectiveAt) in start until end }
             .associateBy { it.id }
         if (sameDay.isEmpty()) return emptyList()
 
-        val items = client().from("conference_items")
-            .select(Columns.list("conference_id", "product_id", "quantity")) { attachRegisteredDevice() }
-            .decodeList<ConflictConferenceItemRow>()
-            .filter { it.conferenceId in sameDay && it.productId in entryQuantity }
+        // Até 20 Conferências por chamada: cada uma tem no máximo os Produtos da sua Categoria.
+        val items = fetchByIdChunks(sameDay.keys, chunkSize = 20) { ids ->
+            client().from("conference_items")
+                .select(Columns.list("conference_id", "product_id", "quantity")) {
+                    attachRegisteredDevice()
+                    filter { isIn("conference_id", ids) }
+                }
+                .decodeList<ConflictConferenceItemRow>()
+        }.filter { it.conferenceId in sameDay && it.productId in entryQuantity }
 
         return items.groupBy { it.conferenceId }
             .mapNotNull { (conferenceId, rows) ->

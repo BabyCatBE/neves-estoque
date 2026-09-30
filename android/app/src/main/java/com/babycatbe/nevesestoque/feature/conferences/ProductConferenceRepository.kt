@@ -2,6 +2,7 @@ package com.babycatbe.nevesestoque.feature.conferences
 
 import com.babycatbe.nevesestoque.data.supabase.SupabaseProvider
 import com.babycatbe.nevesestoque.data.supabase.attachRegisteredDevice
+import com.babycatbe.nevesestoque.data.supabase.fetchByIdChunks
 import com.babycatbe.nevesestoque.feature.products.ProductConferenceItemRow
 import com.babycatbe.nevesestoque.feature.products.ProductConferenceRow
 import com.babycatbe.nevesestoque.feature.products.ProductDetails
@@ -101,16 +102,19 @@ class ProductConferenceRepository {
             .decodeList<ProductConferenceItemRow>()
 
         val conferenceIds = conferenceItems.map { it.conferenceId }.toSet()
-        val conferences = client.from("conferences")
-            .select(Columns.list("id", "effective_at", "created_at", "deleted_at")) {
-                attachRegisteredDevice()
-                filter {
-                    exact("deleted_at", null)
-                    lt("effective_at", effectiveAt)
+        // Cabeçalhos buscados pelos ids dos itens deste Produto (não o histórico inteiro).
+        val conferences = fetchByIdChunks(conferenceIds) { ids ->
+            client.from("conferences")
+                .select(Columns.list("id", "effective_at", "created_at", "deleted_at")) {
+                    attachRegisteredDevice()
+                    filter {
+                        isIn("id", ids)
+                        exact("deleted_at", null)
+                        lt("effective_at", effectiveAt)
+                    }
                 }
-            }
-            .decodeList<ProductConferenceRow>()
-            .filter { it.id in conferenceIds && it.id != excludeConferenceId }
+                .decodeList<ProductConferenceRow>()
+        }.filter { it.id in conferenceIds && it.id != excludeConferenceId }
 
         val conferenceById = conferences.associateBy { it.id }
         val conferencePoints = conferenceItems.mapNotNull { item ->
@@ -135,18 +139,20 @@ class ProductConferenceRepository {
             .decodeList<ProductEntryItemRow>()
 
         val entryIds = entryItems.map { it.entryId }.toSet()
-        val entries = client.from("entries")
-            .select(
-                Columns.list("id", "effective_at", "created_at", "supplier_id", "deleted_at")
-            ) {
-                attachRegisteredDevice()
-                filter {
-                    exact("deleted_at", null)
-                    lte("effective_at", effectiveAt)
+        val entries = fetchByIdChunks(entryIds) { ids ->
+            client.from("entries")
+                .select(
+                    Columns.list("id", "effective_at", "created_at", "supplier_id", "deleted_at")
+                ) {
+                    attachRegisteredDevice()
+                    filter {
+                        isIn("id", ids)
+                        exact("deleted_at", null)
+                        lte("effective_at", effectiveAt)
+                    }
                 }
-            }
-            .decodeList<ProductEntryRow>()
-            .filter { it.id in entryIds }
+                .decodeList<ProductEntryRow>()
+        }.filter { it.id in entryIds }
 
         val entryById = entries.associateBy { it.id }
         val entryPoints = entryItems.mapNotNull { item ->

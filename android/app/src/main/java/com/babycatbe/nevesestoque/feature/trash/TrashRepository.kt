@@ -21,6 +21,10 @@ import kotlinx.serialization.json.put
  * permanently_delete_trash_item e empty_trash. Categoria restaura pelo mesmo update
  * protegido por RLS usado na Web. Nenhuma autorização é decidida no aplicativo.
  */
+
+/** `deleted_at > 1970` equivale a "excluído" (não nulo) para a coluna timestamptz. */
+private const val TRASH_DELETED_AFTER = "1970-01-01T00:00:00Z"
+
 class TrashRepository {
     private fun client() = SupabaseProvider.client
         ?: error("Supabase não está configurado nesta build.")
@@ -73,7 +77,12 @@ class TrashRepository {
                     )
                 ) {
                     attachRegisteredDevice()
-                    filter { exact("permanently_deleted_at", null) }
+                    // Só os excluídos, filtrados no servidor: ler todo o histórico ativo e
+                    // filtrar no aparelho esconderia itens da Lixeira acima do teto de linhas.
+                    filter {
+                        exact("permanently_deleted_at", null)
+                        gt("deleted_at", TRASH_DELETED_AFTER)
+                    }
                 }
                 .decodeList<TrashEntryRow>()
                 .filter { it.deletedAt != null }
@@ -88,7 +97,10 @@ class TrashRepository {
                     )
                 ) {
                     attachRegisteredDevice()
-                    filter { exact("permanently_deleted_at", null) }
+                    filter {
+                        exact("permanently_deleted_at", null)
+                        gt("deleted_at", TRASH_DELETED_AFTER)
+                    }
                 }
                 .decodeList<TrashConferenceRow>()
                 .filter { it.deletedAt != null }
