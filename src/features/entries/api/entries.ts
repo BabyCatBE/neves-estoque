@@ -1,3 +1,8 @@
+import {
+  fetchAllByIdKeyset,
+  fetchAllByIdKeysetInChunks,
+  fetchByIdChunks
+} from "../../../shared/lib/keysetPagination";
 import { supabase } from "../../../shared/lib/supabase";
 import { localDateKey, localDayRange } from "../../conferences/lib/conferenceValidation";
 
@@ -157,59 +162,68 @@ export async function findEntryConferenceConflicts(
   const dateKey = localDateKey(input.effectiveAt);
   const { start, end } = localDayRange(dateKey);
 
-  const [conferenceItemsResult, conferencesResult, productsResult] = await Promise.all([
-    client
-      .from("conference_items")
-      .select("conference_id,product_id,quantity")
-      .in("product_id", productIds),
-    client
+  // Primeiro limita os cabeçalhos ao dia da Entrada; depois busca somente os
+  // itens dessas Conferências, em blocos e com paginação por id. Assim um
+  // histórico grande de conference_items não pode esconder um conflito do dia.
+  const conferences = await fetchAllByIdKeyset(({ afterId, limit }) => {
+    let query = client
       .from("conferences")
-      .select("id,effective_at,physical_responsible,registered_by,device_id")
+      .select("id,effective_at,created_at,physical_responsible,registered_by,device_id")
       .gte("effective_at", start)
       .lt("effective_at", end)
-      .is("deleted_at", null)
-      .order("effective_at", { ascending: true })
-      .order("created_at", { ascending: true }),
-    client.from("products").select("id,name").in("id", productIds)
-  ]);
+      .is("deleted_at", null);
+    if (afterId !== null) query = query.gt("id", afterId);
+    return query.order("id", { ascending: true }).limit(limit);
+  });
+  if (!conferences.length) return [];
 
-  if (conferenceItemsResult.error) throw conferenceItemsResult.error;
-  if (conferencesResult.error) throw conferencesResult.error;
-  if (productsResult.error) throw productsResult.error;
-
-  const conflictItems = conferenceItemsResult.data ?? [];
-  const relevantConferenceIds = new Set(conflictItems.map((item) => item.conference_id));
-  const relevantConferences = (conferencesResult.data ?? []).filter((conference) =>
-    relevantConferenceIds.has(conference.id)
+  const conferenceIds = conferences.map((conference) => conference.id);
+  const conflictItems = await fetchAllByIdKeysetInChunks(
+    conferenceIds,
+    (ids, { afterId, limit }) => {
+      let query = client
+        .from("conference_items")
+        .select("id,conference_id,product_id,quantity")
+        .in("conference_id", ids)
+        .in("product_id", productIds);
+      if (afterId !== null) query = query.gt("id", afterId);
+      return query.order("id", { ascending: true }).limit(limit);
+    }
   );
-  if (!relevantConferences.length) return [];
+  if (!conflictItems.length) return [];
+
+  const relevantConferenceIds = new Set(conflictItems.map((item) => item.conference_id));
+  const relevantConferences = conferences
+    .filter((conference) => relevantConferenceIds.has(conference.id))
+    .sort(
+      (left, right) =>
+        Date.parse(left.effective_at) - Date.parse(right.effective_at) ||
+        Date.parse(left.created_at) - Date.parse(right.created_at)
+    );
 
   const userIds = [...new Set(relevantConferences.map((conference) => conference.registered_by))];
   const deviceIds = [...new Set(relevantConferences.map((conference) => conference.device_id))];
 
-  const [usersResult, devicesResult] = await Promise.all([
-    userIds.length
-      ? client
-          .from("app_users")
-          .select("auth_user_id,display_name,username,email")
-          .in("auth_user_id", userIds)
-      : Promise.resolve({ data: [], error: null }),
-    deviceIds.length
-      ? client
-          .from("devices")
-          .select("id,friendly_name")
-          .in("id", deviceIds)
-      : Promise.resolve({ data: [], error: null })
+  const [products, users, devices] = await Promise.all([
+    fetchByIdChunks(productIds, (ids) =>
+      client.from("products").select("id,name").in("id", ids)
+    ),
+    fetchByIdChunks(userIds, (ids) =>
+      client
+        .from("app_users")
+        .select("auth_user_id,display_name,username,email")
+        .in("auth_user_id", ids)
+    ),
+    fetchByIdChunks(deviceIds, (ids) =>
+      client.from("devices").select("id,friendly_name").in("id", ids)
+    )
   ]);
 
-  if (usersResult.error) throw usersResult.error;
-  if (devicesResult.error) throw devicesResult.error;
-
   const productById = new Map(
-    (productsResult.data ?? []).map((product) => [product.id, product.name] as const)
+    products.map((product) => [product.id, product.name] as const)
   );
   const userById = new Map(
-    (usersResult.data ?? []).flatMap((user) =>
+    users.flatMap((user) =>
       user.auth_user_id
         ? [[
             user.auth_user_id,
@@ -220,8 +234,22 @@ export async function findEntryConferenceConflicts(
     )
   );
   const deviceById = new Map(
-    (devicesResult.data ?? []).map((device) => [device.id, device.friendly_name] as const)
+    devices.map((device) => [device.id, device.friendly_name] as const)
   );
+
+  const itemsByConference = new Map<string, EntryConferenceConflictItem[]>();
+  for (const item of conflictItems) {
+    const entryQuantity = entryQuantityByProduct.get(item.product_id);
+    if (entryQuantity === undefined) continue;
+    const items = itemsByConference.get(item.conference_id) ?? [];
+    items.push({
+      productId: item.product_id,
+      productName: productById.get(item.product_id) ?? "Produto",
+      entryQuantity,
+      conferenceQuantity: Number(item.quantity)
+    });
+    itemsByConference.set(item.conference_id, items);
+  }
 
   return relevantConferences.map((conference) => ({
     conferenceId: conference.id,
@@ -229,18 +257,7 @@ export async function findEntryConferenceConflicts(
     physicalResponsible: conference.physical_responsible,
     registeredByLabel: userById.get(conference.registered_by) ?? "Usuário autorizado",
     deviceLabel: deviceById.get(conference.device_id) ?? "Dispositivo registrado",
-    items: conflictItems
-      .filter((item) => item.conference_id === conference.id)
-      .flatMap((item) => {
-        const entryQuantity = entryQuantityByProduct.get(item.product_id);
-        if (entryQuantity === undefined) return [];
-        return [{
-          productId: item.product_id,
-          productName: productById.get(item.product_id) ?? "Produto",
-          entryQuantity,
-          conferenceQuantity: Number(item.quantity)
-        }];
-      })
+    items: itemsByConference.get(conference.id) ?? []
   }));
 }
 
@@ -264,55 +281,80 @@ export async function updateEntry(input: UpdateEntryInput) {
 
 export async function listEntryHistory(): Promise<EntryHistoryItem[]> {
   const client = requireClient();
-  const { data: entries, error: entriesError } = await client
-    .from("entries")
-    .select("id,supplier_id,effective_at,observation")
-    .is("deleted_at", null)
-    .order("effective_at", { ascending: false });
 
-  if (entriesError) throw entriesError;
-  if (!entries?.length) return [];
+  const entries = await fetchAllByIdKeyset(({ afterId, limit }) => {
+    let query = client
+      .from("entries")
+      .select("id,supplier_id,effective_at,created_at,observation")
+      .is("deleted_at", null);
+    if (afterId !== null) query = query.gt("id", afterId);
+    return query.order("id", { ascending: true }).limit(limit);
+  });
+  if (!entries.length) return [];
 
   const entryIds = entries.map((entry) => entry.id);
   const supplierIds = [...new Set(entries.map((entry) => entry.supplier_id))];
 
-  const [suppliersResult, itemsResult] = await Promise.all([
-    client.from("suppliers").select("id,name").in("id", supplierIds),
-    client
-      .from("entry_items")
-      .select("id,entry_id,product_id,quantity,unit_price,position")
-      .in("entry_id", entryIds)
-      .order("position", { ascending: true })
+  const [suppliers, items] = await Promise.all([
+    fetchByIdChunks(supplierIds, (ids) =>
+      client.from("suppliers").select("id,name").in("id", ids)
+    ),
+    fetchAllByIdKeysetInChunks(
+      entryIds,
+      (ids, { afterId, limit }) => {
+        let query = client
+          .from("entry_items")
+          .select("id,entry_id,product_id,quantity,unit_price,position")
+          .in("entry_id", ids);
+        if (afterId !== null) query = query.gt("id", afterId);
+        return query.order("id", { ascending: true }).limit(limit);
+      }
+    )
   ]);
 
-  if (suppliersResult.error) throw suppliersResult.error;
-  if (itemsResult.error) throw itemsResult.error;
+  const productIds = [...new Set(items.map((item) => item.product_id))];
+  const products = await fetchByIdChunks(productIds, (ids) =>
+    client.from("products").select("id,name").in("id", ids)
+  );
 
-  const productIds = [...new Set((itemsResult.data ?? []).map((item) => item.product_id))];
-  const productsResult = productIds.length
-    ? await client.from("products").select("id,name").in("id", productIds)
-    : { data: [], error: null };
+  const supplierById = new Map(suppliers.map((row) => [row.id, row.name] as const));
+  const productById = new Map(products.map((row) => [row.id, row.name] as const));
+  const itemsByEntry = new Map<string, typeof items>();
+  for (const item of items) {
+    const list = itemsByEntry.get(item.entry_id) ?? [];
+    list.push(item);
+    itemsByEntry.set(item.entry_id, list);
+  }
 
-  if (productsResult.error) throw productsResult.error;
-
-  const supplierById = new Map((suppliersResult.data ?? []).map((row) => [row.id, row.name] as const));
-  const productById = new Map((productsResult.data ?? []).map((row) => [row.id, row.name] as const));
-
-  return entries.map((entry) => {
-    const items = (itemsResult.data ?? []).filter((item) => item.entry_id === entry.id);
-    return {
-      id: entry.id,
-      effectiveAt: entry.effective_at,
-      supplierName: supplierById.get(entry.supplier_id) ?? "Fornecedor não disponível",
-      observation: entry.observation,
-      totalKnown: items.reduce(
-        (sum, item) => sum + (item.unit_price === null ? 0 : Number(item.quantity) * Number(item.unit_price)),
-        0
-      ),
-      hasMissingPrice: items.some((item) => item.unit_price === null),
-      productNames: items.map((item) => productById.get(item.product_id) ?? "Produto não disponível")
-    };
-  });
+  return [...entries]
+    .sort(
+      (left, right) =>
+        Date.parse(right.effective_at) - Date.parse(left.effective_at) ||
+        Date.parse(right.created_at) - Date.parse(left.created_at)
+    )
+    .map((entry) => {
+      const entryItems = [...(itemsByEntry.get(entry.id) ?? [])].sort(
+        (left, right) => left.position - right.position
+      );
+      return {
+        id: entry.id,
+        effectiveAt: entry.effective_at,
+        supplierName: supplierById.get(entry.supplier_id) ?? "Fornecedor não disponível",
+        observation: entry.observation,
+        totalKnown: entryItems.reduce(
+          (sum, item) =>
+            sum +
+            (item.unit_price === null
+              ? 0
+              : Number(item.quantity) * Number(item.unit_price)),
+          0
+        ),
+        hasMissingPrice: entryItems.some((item) => item.unit_price === null),
+        productNames: entryItems.map(
+          (item) => productById.get(item.product_id) ?? "Produto não disponível"
+        )
+      };
+    });
 }
 
 export async function getEntryDetails(entryId: string): Promise<EntryDetails> {
