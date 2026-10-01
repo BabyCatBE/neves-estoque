@@ -1,175 +1,151 @@
-## Regra de eficiência de contexto — 29/09/2026
-
-- O checkpoint consolidado mais recente deve ser suficiente para reconstruir o estado recente, mudanças, testes, pendências e próximo passo.
-- Novo chat/IA começa pelo checkpoint mais recente + arquivos `docs/contexto/` aplicáveis + fontes reais necessárias à tarefa.
-- O histórico antigo do Contexto Mestre permanece disponível para aprofundamento seletivo, mas não deve ser relido integralmente por formalidade quando decisões antigas já foram superadas.
-- Se faltar contexto ou houver conflito, aprofundar seletivamente no Contexto Mestre e nas fontes de autoridade.
-- Se um checkpoint não permitir continuidade segura sem reler toda a história, melhorar o checkpoint.
-
 # Memória técnica — Neves Estoque
 
-Este arquivo registra apenas decisões e aprendizados que continuam úteis. O histórico completo permanece no Contexto Mestre.
+Este arquivo registra decisões e aprendizados duradouros. O histórico completo permanece no arquivo histórico do Contexto Mestre.
 
-## 2026-09-21 — modelo central e arquitetura do V1
+## Eficiência de contexto — consolidado em 30/09/2026
 
-**Decisão:** adotar o modelo `última Conferência válida + Entradas posteriores = Estoque Atual`, sem saída individual rotineira; Web/PWA em React/TypeScript/Vite e backend gerenciado Supabase/PostgreSQL.
+O Contexto Mestre operacional não deve voltar a crescer como transcrição cumulativa.
 
-**Motivo:** preservar histórico relacional, reduzir fragilidade da planilha e permitir evolução Web/mobile sem servidor próprio.
+Regra:
+- ponto de entrada pequeno e vigente;
+- checkpoints/histórico preservados fora da camada operacional;
+- leitura seletiva do histórico;
+- `docs/contexto/` especializados, sem duplicar tudo;
+- se um checkpoint não permitir retomada segura, melhorar o checkpoint em vez de exigir leitura de centenas de páginas.
 
-**Impacto:** Estoque Atual é derivado de fatos históricos; clientes não devem manter um saldo oficial independente.
+A reorganização de 30/09/2026 preservou literalmente o documento antigo e reduziu o ponto de entrada operacional de 373 páginas para uma versão compacta.
 
-## 2026-09-21 — identidade e autorização
+## Modelo central do estoque
 
-**Decisão:** IDs oficiais são UUIDs internos; autenticação e autorização são separadas; `app_users` decide acesso ao sistema e ações carregam identidade de dispositivo quando aplicável.
+**Última Conferência válida + Entradas posteriores = Estoque Atual.**
 
-**Impacto:** possuir sessão autenticada não basta, por si só, para autorizar uma operação.
+O legado possui regra histórica diferente. Não alterar o legado para fazê-lo coincidir com o aplicativo novo e não ressuscitar a regra antiga no app sem nova decisão.
 
-## 2026-09-24 — Conferência e Estoque Atual
+## Identidade e autorização
 
-**Decisão consolidada:** Conferências são fatos históricos com cabeçalho + itens; Conferência aceita zero e proíbe negativo. `stock_current` permanece a autoridade derivada para a posição atual.
+- UUIDs oficiais internos;
+- autenticação e autorização são separadas;
+- `app_users` controla acesso interno;
+- dados Offline nunca concedem privilégio.
 
-**Aprendizado:** correções históricas precisam recalcular dependências sem criar duplicidade indevida.
+## Offline Android
 
-## 2026-09-27 — evolução do domínio
+Decisão vigente:
+- JSON internos privados;
+- cache, pendências e acesso separados;
+- nada é enviado automaticamente ao reconectar;
+- envio exige confirmação consciente;
+- revalidação online + idempotência;
+- Room/SQLite não adotado.
 
-**Decisões implementadas:** autenticação secundária, Conferência unitária por Produto, conversão de unidade de Produto, mescla de Produtos e ciclo completo de Lixeira/exclusão definitiva.
+A ideia histórica de sincronização automática “quando segura” foi substituída.
 
-**Impacto:** novos clientes devem reutilizar a semântica e os fluxos já existentes em vez de recriar regras localmente.
+Ponto em aberto:
+- pendências ao trocar de usuário no mesmo aparelho: A DEFINIR.
 
-## 2026-09-28 — roteiro Android expandido
+## Migrações — divergência histórica conhecida
 
-**Decisão:** o roteiro Android foi ampliado de 12 para 13 blocos para criar um bloco específico de experiência, fluidez e performance.
+As três migrations iniciais têm timestamps diferentes no Git e no Supabase aplicado.
 
-**Impacto:** referências novas usam 13 blocos; referências históricas antigas como `9 de 12` permanecem históricas e não devem ser reescritas.
+Os nomes lógicos correspondem.
 
-## 2026-09-28 — arquitetura Offline Android
+Regra:
+- Supabase é autoridade do histórico aplicado;
+- não renomear retroativamente migrations já aplicadas.
 
-**Decisão:** usar arquivos JSON internos privados, separados em cache reconstruível, pendências e registro de acesso; Room/SQLite não foi adotado.
+## Arquivos especializados
 
-**Decisão:** nada é enviado automaticamente ao reconectar; envio exige confirmação consciente, revalidação online e idempotência.
+Manter:
+- `prd.md`;
+- `architecture.md`;
+- `rules.md`;
+- `design.md`;
+- `task.md`;
+- `memory.md`.
 
-**Motivo:** manter o Offline simples, auditável e compatível com o modelo aprovado sem transformar dados locais em fonte de autoridade.
+Cada um deve conter somente sua camada de informação.
 
-**Ponto em aberto:** pendências ao trocar de usuário no mesmo aparelho continuam `A DEFINIR`.
+## Android — padrões duradouros
 
-## 2026-09-28 — diagnóstico 11.1
+- app nativo Kotlin + Jetpack Compose;
+- Home como destino inicial autenticado;
+- abertura pode usar acesso local validado com revalidação em segundo plano;
+- preload enxuto de áreas mais usadas;
+- datas visíveis em `DD/MM/AAAA`, ISO internamente;
+- Claro/Escuro manual e local;
+- campos exclusivamente numéricos usam teclado próprio Neves;
+- texto, data e outros formatos usam entrada apropriada.
 
-**Achados:** I/O/serialização Offline poderiam bloquear UI; havia riscos de durabilidade em gravação/exclusão; Compras repetia cargas/cálculos; Alertas/Compras permitiam recargas concorrentes; consultas/listas/recomposições tinham oportunidades de otimização.
+### Controles de quantidade
 
-**Resultado:** nenhum bug crítico, vulnerabilidade crítica ou perda de dados foi confirmado; performance real continuou dependente de aparelho.
+A antiga frase “menos/mais somente Conferência” não é mais uma regra global.
 
-## 2026-09-28 — sub-bloco 11.2
+Estado:
+- Conferência usa controles de menos/mais;
+- Entrada não usa;
+- Compras usa no fluxo atual.
 
-**Decisão/implementação:** fortalecer persistência Offline antes de animações/otimizações cosméticas.
+### Barra inferior
 
-**Mudanças:** I/O fora da thread de UI, escrita temporária + substituição segura, sincronização física da escrita, save/delete com resultado real, preservação de arquivo inválido e serialização das mutações concorrentes da mesma pendência.
+Há conflito histórico:
+- decisão antiga sem barra inferior;
+- decisão posterior propondo barra para áreas mais usadas;
+- implementação atual sem barra inferior.
 
-**Resultado:** IMPLEMENTADO / CI APROVADA no baseline `10ec3ab...`; aparelho ainda `A VERIFICAR`.
+Estado: **A VERIFICAR**.
 
-## Divergência histórica de migrations — preservar
+Não alterar a navegação até decisão explícita de Elias.
 
-**Fato:** as três migrations iniciais têm timestamps diferentes:
+## Paridade Web/Mobile
 
-- Supabase aplicado: `20260922001400`, `20260922001543`, `20260922001654`;
-- Git: `20260921201500`, `20260921202500`, `20260921203500`.
+Nova função mobile deve ser avaliada para Web e implementada quando aplicável.
 
-Os nomes lógicos correspondem. O Contexto Mestre já registra essa divergência como conhecida.
+Paridade é funcional, não visual/literal.
 
-**Regra:** Supabase é autoridade do histórico efetivamente aplicado; não renomear retroativamente migrations já aplicadas.
+Exemplo: teclado Android próprio não precisa existir no navegador.
 
-## 2026-09-28 — método dos seis arquivos de contexto
+## CHECKPOINT 254 — aprendizado de implementação
 
-**Decisão:** manter `prd.md`, `architecture.md`, `rules.md`, `design.md`, `task.md` e `memory.md` em `docs/contexto/`, com leitura obrigatória antes de mudanças técnicas relevantes.
+Bloco consolidado:
+- GPT-6.1 Sol / Alto foi adequado para implementação ampla Android + Web;
+- GPT-6.1 Sol / Médio foi suficiente para correções determinísticas/localizadas;
+- Work sem Gradle/Android SDK deslocou compilação/Lint Android para CI;
+- falhas intermediárias relevantes devem permanecer no checkpoint;
+- integração final foi comprovada por CI pós-merge.
 
-**Motivo:** reduzir reconstrução de contexto entre chats/IAs e aproximar o contexto técnico do código real.
+## Versões — cuidado
 
-**Impacto:** mudanças relevantes devem atualizar o arquivo correspondente; o Contexto Mestre continua sendo a fonte consolidada de continuidade geral.
+Web/package está em `0.26.1`.
 
-## Aprendizado documental recorrente
+Android está em `0.35.0-alpha01`, mas `SYSTEM_VERSION` ainda é `0.26.0`.
 
-README e documentação auxiliar podem ficar atrás do código. Em 28/09/2026, antes de criar estes arquivos, `README.md` e `android/README.md` continham snapshots antigos enquanto Contexto Mestre, GitHub e Supabase já estavam muito à frente.
+Estado: A VERIFICAR.
 
-**Regra:** nunca usar uma única documentação auxiliar como prova de estado; cruzar com código, CI e banco e atualizar docs quando a divergência puder induzir o próximo agente ao erro.
+Não mudar código apenas para alinhar documentação.
 
+## Repositório
 
-## 2026-09-28 — sub-bloco 11.3 em branch isolada
+O repositório está público no GitHub na consolidação de 30/09/2026.
 
-**Estado:** `IMPLEMENTADO / CI APROVADA / AUDITORIA INDEPENDENTE APROVADA`, porém **NÃO INTEGRADO** na branch operacional.
+Referências históricas que o chamam de privado devem ser tratadas como snapshots antigos.
 
-**Branch/HEAD:** `feat/android-11-3-history-pagination` em `9aa118c16e5f6f91d1a0bd6482b5f5e892792c29`.
+## Regra de consolidação
 
-**Decisão técnica implementada nessa branch:** leituras históricas usadas por Compras passam a usar paginação por cursor/chave primária `id`, terminando somente com página vazia e falhando sem devolver resultado parcial quando a leitura não puder ser garantida.
+Durante blocos técnicos:
+- implementar e testar primeiro;
+- não sincronizar Drive/Notion a cada tentativa.
 
-**Validação:** CI Web run `36473536301` SUCCESS e Android CI run `36472525419` SUCCESS. Sem migration e sem alteração no Supabase.
+Quando Elias pedir consolidação:
+- conferir GitHub;
+- conferir CI;
+- conferir Supabase quando necessário;
+- confirmar versões/migrations/dados;
+- só então atualizar as fontes permanentes.
 
-**Ponto separado:** Relatórios não foram alterados no 11.3; um risco latente de paginação foi identificado e deve ser tratado conscientemente em etapa posterior.
+## Continuidade entre IAs
 
-## 2026-09-28 — concorrência entre trabalho funcional e documentação
-
-O mini-checkpoint 11.3 registrou que a integração poderia ser fast-forward enquanto `fix/audit-device-id` permanecesse em `10ec3ab...`. Em seguida, a implantação dos seis arquivos de contexto adicionou commits exclusivamente documentais à branch operacional.
-
-**Aprendizado:** em trabalho com múltiplas IAs/branches, distinguir sempre:
-- último HEAD funcional integrado e comprovado;
-- HEAD atual da branch operacional, que pode conter apenas documentação;
-- trabalho funcional posterior em branch isolada ainda não integrado.
-
-**Regra:** não forçar nem reescrever histórico para recuperar um fast-forward. Preservar as duas linhas de trabalho e definir o método de integração somente quando Elias autorizar a integração.
-
-
-## Divergência intencional com o sistema legado — regra do Estoque Atual
-
-O Contexto Mestre e a planilha legados registram como regra do sistema antigo: **a última Conferência física, sozinha, é a autoridade do Estoque Atual**, e Entradas não devem simplesmente somar ao saldo exibido.
-
-O aplicativo novo possui uma decisão posterior e aprovada no Contexto Mestre atual: **última Conferência Física válida + Entradas posteriores = Estoque Atual do sistema**.
-
-**Interpretação correta:** não é inconsistência a ser “corrigida” automaticamente. A planilha legado continua sendo autoridade para o comportamento do sistema antigo e para dados/migração; o Contexto Mestre atual é autoridade para a regra funcional vigente do aplicativo novo.
-
-**Regra:** não alterar o legado para fazê-lo combinar com o aplicativo e não ressuscitar a regra antiga dentro do app sem nova decisão explícita.
-
-
-## 2026-09-29 — padrão operacional Android consolidado
-
-Elias aprovou em aparelho o fluxo operacional rápido introduzido no Android 31 e o refinamento da busca de Produto do Android 32.
-
-Decisões duradouras:
-- abertura deve ser imediata quando houver acesso local previamente validado; revalidação ocorre em segundo plano;
-- preload de abertura deve priorizar somente Estoque Atual e Produtos;
-- Conferência/Entrada usam avanço de foco e teclado numérico próprio;
-- botões −/+ pertencem somente à Conferência;
-- busca de Produto na Entrada deve manter campo e sugestões visíveis acima do teclado;
-- datas devem ser apresentadas ao usuário em `DD/MM/AAAA`, preservando ISO internamente.
-
-## 2026-09-29 — Dark Mode Android aprovado
-
-**Estado:** APROVADO / NÃO IMPLEMENTADO.
-
-Decisão de produto:
-- Configurações oferece seletor manual Claro/Escuro;
-- preferência local por aparelho, aplicada imediatamente;
-- tema claro atual não muda;
-- primeira versão não precisa seguir o tema do sistema.
-
-Paleta escura aprovada:
-- fundo `#181614`;
-- cards/superfícies `#211E1B`;
-- superfícies secundárias `#2A2622`;
-- elementos elevados `#302B27`;
-- texto principal `#F4F1ED`;
-- texto secundário `#B8B0A7`;
-- bordas quentes discretas;
-- vermelho Neves preservado como identidade.
-
-Direção visual: grafite/carvão quente, levemente amarronzado, confortável; evitar preto puro, cinza frio dominante e azul-marinho dominante. O Dark Mode exige auditoria de cores fixas e variantes semânticas, não mera inversão de cores.
-
-
-## 2026-09-29 — correção de continuidade: Bloco 11 foi integrado
-
-Entradas históricas deste arquivo registram corretamente que o sub-bloco 11.3 esteve por um período **NÃO INTEGRADO**. Esse estado foi posteriormente superado.
-
-Estado correto posterior:
-- Elias autorizou a integração dos sub-blocos 11.3–11.7;
-- PR #67 (`feat/android-11-performance-completion` → `fix/audit-device-id`) foi MERGED em 28/09/2026;
-- PR temporário #68 foi usado somente para validar por CI o HEAD integrado e foi fechado sem merge;
-- a cadeia Android 12+ foi construída depois desse fechamento integrado.
-
-Regra de leitura: marcações “NÃO INTEGRADO” de 11.3 em seções anteriores são históricas e não devem ser usadas como estado operacional atual.
+- múltiplas IAs podem trabalhar no mesmo projeto;
+- nunca confiar automaticamente no texto de outra IA;
+- validar nas fontes reais;
+- distinguir último checkpoint seguro de trabalho posterior;
+- branches simultâneas devem permanecer separadas até integração consciente.

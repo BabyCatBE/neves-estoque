@@ -1,6 +1,6 @@
 # Arquitetura — Neves Estoque
 
-> Estado real verificado em 28/09/2026 na branch `fix/audit-device-id`. Baseline funcional anterior à implantação documental: `10ec3abfc76185fa75afdc47a3b1cdac8d676433`.
+> Estado consolidado em 30/09/2026. Último estado funcional seguro: CHECKPOINT 254 / `develop@c0e2ad41a8ad5d64db700453a28826eaf03b8594`.
 
 ## Visão geral
 
@@ -8,34 +8,20 @@ O repositório contém dois clientes que usam o mesmo backend:
 
 - Web/PWA em React + TypeScript + Vite;
 - Android nativo em Kotlin + Jetpack Compose;
-- Supabase gerenciado + PostgreSQL como backend e banco;
+- Supabase gerenciado + PostgreSQL;
 - Netlify para hospedagem Web;
 - GitHub Actions para CI.
 
-Não há servidor de aplicação próprio nem Edge Function ativa no estado atual.
+Não há servidor de aplicação próprio no V1.
 
-## Estrutura real
+## Estrutura principal
 
 ```text
 /
 ├─ .github/workflows/
-├─ android/app/src/main/java/com/babycatbe/nevesestoque/
-│  ├─ app/
-│  ├─ data/offline/
-│  ├─ feature/
-│  │  ├─ alerts/
-│  │  ├─ auth/
-│  │  ├─ conferences/
-│  │  ├─ entries/
-│  │  ├─ home/
-│  │  ├─ offline/
-│  │  ├─ products/
-│  │  ├─ purchases/
-│  │  ├─ reports/
-│  │  ├─ stock/
-│  │  ├─ suppliers/
-│  │  └─ trash/
-│  └─ ui/theme/
+├─ android/
+│  └─ app/src/main/java/com/babycatbe/nevesestoque/
+├─ docs/contexto/
 ├─ public/
 ├─ scripts/
 ├─ src/
@@ -49,132 +35,161 @@ Não há servidor de aplicação próprio nem Edge Function ativa no estado atua
 
 ## Web/PWA
 
-Stack instalada no `package.json`:
+Versão do pacote: **0.26.1**.
 
+Stack principal observada:
 - React 19.3.0;
 - TypeScript 5.9.3;
 - Vite 8.3.0;
 - React Router 7.18.3;
 - TanStack Query 5.103.1;
 - Supabase JS 2.116.0;
-- Dexie 4.4.6 sobre IndexedDB;
+- Dexie 4.4.6 / IndexedDB;
 - Tailwind CSS 4.3.3;
 - React Hook Form + Zod;
-- vite-plugin-pwa;
 - Vitest + Playwright.
 
-Fluxo principal: `App` → providers → router → páginas por feature → módulos de acesso/lógica → Supabase.
-
-O Offline Web usa IndexedDB/Dexie em `src/shared/offline/` e pendências em `src/features/offline/`.
+O Offline Web usa IndexedDB/Dexie. Pendências locais não devem ser enviadas automaticamente ao reconectar.
 
 ## Android
 
 Configuração atual observada em `android/app/build.gradle.kts`:
-
 - applicationId `com.babycatbe.nevesestoque`;
 - Kotlin + Jetpack Compose + Material 3;
-- Navigation Compose 2.10.0;
-- Supabase Kotlin 3.8.0;
-- Ktor Android 3.5.1;
 - Java 17;
-- compileSdk 37, targetSdk 36, minSdk 26;
-- Android `0.34.0-alpha01`, versionCode 34;
-- versão de sistema `0.26.0`.
+- compileSdk 37;
+- targetSdk 36;
+- minSdk 26;
+- Android `0.35.0-alpha01`;
+- versionCode 35;
+- `SYSTEM_VERSION = 0.26.0`.
 
-`MainActivity` inicializa o app e `AuthenticatedApp.kt` concentra o grafo de navegação autenticado.
+### Divergência de versão
 
-### Tema / Aparência Android
+Web/package está em `0.26.1`, enquanto o `SYSTEM_VERSION` compilado no Android permanece `0.26.0`.
 
-- `ui/theme/NevesTheme.kt`: único ponto de tema; `NevesLightColors` e `NevesDarkColors` (Material 3) + `NevesPalette` clara/escura (`NevesColors.kt`) para cores de identidade fora do ColorScheme (header, borda de card, faixa Offline, semânticas).
-- As telas leem `MaterialTheme.colorScheme` e `NevesColors.X` (getters `@Composable` sobre `LocalNevesPalette`); não usar `if (dark)` espalhado nem cores fixas de fundo claro.
-- Troca Claro ↔ Escuro: `NevesTheme` anima um único progresso (300 ms, `FastOutSlowInEasing`) e interpola ColorScheme + paleta; nos extremos usa os esquemas exatos.
-- Preferência: `ui/theme/AppearanceStore.kt`, SharedPreferences privado `neves_estoque_appearance` / chave `theme_mode_v1` (`light`/`dark`), local ao aparelho, sem Supabase e sem vínculo com conta. Carregada de forma síncrona em `NevesApplication.onCreate`; `MainActivity` ajusta o fundo da janela ao tema salvo para evitar flash na abertura.
+Estado: **A VERIFICAR**.
+
+Não alterar código somente para fazer a documentação coincidir.
+
+### Navegação
+
+O código atual usa `Navigation Compose` com Home como destino inicial autenticado.
+
+A aplicação atual **não implementa barra inferior global**.
+
+Há decisões históricas conflitantes sobre barra inferior. Estado: **A VERIFICAR**. Preservar a navegação atual até decisão explícita de Elias.
+
+### Tema/Aparência
+
+- tema centralizado;
+- Claro/Escuro manual;
+- preferência local ao aparelho;
+- sem sincronização de tema no Supabase;
+- tema escuro aprovado/testado no escopo registrado;
+- datas visíveis `DD/MM/AAAA`, ISO internamente.
+
+### Teclado numérico
+
+Campos exclusivamente numéricos usam o componente numérico próprio do app quando aplicável.
+
+No CHECKPOINT 254 o padrão foi expandido para os campos numéricos restantes do Android. Campos de texto, data e outros formatos continuam com a entrada apropriada.
 
 ### Offline Android
 
-`OfflineStore.kt` usa arquivos internos privados separados em:
+Arquivos internos privados separados em:
+- `cache/`;
+- `pending/`;
+- `access/`.
 
-- `cache/`: cópias reconstruíveis;
-- `pending/`: pendências locais;
-- `access/`: registro mínimo de último acesso validado.
+Room/SQLite não faz parte da arquitetura vigente.
 
-O sub-bloco 11.2 moveu I/O para execução assíncrona, reforçou escrita/substituição de arquivos, serializou operações concorrentes do mesmo arquivo e preservou pendências separadas do cache. Room/SQLite não faz parte da arquitetura atual.
+Regras:
+- cache é reconstruível;
+- pendências são persistentes;
+- reconectar não envia automaticamente;
+- envio exige confirmação consciente;
+- revalidação online e idempotência;
+- limpeza de cache não apaga pendências.
 
-## Banco Supabase
+## Supabase
 
 Projeto operacional: **Neves Estoque**, região `sa-east-1`.
 
-Tabelas públicas verificadas:
+Estado verificado em 30/09/2026:
+- status ACTIVE_HEALTHY;
+- 42 migrations aplicadas;
+- 10 tabelas públicas principais com RLS ativa;
+- 13 Categorias;
+- 146 Produtos;
+- 0 Fornecedores;
+- 0 Entradas;
+- 0 itens de Entrada;
+- 0 Conferências;
+- 0 itens de Conferência;
+- 3 app_users;
+- 17 devices.
 
-- `app_users`;
-- `devices`;
-- `categories`;
-- `products`;
-- `suppliers`;
-- `entries`;
-- `entry_items`;
-- `conferences`;
-- `conference_items`;
-- `audit_log`.
+A view `public.stock_current` fornece o estoque derivado.
 
-As 10 tabelas públicas estão com RLS ativa.
+Uma migration no Git não prova aplicação. O Supabase real é a autoridade operacional.
 
-A view `public.stock_current` fornece a posição derivada do Estoque Atual. Os clientes não mantêm um saldo oficial independente.
+### Divergência histórica das primeiras migrations
 
-As operações de Entrada, Conferência, Produtos/Categorias, Fornecedores, mescla, conversão de unidade, restauração e Lixeira reutilizam funções/RPCs já versionados no projeto.
+Os três primeiros arquivos Git usam timestamps diferentes dos identificadores aplicados no Supabase, mas os nomes lógicos correspondem.
 
-Não há Edge Functions ativas.
+Regra: não renomear retroativamente migrations já aplicadas.
 
-## Migrations
+## Autenticação e autorização
 
-No checkpoint 11.2 havia 42 migrations aplicadas no ambiente. A última era `20260927171450_trash_permanent_delete_v1`.
+- Supabase Auth;
+- Google para contas mestre;
+- usuário/senha para contas secundárias no escopo implementado;
+- `app_users` controla autorização interna;
+- dados locais não concedem acesso;
+- banco permanece autoridade para autorização de dados.
 
-Existe uma divergência histórica conhecida nas três primeiras migrations: os timestamps dos arquivos Git são diferentes dos identificadores realmente aplicados no Supabase. Os nomes lógicos correspondem. O histórico aplicado do Supabase é a autoridade e esses arquivos não devem ser renomeados retroativamente.
+## Históricos e paginação
 
-## Acesso
-
-O sistema usa Supabase Auth. Contas mestre usam Google; contas secundárias podem usar usuário/senha. A tabela `app_users` mantém a autorização interna do aplicativo. O banco continua sendo a autoridade para acesso aos dados.
+Web e Android possuem correções consolidadas para evitar truncamento silencioso de históricos:
+- filtros no servidor;
+- paginação por cursor/chave primária;
+- blocos de IDs quando necessário;
+- falha intermediária deve falhar a leitura inteira, não devolver resultado parcial silencioso.
 
 ## CI
 
 ### Web
-`.github/workflows/ci.yml` executa, em `develop` e `main`, instalação reprodutível, typecheck, lint, testes unitários e build.
+
+CI pós-merge do CHECKPOINT 254:
+- run 36761735944;
+- CI #152;
+- HEAD `c0e2ad41a8ad5d64db700453a28826eaf03b8594`;
+- typecheck, lint, testes unitários e build: SUCCESS.
 
 ### Android
-`.github/workflows/android-ci.yml` executa lint, testes unitários e build de debug para alterações Android. O baseline funcional `10ec3ab...` teve Android CI #62 com sucesso.
+
+Android CI pós-merge:
+- run 36761735901;
+- Android CI #135;
+- mesmo HEAD;
+- lint/testes/build debug e release/verificações do APK: SUCCESS.
 
 ## Branches
 
-- `fix/audit-device-id`: branch operacional atual;
 - `develop`: integração/DEV;
-- `main`: produção.
+- `main`: produção;
+- último HEAD **funcional** consolidado: `c0e2ad41a8ad5d64db700453a28826eaf03b8594`;
+- commits documentais posteriores podem avançar `develop` sem alterar o estado funcional: sempre distinguir os dois.
 
-Uma migration existente no Git não prova aplicação no ambiente; para isso deve ser consultado o Supabase real.
+## Fontes de referência
 
-## Arquivos de referência
-
-- `src/app/router/router.tsx`;
-- `src/shared/components/AppShell.tsx`;
-- `src/shared/lib/supabase.ts`;
-- `src/shared/offline/`;
-- `src/features/offline/`;
-- `android/.../app/AuthenticatedApp.kt`;
-- `android/.../data/offline/OfflineStore.kt`;
-- `android/.../ui/theme/NevesTheme.kt`;
+- `src/app/`;
+- `src/shared/`;
+- `src/features/`;
+- `android/app/src/main/java/com/babycatbe/nevesestoque/`;
 - `supabase/migrations/`;
-- `src/shared/types/database.types.ts`.
+- `docs/contexto/`;
+- Contexto Mestre oficial no Google Drive.
 
-
-## Trabalho arquitetural ainda não integrado — 11.3
-
-Existe uma evolução implementada e validada na branch isolada `feat/android-11-3-history-pagination`, HEAD `9aa118c16e5f6f91d1a0bd6482b5f5e892792c29`, que **ainda não faz parte da branch operacional**.
-
-Nessa branch:
-
-- a Web introduz helper de paginação histórica por cursor/chave primária;
-- o Android introduz `data/supabase/KeysetPagination.kt`;
-- as leituras históricas de Compras em Web/Android são paginadas por `id`;
-- a leitura termina somente em página vazia e não devolve resultado parcial em falha intermediária;
-- não houve migration nem mudança no Supabase.
-
-Até que Elias autorize e a integração seja concluída, essa solução deve ser tratada como **trabalho validado ainda não integrado**, e não como arquitetura operacional já vigente.
+O histórico arquitetural completo permanece no arquivo histórico do Contexto Mestre e deve ser consultado seletivamente.
