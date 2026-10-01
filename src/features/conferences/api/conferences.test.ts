@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createFakePostgrest,
   testUuid,
@@ -197,6 +197,9 @@ describe("conference listings — paginação", () => {
 
   beforeEach(() => {
     mocked.current = null;
+    // Este bloco testa "conferida hoje"; fixe a data para não depender do dia UTC do runner.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-30T20:00:00.000Z"));
     vi.mocked(listActiveCategories).mockResolvedValue([
       {
         id: categoryId,
@@ -210,6 +213,10 @@ describe("conference listings — paginação", () => {
         productCount: 20
       }
     ]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   function listingTables(): Record<string, FakeRow[]> {
