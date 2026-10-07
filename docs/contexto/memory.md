@@ -117,7 +117,7 @@ Bloco consolidado:
 
 Web/package está em `0.26.1`.
 
-Android está em `0.35.0-alpha01`, mas `SYSTEM_VERSION` ainda é `0.26.0`.
+Android está em `0.36.0-alpha01`, mas `SYSTEM_VERSION` ainda é `0.26.0`.
 
 Estado: A VERIFICAR.
 
@@ -149,3 +149,24 @@ Quando Elias pedir consolidação:
 - validar nas fontes reais;
 - distinguir último checkpoint seguro de trabalho posterior;
 - branches simultâneas devem permanecer separadas até integração consciente.
+
+## Preço inicial antes da primeira Entrada com preço
+
+Decisão consolidada em 07/10/2026:
+- enquanto não existir Entrada ativa do Produto com `unit_price > 0`, o Preço inicial pode ser adicionado, corrigido ou removido;
+- Entrada com preço `NULL`, bonificação `0` e Entrada excluída não bloqueiam;
+- depois da primeira Entrada ativa com preço real, a correção é feita na própria Entrada;
+- a proteção é obrigatória no backend/banco para cobrir tela desatualizada e concorrência;
+- primeira definição em Produto existente usa `created_at` como data da referência; correção preserva `initial_price_at`; remoção limpa preço/data de forma coerente.
+
+## Release Android — aprendizado do CHECKPOINT 256
+
+A Android CI consegue gerar e validar o APK assinado, mas o workflow manual de Release está atualmente apenas em `develop`, não em `main` (branch padrão), o que impediu o dispatch automatizado nesta rodada.
+
+A Release `android-v0.36.0-alpha01` foi publicada manualmente a partir do artifact assinado da Android CI #137, sem recompilar.
+
+Pendência futura: criar um fluxo oficial de Release disparável sem promover o código do app para `main`. Tratar em bloco próprio; não improvisar credenciais ou alterar `main` por conveniência.
+
+## Consolidação no ecossistema Neves
+
+Quando Elias pedir consolidação de bloco do Neves Estoque, além do repositório técnico, Contexto Mestre no Drive e painel Notion, atualizar também a camada correspondente em `BabyCatBE/BabyCat-OS` quando houver mudança relevante de estado, decisão ou pendência.
