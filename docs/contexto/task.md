@@ -1,101 +1,106 @@
 # Estado operacional — Neves Estoque
 
-> Atualizado em 30/09/2026 após consolidação documental oficial.
+> Atualizado em 07/10/2026 após consolidação do CHECKPOINT 256.
 
 ## Fase atual
 
-`BLOCO PREÇO INICIAL EDITÁVEL — IMPLEMENTADO / CI APROVADA / RELEASE ANDROID 0.36.0-alpha01 BLOQUEADA (A DEFINIR) / TESTE EM APARELHO PENDENTE`
+`CHECKPOINT 256 — PREÇO INICIAL EDITÁVEL ANTES DA PRIMEIRA ENTRADA COM PREÇO — IMPLEMENTADO / CI APROVADA / RELEASE ANDROID PUBLICADA / TESTADO EM APARELHO / CONSOLIDADO`
 
-## Bloco atual — Preço inicial editável antes da primeira Entrada com preço
+## CHECKPOINT 256 — 07/10/2026
 
-Regra: Preço inicial pode ser adicionado, corrigido ou removido na edição de Produto enquanto não existir Entrada ativa do Produto com `unit_price > 0`. Preço em branco (NULL), bonificação (0) e Entrada excluída não bloqueiam. Depois de Entrada com preço real, a correção é feita na Entrada.
+### Regra funcional consolidada
 
-- backend: migration `20261007111815_editable_initial_price_before_priced_entry` (aplicada e verificada no Supabase Neves Estoque); nova RPC `update_product_details_with_initial_price` (nome + categoria + preço, atômica). Valida na gravação com o Produto travado; valor inalterado é no-op. `initial_price_at` preservado na correção; na primeira definição usa `created_at` do Produto; remoção zera par preço/data. Auditoria pela trigger de linha de `products`. `update_product_details` antigo permanece para clientes instalados.
-- Web: campo na edição de Produto (`ProductDetailPage`); somente leitura com orientação quando bloqueado.
-- Android: `NevesNumericField` + teclado Neves na tela Editar Produto; somente leitura quando bloqueado.
-- versão Android: `0.36.0-alpha01` / versionCode 36 (`SYSTEM_VERSION` mantido em `0.26.0`, ainda A VERIFICAR).
-- observação: a última Release oficial anterior era `android-v0.28.0-alpha01`; versões 29–35 não tinham Release.
-- CI #157 e Android CI verdes em `e146c50` (build, lint, testes unitários, assinatura permanente verificada).
-- Release: **BLOQUEADA**. `android-release.yml` não está registrado para disparo manual (GitHub só aceita `workflow_dispatch` de workflow presente no branch padrão `main`; dispatch retornou 404). Publicar exige decisão de Elias (ex.: levar o workflow para `main`).
-- teste em aparelho: **PENDENTE**.
+O Preço inicial pode ser adicionado, corrigido ou removido na edição de Produto enquanto não existir Entrada ativa desse Produto com `unit_price > 0`.
+
+- Entrada com preço em branco (`NULL`) não bloqueia;
+- bonificação (`0`) não bloqueia;
+- Entrada excluída não bloqueia;
+- depois da primeira Entrada ativa com preço real (> 0), a correção de preço deve ser feita na própria Entrada;
+- vazio continua `NULL`; zero informado explicitamente continua zero;
+- ao corrigir preço inicial existente, `initial_price_at` é preservado;
+- ao definir o primeiro preço inicial em Produto já existente, a referência usa `created_at`;
+- ao remover, `initial_price` e `initial_price_at` ficam coerentemente vazios;
+- a validação final é do backend/banco, protegendo tela desatualizada e gravação concorrente.
+
+### Implementação
+
+- Backend: migration `20261007111815_editable_initial_price_before_priced_entry`; nova RPC `update_product_details_with_initial_price`; RPC antiga mantida para compatibilidade.
+- Web: edição de Produto permite Preço inicial enquanto elegível; quando bloqueado, mostra somente leitura com orientação.
+- Android: edição de Produto usa `NevesNumericField` e teclado numérico próprio Neves; quando bloqueado, mostra somente leitura.
+- Web/package: `0.26.1`.
+- Android: `0.36.0-alpha01` / versionCode 36.
+- `SYSTEM_VERSION` Android continua `0.26.0`: **A VERIFICAR**; não alterar apenas para alinhar documentação.
+
+### GitHub / CI / Release
+
+- branch integrada: `develop`;
+- commit funcional + ajuste de identidade CI: `e146c50aee843e9616fa024a9c0d07e75a6e70c3`;
+- HEAD técnico/documental antes desta consolidação: `c4006f19ef133d51b495d8b2a49309b40fb257f9`;
+- CI #157 / run `37614753146`: SUCCESS;
+- Android CI #137 / run `37614753154`: SUCCESS;
+- Android CI #136 falhou somente porque o workflow ainda esperava 0.35/35; expectativa atualizada para 0.36/36 e a rodada seguinte passou;
+- Release oficial publicada: `android-v0.36.0-alpha01`;
+- tag resolve para `c4006f19ef133d51b495d8b2a49309b40fb257f9`;
+- APK oficial: `neves-estoque-android.apk`;
+- checksum oficial: `SHA256SUMS`;
+- SHA-256 do APK publicado: `7ad35e2558f1bad5baac2b7293c4542ef2f796eec2c4cb4d84c54619f8a78432`;
+- Release pública, não draft e não prerelease.
+
+### Supabase / dados
+
+Projeto **Neves Estoque**, verificado em 07/10/2026:
+
+- 43 migrations aplicadas;
+- 13 Categorias;
+- 146 Produtos ativos;
+- 0 Produtos com Preço inicial;
+- 0 Fornecedores ativos;
+- 0 Entradas ativas;
+- 0 itens de Entrada ativos.
+
+A migration foi aplicada e os cenários de banco foram validados sem deixar dados de teste. O estado permanece **CATÁLOGO REAL PREPARADO**.
+
+Não criar Entrada artificial nem preencher preços em massa só para testar. Elias preencherá referências iniciais reais conforme necessidade e fontes históricas.
+
+### Teste em aparelho
+
+**TESTADO / APROVADO EM APARELHO por Elias em 07/10/2026.**
+
+Confirmado no Android:
+
+- atualizador interno encontrou/instalou a Release 0.36.0-alpha01;
+- edição de Produto sem Entrada com preço exibiu Preço inicial;
+- salvar refletiu o valor como preço atual;
+- nova edição/correção do Preço inicial funcionou enquanto não existe Entrada com preço real.
+
+Não interpretar isso como teste manual de todos os cenários Web/Android.
+
+### Limitação de Release descoberta
+
+O workflow `.github/workflows/android-release.yml` está em `develop`, mas não em `main`, branch padrão. Por isso o disparo manual automatizado ficou indisponível neste bloco.
+
+A Release 0.36.0-alpha01 foi publicada manualmente usando exclusivamente o APK assinado e validado pela Android CI #137, sem recompilar.
+
+Pendência futura: estruturar um caminho oficial de Release que possa ser disparado sem promover o código do app para `main`, mediante bloco próprio e decisão consciente.
 
 ## Último estado funcional seguro
 
-- CHECKPOINT 254 — Teclado numérico global + fluxo de Compras.
-- `develop` funcional: `c0e2ad41a8ad5d64db700453a28826eaf03b8594`.
-- PR #78: MERGED / CLOSED.
-- origem: `fix/numeric-keyboard-purchases`.
-- HEAD final da origem: `9ab9f98b1748d46c192cca87922a8850af333db0`.
-- Web: `0.26.1`.
-- Android: `0.35.0-alpha01` / versionCode 35.
-- `main`: `e0c15eb45fda2f6c68f58ed6f4ccdd24feb20635`, sem promoção deste bloco.
+O CHECKPOINT 256 substitui o CHECKPOINT 254 como último estado funcional seguro consolidado.
 
-**Importante:** commits documentais posteriores podem avançar `develop` sem alterar o último estado funcional. Sempre conferir o HEAD atual e distinguir documentação de mudança funcional.
+Referência funcional principal: `e146c50aee843e9616fa024a9c0d07e75a6e70c3`.
 
-## CI comprovada do CHECKPOINT 254
-
-Pós-merge:
-- CI #152 / run `36761735944`: SUCCESS;
-- Android CI #135 / run `36761735901`: SUCCESS.
-
-Pré-merge/reconciliação:
-- Android CI #134: SUCCESS;
-- CI #151: SUCCESS;
-- Purchases UI #5: SUCCESS.
-
-## Teste em aparelho
-
-No escopo registrado por Elias:
-- quantidade em Compras seleciona automaticamente;
-- teclado numérico/Próximo funciona no cenário testado;
-- + e − ficaram visualmente coerentes com o checkbox.
-
-Estado do escopo: **TESTADO / APROVADO EM APARELHO**.
-
-Não interpretar isso como teste de todos os cenários do aplicativo.
-
-## Supabase — fotografia da consolidação
-
-Projeto **Neves Estoque**, verificado em 30/09/2026:
-- ACTIVE_HEALTHY;
-- 42 migrations;
-- 13 Categorias;
-- 146 Produtos;
-- 0 Fornecedores;
-- 0 Entradas;
-- 0 itens de Entrada;
-- 0 Conferências;
-- 0 itens de Conferência;
-- 3 app_users;
-- 17 devices;
-- 10 tabelas públicas principais com RLS ativa.
-
-Estado dos dados: **CATÁLOGO REAL PREPARADO**.
-
-Não resetar, limpar ou substituir catálogo sem nova autorização explícita.
-
-## Consolidação documental oficial
-
-A antiga versão do Contexto Mestre tinha 373 páginas e 783.722 caracteres.
-
-A reorganização:
-- preservou o conteúdo original integralmente;
-- confirmou igualdade literal por SHA-256;
-- criou ponto de entrada operacional compacto;
-- manteve histórico e evidências separados;
-- promoveu o novo Contexto Mestre após confirmação explícita de Elias.
-
-O arquivo antigo permanece preservado como arquivo histórico.
+Commits documentais posteriores podem avançar `develop` sem mudar o runtime. Sempre distinguir HEAD funcional de commits somente documentais.
 
 ## Pendências vigentes
 
 - próximo bloco funcional: **A DEFINIR**;
-- `SYSTEM_VERSION` Android = `0.26.0` enquanto Web/package = `0.26.1`: A VERIFICAR;
-- barra inferior Android: A VERIFICAR;
-- pendências Offline ao trocar usuário: A DEFINIR;
+- automatização correta do fluxo de Android Release sem depender de publicação manual: **A DEFINIR / bloco futuro**;
+- `SYSTEM_VERSION` Android = `0.26.0` enquanto Web/package = `0.26.1`: **A VERIFICAR**;
+- barra inferior Android: **A VERIFICAR**; preservar navegação atual;
+- pendências Offline ao trocar usuário: **A DEFINIR**;
 - smoke test autenticado Web 0.26.1: opcional para classificação manual;
 - testes Offline finais/agrupados: pendentes;
-- proteção contra senhas vazadas no Supabase Auth: A DEFINIR;
+- proteção contra senhas vazadas no Supabase Auth: **A DEFINIR**;
 - splash claro Android 12+ no tema Escuro: limitação conhecida;
 - imagem órfã de teste no Storage: eventual limpeza futura, sem autorização automática;
 - backup/monitoramento e demais itens pré-produção: revisar quando a fase exigir.
@@ -104,16 +109,16 @@ O arquivo antigo permanece preservado como arquivo histórico.
 
 **A DEFINIR conforme prioridade real e uso do sistema.**
 
-Não inventar novo bloco só porque a consolidação documental terminou.
+Não inventar novo bloco apenas porque este foi consolidado.
 
-Não mover `main`, publicar PROD, criar Release ou realizar operação destrutiva no Supabase sem autorização explícita.
+Não mover `main`, publicar Web PROD, criar outra Release ou realizar operação destrutiva no Supabase sem autorização explícita.
 
 ## Retomada por nova IA/chat
 
-1. ler o Contexto Mestre oficial;
-2. ler este `task.md`;
+1. ler este `task.md`;
+2. ler os arquivos especializados aplicáveis;
 3. conferir `develop` atual no GitHub;
 4. distinguir último HEAD funcional de commits documentais;
-5. ler os arquivos especializados aplicáveis;
-6. consultar Supabase somente quando a tarefa depender do ambiente;
+5. consultar Supabase somente quando a tarefa depender do ambiente;
+6. usar BabyCat OS / Drive / Notion conforme a camada de contexto necessária;
 7. aprofundar no histórico apenas quando necessário.
