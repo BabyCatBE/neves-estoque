@@ -16,6 +16,7 @@ Estas regras devem ser obedecidas por qualquer IA ou desenvolvedor que trabalhe 
 - GitHub: código, commits, branches, versões, migrations versionadas e CI;
 - Supabase: schema, migrations realmente aplicadas, dados, RLS, funções e configurações;
 - Notion: painel resumido;
+- BabyCat OS (`BabyCatBE/BabyCat-OS`): contexto empresarial e mapa operacional consolidado da Panificadora/Projeto;
 - legado: dados/regras históricas do sistema antigo.
 
 Se fontes divergirem:
@@ -80,6 +81,8 @@ Antes de mudança relevante:
 - Entrada exige quantidade > 0;
 - Conferência aceita zero e proíbe negativo;
 - preço em branco e bonificação são estados diferentes;
+- Preço inicial pode ser adicionado/corrigido/removido enquanto não houver Entrada ativa do Produto com `unit_price > 0`; `NULL`, zero/bonificação e Entrada excluída não bloqueiam; após preço real de Entrada, corrigir pela própria Entrada;
+- validação da elegibilidade do Preço inicial pertence ao backend/banco, não somente à UI;
 - IDs oficiais são UUIDs internos;
 - histórico deve permanecer coerente após exclusões, mesclas e conversões;
 - Compras é simulação temporária.
@@ -139,7 +142,8 @@ Quando Elias pedir consolidação:
 4. conferir Supabase se relevante;
 5. confirmar versões/migrations/dados;
 6. atualizar Contexto Mestre e arquivos especializados;
-7. atualizar Notion como resumo.
+7. atualizar Notion como resumo;
+8. atualizar o contexto correspondente no `BabyCatBE/BabyCat-OS` quando o bloco alterar estado, decisão ou pendência relevante do Projeto.
 
 ## 14. Seis arquivos especializados
 
