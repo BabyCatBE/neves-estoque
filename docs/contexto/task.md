@@ -48,17 +48,17 @@ O Preço inicial pode ser adicionado, corrigido ou removido na edição de Produ
 
 ### Supabase / dados
 
-Projeto **Neves Estoque**, verificado em 07/10/2026:
+Projeto **Neves Estoque**, revalidado após o teste em aparelho em 07/10/2026:
 
 - 43 migrations aplicadas;
 - 13 Categorias;
 - 146 Produtos ativos;
-- 0 Produtos com Preço inicial;
+- 9 Produtos com Preço inicial;
 - 0 Fornecedores ativos;
 - 0 Entradas ativas;
 - 0 itens de Entrada ativos.
 
-A migration foi aplicada e os cenários de banco foram validados sem deixar dados de teste. O estado permanece **CATÁLOGO REAL PREPARADO**.
+A migration foi aplicada e os cenários técnicos de banco foram validados sem deixar dados artificiais. Após o teste em aparelho e o início do preenchimento das referências históricas por Elias, 9 Produtos possuem Preço inicial; continuam 0 Entradas ativas. O estado permanece **CATÁLOGO REAL PREPARADO**.
 
 Não criar Entrada artificial nem preencher preços em massa só para testar. Elias preencherá referências iniciais reais conforme necessidade e fontes históricas.
 
