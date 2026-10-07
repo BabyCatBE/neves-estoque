@@ -67,7 +67,9 @@ O resultado pode incluir consumo, perda, diferença de contagem, Entrada esqueci
 - Entrada e Conferência usam cabeçalho + itens;
 - Produto usa UUID interno e invisível;
 - nome duplicado é bloqueado ignorando caixa e espaços excedentes;
-- preço atual deriva do último preço real válido de Entrada;
+- preço atual deriva do último preço real válido de Entrada; quando ainda não existe Entrada ativa com preço real, pode usar o Preço inicial como referência;
+- Preço inicial pode ser adicionado, corrigido ou removido na edição do Produto enquanto não houver Entrada ativa com `unit_price > 0`; preço em branco, bonificação (0) e Entrada excluída não bloqueiam;
+- depois da primeira Entrada ativa com preço real, correção histórica de preço é feita na Entrada, não no cadastro do Produto;
 - Produto ↔ Fornecedor nasce de Entradas reais;
 - Compras é simulação temporária, não pedido persistido;
 - exclusões devem preservar o histórico necessário;
@@ -105,29 +107,28 @@ Diretrizes consolidadas:
 
 ## Estado comprovado mais recente
 
-CHECKPOINT 254:
-- PR #78 integrado em `develop`;
-- último HEAD funcional integrado: `c0e2ad41a8ad5d64db700453a28826eaf03b8594`;
+CHECKPOINT 256 — 07/10/2026:
+- Preço inicial editável antes da primeira Entrada ativa com preço real, com proteção no backend;
+- migration `20261007111815_editable_initial_price_before_priced_entry` aplicada;
 - Web `0.26.1`;
-- Android `0.35.0-alpha01` / 35;
-- Web CI #152 e Android CI #135 pós-merge: SUCCESS;
-- escopo Android de Compras/teclado/Próximo/+− aprovado em aparelho;
-- sem migration ou alteração de banco/dados no bloco.
+- Android `0.36.0-alpha01` / versionCode 36;
+- CI #157 e Android CI #137: SUCCESS;
+- Release oficial `android-v0.36.0-alpha01` publicada com APK assinado/checksum;
+- fluxo testado e aprovado em aparelho por Elias;
+- `main` e Web PROD não foram promovidos.
 
 ## Estado dos dados na consolidação documental
 
-Supabase **Neves Estoque**, verificado em 30/09/2026:
-- ACTIVE_HEALTHY;
-- 42 migrations aplicadas;
+Supabase **Neves Estoque**, revalidado em 07/10/2026 no escopo do CHECKPOINT 256:
+- 43 migrations aplicadas;
 - 13 Categorias;
-- 146 Produtos;
-- 0 Fornecedores;
-- 0 Entradas;
-- 0 itens de Entrada;
-- 0 Conferências;
-- 0 itens de Conferência;
-- 3 app_users;
-- 17 devices.
+- 146 Produtos ativos;
+- 0 Produtos com Preço inicial;
+- 0 Fornecedores ativos;
+- 0 Entradas ativas;
+- 0 itens de Entrada ativos.
+
+Os demais contadores históricos de 30/09/2026 devem ser revalidados quando forem necessários.
 
 Estado: **CATÁLOGO REAL PREPARADO**.
 
