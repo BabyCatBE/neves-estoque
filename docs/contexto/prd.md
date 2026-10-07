@@ -119,11 +119,11 @@ CHECKPOINT 256 — 07/10/2026:
 
 ## Estado dos dados na consolidação documental
 
-Supabase **Neves Estoque**, revalidado em 07/10/2026 no escopo do CHECKPOINT 256:
+Supabase **Neves Estoque**, revalidado em 07/10/2026 após o teste em aparelho:
 - 43 migrations aplicadas;
 - 13 Categorias;
 - 146 Produtos ativos;
-- 0 Produtos com Preço inicial;
+- 9 Produtos com Preço inicial;
 - 0 Fornecedores ativos;
 - 0 Entradas ativas;
 - 0 itens de Entrada ativos.
