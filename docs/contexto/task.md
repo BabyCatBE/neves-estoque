@@ -4,7 +4,7 @@
 
 ## Fase atual
 
-`BLOCO PREÇO INICIAL EDITÁVEL — IMPLEMENTADO / CI E RELEASE ANDROID 0.36.0-alpha01 / AGUARDANDO TESTE EM APARELHO`
+`BLOCO PREÇO INICIAL EDITÁVEL — IMPLEMENTADO / CI APROVADA / RELEASE ANDROID 0.36.0-alpha01 BLOQUEADA (A DEFINIR) / TESTE EM APARELHO PENDENTE`
 
 ## Bloco atual — Preço inicial editável antes da primeira Entrada com preço
 
@@ -15,6 +15,8 @@ Regra: Preço inicial pode ser adicionado, corrigido ou removido na edição de 
 - Android: `NevesNumericField` + teclado Neves na tela Editar Produto; somente leitura quando bloqueado.
 - versão Android: `0.36.0-alpha01` / versionCode 36 (`SYSTEM_VERSION` mantido em `0.26.0`, ainda A VERIFICAR).
 - observação: a última Release oficial anterior era `android-v0.28.0-alpha01`; versões 29–35 não tinham Release.
+- CI #157 e Android CI verdes em `e146c50` (build, lint, testes unitários, assinatura permanente verificada).
+- Release: **BLOQUEADA**. `android-release.yml` não está registrado para disparo manual (GitHub só aceita `workflow_dispatch` de workflow presente no branch padrão `main`; dispatch retornou 404). Publicar exige decisão de Elias (ex.: levar o workflow para `main`).
 - teste em aparelho: **PENDENTE**.
 
 ## Último estado funcional seguro
