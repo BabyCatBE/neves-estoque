@@ -335,12 +335,15 @@ class ProductFormViewModel(
         if (_uiState.value.saving) return
 
         val currentProduct = _uiState.value.product
+        val initialPriceChanged = productId != null && currentProduct != null &&
+            canEditInitialPrice(currentProduct.priceHistory) &&
+            initialPrice.trim() != formatDecimalInput(currentProduct.initialPrice)
         val validation = validateProductDraft(
             name = name,
             categoryId = categoryId,
             unit = if (productId == null) unit else currentProduct?.unit.orEmpty(),
             initialStock = if (productId == null) initialStock else "",
-            initialPrice = if (productId == null) initialPrice else "",
+            initialPrice = if (productId == null || initialPriceChanged) initialPrice else "",
         )
         if (validation.errors.hasErrors || validation.input == null) {
             _uiState.value = _uiState.value.copy(
@@ -360,7 +363,16 @@ class ProductFormViewModel(
                 if (productId == null) {
                     repository.createProduct(validation.input)
                 } else {
-                    repository.updateProduct(productId, validation.input.name, validation.input.categoryId)
+                    repository.updateProduct(
+                        productId = productId,
+                        name = validation.input.name,
+                        categoryId = validation.input.categoryId,
+                        initialPrice = if (initialPriceChanged) {
+                            InitialPriceUpdate(validation.input.initialPrice)
+                        } else {
+                            null
+                        },
+                    )
                 }
             }.onSuccess {
                 _uiState.value = _uiState.value.copy(

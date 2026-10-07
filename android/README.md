@@ -9,7 +9,7 @@ Leia primeiro os arquivos aplicáveis em `../docs/contexto/`, especialmente `arc
 ## Estado atual — 29/09/2026
 
 - applicationId: `com.babycatbe.nevesestoque`;
-- Android: `0.35.0-alpha01` (versionCode 35);
+- Android: `0.36.0-alpha01` (versionCode 36);
 - Sistema/Web: `0.26.0`;
 - linha de trabalho atual: `feat/android-17-product-maintenance-ux`;
 - PR #75: DRAFT / OPEN / NÃO INTEGRADO;

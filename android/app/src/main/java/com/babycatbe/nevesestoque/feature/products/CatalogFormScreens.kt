@@ -146,6 +146,7 @@ private fun ProductFormScreen(
                 name = product.name
                 categoryId = product.categoryId.orEmpty()
                 unit = product.unit
+                initialPrice = formatDecimalInput(product.initialPrice)
             }
             initialized = true
         }
@@ -256,6 +257,38 @@ private fun ProductFormScreen(
                         confirmLabel = "Concluir",
                         enabled = !busy,
                     )
+                } else state.product?.let { product ->
+                    if (canEditInitialPrice(product.priceHistory)) {
+                        NevesNumericField(
+                            value = initialPrice,
+                            onValueChange = { initialPrice = it },
+                            keypad = keypad,
+                            label = "Preço inicial (opcional)",
+                            supportingMessage = "Referência até a primeira Entrada com preço. Vazio remove; zero é permitido.",
+                            errorMessage = state.fieldErrors.initialPrice,
+                            focusRequester = priceFocus,
+                            onConfirm = { focusManager.clearFocus() },
+                            confirmLabel = "Concluir",
+                            enabled = !busy,
+                        )
+                    } else {
+                        Column {
+                            Text("Preço inicial", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                product.initialPrice?.let(::formatInitialPriceMoney) ?: "Sem preço",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                            Text(
+                                "Este Produto já possui Entrada com preço, que passa a definir o preço atual. " +
+                                    "Para corrigir um preço, edite a Entrada correspondente.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                    }
                 }
 
                 Button(
@@ -439,3 +472,6 @@ private suspend fun readCategoryIllustrationSelection(
     SelectedCategoryIllustration(bytes = bytes, mimeType = mimeType!!)
 }
 
+
+private fun formatInitialPriceMoney(value: Double): String =
+    java.text.NumberFormat.getCurrencyInstance(java.util.Locale.forLanguageTag("pt-BR")).format(value)

@@ -15,7 +15,13 @@ import {
   softDeleteProduct,
   updateProductDetails
 } from "../api/products";
-import { getProductErrorMessage, productNameSchema } from "../lib/productValidation";
+import {
+  canEditInitialPrice,
+  formatDecimalInput,
+  getProductErrorMessage,
+  parseOptionalNonNegativeDecimal,
+  productNameSchema
+} from "../lib/productValidation";
 
 const productsKey = ["products", "active"] as const;
 
@@ -31,6 +37,8 @@ export function ProductDetailPage() {
   const [categoryId, setCategoryId] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [initialPrice, setInitialPrice] = useState("");
+  const [initialPriceError, setInitialPriceError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [exitReview, setExitReview] = useState<ExitReviewMode>(null);
@@ -90,9 +98,18 @@ export function ProductDetailPage() {
     [categoriesQuery.data, categoryId]
   );
 
+  const initialPriceEditable = productQuery.data
+    ? canEditInitialPrice(productQuery.data.priceHistory)
+    : false;
+  const originalInitialPrice = formatDecimalInput(productQuery.data?.initialPrice ?? null);
+  const initialPriceChanged =
+    initialPriceEditable && initialPrice.trim() !== originalInitialPrice;
+
   const dirty =
     Boolean(productQuery.data) &&
-    (name !== productQuery.data?.name || categoryId !== (productQuery.data?.categoryId ?? ""));
+    (name !== productQuery.data?.name ||
+      categoryId !== (productQuery.data?.categoryId ?? "") ||
+      initialPriceChanged);
 
   const changeSummary = useMemo(() => {
     if (!productQuery.data) return [];
@@ -115,11 +132,22 @@ export function ProductDetailPage() {
       });
     }
 
+    if (initialPriceChanged) {
+      changes.push({
+        label: "Preço inicial",
+        before: originalInitialPrice || "Sem preço",
+        after: initialPrice.trim() || "Sem preço"
+      });
+    }
+
     return changes;
   }, [
     categoryId,
     currentCategoryName,
+    initialPrice,
+    initialPriceChanged,
     name,
+    originalInitialPrice,
     productQuery.data,
     selectedCategoryName
   ]);
@@ -128,8 +156,10 @@ export function ProductDetailPage() {
     if (!productQuery.data) return;
     setName(productQuery.data.name);
     setCategoryId(productQuery.data.categoryId ?? "");
+    setInitialPrice(formatDecimalInput(productQuery.data.initialPrice));
     setNameError(null);
     setCategoryError(null);
+    setInitialPriceError(null);
     setActionError(null);
     setNotice(null);
     setEditing(true);
@@ -138,8 +168,10 @@ export function ProductDetailPage() {
   const resetDraft = () => {
     setName(productQuery.data?.name ?? "");
     setCategoryId(productQuery.data?.categoryId ?? "");
+    setInitialPrice(formatDecimalInput(productQuery.data?.initialPrice ?? null));
     setNameError(null);
     setCategoryError(null);
+    setInitialPriceError(null);
     setActionError(null);
   };
 
@@ -228,11 +260,24 @@ export function ProductDetailPage() {
     }
     setCategoryError(null);
 
+    let parsedInitialPrice: number | null | undefined;
+    if (initialPriceChanged) {
+      try {
+        parsedInitialPrice = parseOptionalNonNegativeDecimal(initialPrice, "Preço inicial");
+      } catch (error) {
+        setInitialPriceError(getProductErrorMessage(error));
+        window.setTimeout(() => document.getElementById("product-edit-initial-price")?.focus(), 0);
+        return;
+      }
+    }
+    setInitialPriceError(null);
+
     try {
       await updateMutation.mutateAsync({
         id: productQuery.data.id,
         name: parsedName.data,
-        categoryId
+        categoryId,
+        ...(parsedInitialPrice === undefined ? {} : { initialPrice: parsedInitialPrice })
       });
       setEditing(false);
       setExitReview(null);
@@ -409,7 +454,7 @@ export function ProductDetailPage() {
                       setActionError(null);
                       if (dirty) {
                         setActionError(
-                          "Salve ou descarte as alterações de nome/categoria antes de alterar a unidade."
+                          "Salve ou descarte as alterações do cadastro antes de alterar a unidade."
                         );
                         return;
                       }
@@ -419,6 +464,37 @@ export function ProductDetailPage() {
                     Alterar unidade
                   </Button>
                 </div>
+
+                {initialPriceEditable ? (
+                  <div>
+                    <TextField
+                      id="product-edit-initial-price"
+                      label="Preço inicial (opcional)"
+                      placeholder="Ex.: 24,90"
+                      inputMode="decimal"
+                      value={initialPrice}
+                      error={initialPriceError}
+                      onChange={(event) => {
+                        setInitialPrice(event.target.value);
+                        if (initialPriceError) setInitialPriceError(null);
+                      }}
+                    />
+                    <p className="mt-1.5 text-xs leading-5 text-zinc-500">
+                      Referência até a primeira Entrada com preço. Deixe em branco para remover.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm font-medium text-zinc-800">Preço inicial</p>
+                    <div className="mt-2 min-h-11 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm font-semibold text-zinc-700">
+                      {formatPrice(productQuery.data.initialPrice)}
+                    </div>
+                    <p className="mt-1.5 text-xs leading-5 text-zinc-500">
+                      Este Produto já possui Entrada com preço, que passa a definir o preço atual.
+                      Para corrigir um preço, edite a Entrada correspondente.
+                    </p>
+                  </div>
+                )}
 
                 {categoryId !== productQuery.data.categoryId ? (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">

@@ -1,6 +1,7 @@
 package com.babycatbe.nevesestoque.feature.products
 
 import io.github.jan.supabase.postgrest.exception.PostgrestRestException
+import java.math.BigDecimal
 
 val PRODUCT_UNITS = listOf(
     "UN", "KG", "SC", "CX", "PCT", "FD", "BL", "GL", "PET", "ROLO", "LATA", "BARRA", "PT"
@@ -63,6 +64,19 @@ fun validateProductDraft(
     )
 }
 
+const val INITIAL_PRICE_LOCKED_MESSAGE =
+    "Preço inicial bloqueado: este Produto já possui Entrada com preço. Corrija o preço na Entrada correspondente."
+
+/**
+ * Preço inicial é editável apenas enquanto não existir Entrada ativa com preço real (> 0).
+ * Preço em branco e bonificação (0) não bloqueiam. O backend revalida na gravação.
+ */
+fun canEditInitialPrice(priceHistory: List<ProductPriceHistoryItem>): Boolean =
+    priceHistory.none { (it.unitPrice ?: 0.0) > 0.0 }
+
+fun formatDecimalInput(value: Double?): String =
+    value?.let { BigDecimal(it.toString()).stripTrailingZeros().toPlainString().replace('.', ',') }.orEmpty()
+
 data class OptionalDecimalResult(val value: Double?, val error: String?)
 
 fun parseOptionalNonNegativeDecimal(value: String, label: String): OptionalDecimalResult {
@@ -107,6 +121,7 @@ fun productErrorMessage(error: Throwable): String {
         "Produto inválido.",
         "Produto não encontrado.",
         "Acesso não autorizado.",
+        INITIAL_PRICE_LOCKED_MESSAGE,
     ).firstOrNull(message::contains)
 
     return known ?: "Não foi possível salvar o Produto. Tente novamente."

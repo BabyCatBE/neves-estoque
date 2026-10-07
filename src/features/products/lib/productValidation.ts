@@ -48,6 +48,16 @@ export function parseOptionalNonNegativeDecimal(value: string, label: string) {
   return parsed;
 }
 
+// Preço inicial é editável apenas enquanto não existir Entrada ativa com preço real (> 0).
+// Preço em branco e bonificação (0) não bloqueiam. O backend revalida na gravação.
+export function canEditInitialPrice(priceHistory: ReadonlyArray<{ unitPrice: number | null }>) {
+  return !priceHistory.some((item) => item.unitPrice !== null && item.unitPrice > 0);
+}
+
+export function formatDecimalInput(value: number | null) {
+  return value === null ? "" : String(value).replace(".", ",");
+}
+
 export function getProductErrorMessage(error: unknown) {
   const validationMessage = getValidationErrorMessage(error);
   if (validationMessage) return validationMessage;
@@ -81,7 +91,8 @@ export function getProductErrorMessage(error: unknown) {
         "Informe a equivalência entre as duas unidades.",
         "Referência inicial de preço inválida.",
         "O produto mais antigo não possui preço inicial para manter.",
-        "O produto absorvido não possui preço inicial para manter."
+        "O produto absorvido não possui preço inicial para manter.",
+        "Preço inicial bloqueado: este Produto já possui Entrada com preço. Corrija o preço na Entrada correspondente."
       ];
 
       const known = knownMessages.find((message) => candidate.message?.includes(message));

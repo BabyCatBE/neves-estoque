@@ -824,6 +824,15 @@ export type Database = {
         Args: { p_category_id: string; p_name: string; p_product_id: string }
         Returns: undefined
       }
+      update_product_details_with_initial_price: {
+        Args: {
+          p_category_id: string
+          p_initial_price: number | null
+          p_name: string
+          p_product_id: string
+        }
+        Returns: undefined
+      }
       convert_product_unit: {
         Args: {
           p_device_id: string

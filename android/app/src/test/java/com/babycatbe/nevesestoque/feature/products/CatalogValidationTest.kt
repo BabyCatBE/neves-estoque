@@ -78,4 +78,33 @@ class CatalogValidationTest {
             productErrorMessage(IllegalStateException("PGRST999 schema internals")),
         )
     }
+
+    private fun priceItem(unitPrice: Double?) = ProductPriceHistoryItem(
+        id = "item-$unitPrice",
+        entryId = "entry",
+        effectiveAt = "2026-10-01T10:00:00-03:00",
+        supplierName = "Fornecedor",
+        quantity = 1.0,
+        unitPrice = unitPrice,
+        position = 1,
+    )
+
+    @Test
+    fun initialPriceStaysEditableWithoutRealPricedEntry() {
+        assertTrue(canEditInitialPrice(emptyList()))
+        assertTrue(canEditInitialPrice(listOf(priceItem(null), priceItem(0.0))))
+    }
+
+    @Test
+    fun initialPriceLocksAfterEntryWithRealPrice() {
+        assertFalse(canEditInitialPrice(listOf(priceItem(0.0), priceItem(9.9))))
+    }
+
+    @Test
+    fun decimalInputFormattingPreservesEmptyAndZero() {
+        assertEquals("", formatDecimalInput(null))
+        assertEquals("0", formatDecimalInput(0.0))
+        assertEquals("10", formatDecimalInput(10.0))
+        assertEquals("24,9", formatDecimalInput(24.9))
+    }
 }

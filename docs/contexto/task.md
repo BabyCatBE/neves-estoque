@@ -4,7 +4,18 @@
 
 ## Fase atual
 
-`CHECKPOINT 254 INTEGRADO / CONTEXTO DOCUMENTAL REORGANIZADO / PRÓXIMO BLOCO FUNCIONAL A DEFINIR`
+`BLOCO PREÇO INICIAL EDITÁVEL — IMPLEMENTADO / CI E RELEASE ANDROID 0.36.0-alpha01 / AGUARDANDO TESTE EM APARELHO`
+
+## Bloco atual — Preço inicial editável antes da primeira Entrada com preço
+
+Regra: Preço inicial pode ser adicionado, corrigido ou removido na edição de Produto enquanto não existir Entrada ativa do Produto com `unit_price > 0`. Preço em branco (NULL), bonificação (0) e Entrada excluída não bloqueiam. Depois de Entrada com preço real, a correção é feita na Entrada.
+
+- backend: migration `20261007111815_editable_initial_price_before_priced_entry` (aplicada e verificada no Supabase Neves Estoque); nova RPC `update_product_details_with_initial_price` (nome + categoria + preço, atômica). Valida na gravação com o Produto travado; valor inalterado é no-op. `initial_price_at` preservado na correção; na primeira definição usa `created_at` do Produto; remoção zera par preço/data. Auditoria pela trigger de linha de `products`. `update_product_details` antigo permanece para clientes instalados.
+- Web: campo na edição de Produto (`ProductDetailPage`); somente leitura com orientação quando bloqueado.
+- Android: `NevesNumericField` + teclado Neves na tela Editar Produto; somente leitura quando bloqueado.
+- versão Android: `0.36.0-alpha01` / versionCode 36 (`SYSTEM_VERSION` mantido em `0.26.0`, ainda A VERIFICAR).
+- observação: a última Release oficial anterior era `android-v0.28.0-alpha01`; versões 29–35 não tinham Release.
+- teste em aparelho: **PENDENTE**.
 
 ## Último estado funcional seguro
 

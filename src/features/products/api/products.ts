@@ -76,6 +76,8 @@ export type UpdateProductDetailsInput = {
   id: string;
   name: string;
   categoryId: string;
+  /** Presente somente quando o Preço inicial ainda é editável. `null` remove a referência. */
+  initialPrice?: number | null;
 };
 
 export type ConvertProductUnitInput = {
@@ -365,6 +367,18 @@ export async function getProductDetails(productId: string): Promise<ProductDetai
 
 export async function updateProductDetails(input: UpdateProductDetailsInput) {
   const client = requireClient();
+  if (input.initialPrice !== undefined) {
+    const { error } = await client.rpc("update_product_details_with_initial_price", {
+      p_product_id: input.id,
+      p_name: input.name,
+      p_category_id: input.categoryId,
+      p_initial_price: input.initialPrice
+    });
+
+    if (error) throw error;
+    return;
+  }
+
   const { error } = await client.rpc("update_product_details", {
     p_product_id: input.id,
     p_name: input.name,

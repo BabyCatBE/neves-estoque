@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  canEditInitialPrice,
+  formatDecimalInput,
   parseOptionalNonNegativeDecimal,
   productNameSchema
 } from "./productValidation";
@@ -31,5 +33,24 @@ describe("parseOptionalNonNegativeDecimal", () => {
     expect(() => parseOptionalNonNegativeDecimal("-1", "Preço inicial")).toThrow(
       "Preço inicial inválido."
     );
+  });
+});
+
+describe("canEditInitialPrice", () => {
+  it("permite editar sem Entradas ou com preço em branco/bonificação", () => {
+    expect(canEditInitialPrice([])).toBe(true);
+    expect(canEditInitialPrice([{ unitPrice: null }, { unitPrice: 0 }])).toBe(true);
+  });
+
+  it("bloqueia quando existe Entrada com preço real", () => {
+    expect(canEditInitialPrice([{ unitPrice: 0 }, { unitPrice: 9.9 }])).toBe(false);
+  });
+});
+
+describe("formatDecimalInput", () => {
+  it("preserva vazio, zero e usa vírgula decimal", () => {
+    expect(formatDecimalInput(null)).toBe("");
+    expect(formatDecimalInput(0)).toBe("0");
+    expect(formatDecimalInput(24.9)).toBe("24,9");
   });
 });

@@ -151,6 +151,8 @@ data class ProductCatalogData(
     val products: List<ProductListItem>,
 )
 
+data class InitialPriceUpdate(val value: Double?)
+
 data class ProductMutationInput(
     val name: String,
     val categoryId: String,

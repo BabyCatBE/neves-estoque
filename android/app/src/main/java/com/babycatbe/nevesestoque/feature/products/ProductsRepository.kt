@@ -144,7 +144,29 @@ class ProductsRepository {
         ) { attachRegisteredDevice() }.decodeAs()
     }
 
-    suspend fun updateProduct(productId: String, name: String, categoryId: String) {
+    /**
+     * [initialPrice] só é enviado quando o Preço inicial ainda é editável e foi alterado;
+     * `null` dentro de [InitialPriceUpdate] remove a referência.
+     */
+    suspend fun updateProduct(
+        productId: String,
+        name: String,
+        categoryId: String,
+        initialPrice: InitialPriceUpdate? = null,
+    ) {
+        if (initialPrice != null) {
+            client().postgrest.rpc(
+                function = "update_product_details_with_initial_price",
+                parameters = buildJsonObject {
+                    put("p_product_id", productId)
+                    put("p_name", name)
+                    put("p_category_id", categoryId)
+                    put("p_initial_price", initialPrice.value)
+                },
+            ) { attachRegisteredDevice() }
+            return
+        }
+
         client().postgrest.rpc(
             function = "update_product_details",
             parameters = buildJsonObject {
