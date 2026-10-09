@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import nevesLogo from "../../assets/neves-logo.webp";
+import { NevesThemeToggle } from "./ui/NevesThemeToggle";
 import { useNetworkStatus } from "../offline/NetworkContext";
 
 type Props = PropsWithChildren<{
@@ -81,6 +82,10 @@ export function AppShell({
               <span>Home</span>
             </Link>
           ) : null}
+
+          <div className={isHome ? "ml-auto shrink-0" : "shrink-0"}>
+            <NevesThemeToggle />
+          </div>
         </div>
 
         {breadcrumbs.length > 1 ? (
@@ -117,7 +122,7 @@ export function AppShell({
       </header>
 
       {!isOnline ? (
-        <div className="border-b border-amber-200 bg-amber-50 text-amber-950">
+        <div className="neves-offline-banner border-b border-amber-200 bg-amber-50 text-amber-950">
           <div className="mx-auto max-w-6xl px-4 py-2 text-xs leading-5 sm:px-6">
             <strong>Sem internet.</strong> Consulta usando os últimos dados salvos neste aparelho
             {lastCacheUpdatedAt ? ` · atualizados em ${formatOfflineTimestamp(lastCacheUpdatedAt)}` : ""}.
