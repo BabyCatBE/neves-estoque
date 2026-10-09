@@ -77,6 +77,10 @@ class ConferenceModuleRepository {
                 productCount = products.count { it.categoryId == category.id },
                 lastConferenceAt = latest?.effectiveAt,
                 conferredToday = latest?.effectiveAt?.let(::conferenceLocalDate) == today,
+                latestConferenceId = latest?.id,
+                todayConferenceCount = categoryConferences.count {
+                    conferenceLocalDate(it.effectiveAt) == today
+                },
             )
         }
     }
