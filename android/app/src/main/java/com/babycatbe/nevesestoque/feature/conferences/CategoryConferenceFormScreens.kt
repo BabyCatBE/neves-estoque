@@ -50,7 +50,7 @@ fun CategoryConferenceFormRoute(
     categoryId: String,
     onBack: () -> Unit,
     onSaved: (String) -> Unit,
-    onReadyToSave: (CategoryConferenceWriteInput) -> Boolean,
+    onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean,
 ) {
     val vm: CategoryConferenceFormViewModel = viewModel(
         key = "category-conference-form-" + categoryId,
