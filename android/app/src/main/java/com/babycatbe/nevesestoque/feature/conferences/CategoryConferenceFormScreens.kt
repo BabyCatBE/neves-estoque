@@ -50,6 +50,7 @@ fun CategoryConferenceFormRoute(
     categoryId: String,
     onBack: () -> Unit,
     onSaved: (String) -> Unit,
+    onReadyToSave: (CategoryConferenceWriteInput) -> Boolean,
 ) {
     val vm: CategoryConferenceFormViewModel = viewModel(
         key = "category-conference-form-" + categoryId,
@@ -74,10 +75,12 @@ fun CategoryConferenceFormRoute(
     CategoryConferenceFormScreen(
         state = state,
         onBack = onBack,
-        onSave = vm::requestSave,
-        onConfirmWarnings = vm::confirmConsumptionWarnings,
+        onSave = { date, responsible, observation, quantities ->
+            vm.requestSave(date, responsible, observation, quantities, onReadyToSave)
+        },
+        onConfirmWarnings = { vm.confirmConsumptionWarnings(onReadyToSave) },
         onDismissWarnings = vm::dismissConsumptionWarnings,
-        onConfirmSameDay = vm::confirmSameDay,
+        onConfirmSameDay = { vm.confirmSameDay(onReadyToSave) },
         onDismissSameDay = vm::dismissSameDay,
         onClearError = vm::clearError,
     )
@@ -102,7 +105,7 @@ private fun CategoryConferenceFormScreen(
     var initialized by remember { mutableStateOf(false) }
     var leaveOpen by rememberSaveable { mutableStateOf(false) }
 
-    // Fluxo de preenchimento: Data → Responsável → quantidades (teclado do app) → Observação.
+    // O último Concluir fecha o teclado; Observação é opcional, somente por toque.
     val keypad = rememberNumericKeypadState()
     val flow = rememberConferenceFocusFlow(setup?.products.orEmpty().map { it.id })
     var localErrors by remember { mutableStateOf(CategoryConferenceFormErrors()) }
