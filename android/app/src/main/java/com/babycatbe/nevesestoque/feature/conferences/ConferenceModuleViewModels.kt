@@ -101,7 +101,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         responsible: String,
         observation: String,
         quantities: Map<String, String>,
-        onReadyToSave: (CategoryConferenceWriteInput) -> Boolean,
+        onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean,
     ) {
         if (_uiState.value.checking || _uiState.value.saving) return
         val setup = _uiState.value.setup ?: return
@@ -212,7 +212,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         }
     }
 
-    fun confirmConsumptionWarnings(onReadyToSave: (CategoryConferenceWriteInput) -> Boolean) {
+    fun confirmConsumptionWarnings(onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean) {
         if (_uiState.value.saving || _uiState.value.checking) return
         val input = pendingInput ?: return
         _uiState.value = _uiState.value.copy(
@@ -239,14 +239,14 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         _uiState.value = _uiState.value.copy(consumptionWarnings = emptyList())
     }
 
-    fun confirmSameDay(onReadyToSave: (CategoryConferenceWriteInput) -> Boolean) {
+    fun confirmSameDay(onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean) {
         if (_uiState.value.saving || _uiState.value.checking) return
         val input = pendingInput ?: return
         _uiState.value = _uiState.value.copy(
             sameDayConferences = emptyList(),
             errorMessage = null,
         )
-        queueSave(input, onReadyToSave)
+        viewModelScope.launch { queueSave(input, onReadyToSave) }
     }
 
     fun dismissSameDay() {
@@ -257,7 +257,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
 
     private suspend fun continueAfterConsumptionReview(
         input: CategoryConferenceWriteInput,
-        onReadyToSave: (CategoryConferenceWriteInput) -> Boolean,
+        onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean,
     ) {
         val sameDay = repository.listSameDayCategoryConferences(
             categoryId = input.categoryId,
@@ -274,20 +274,63 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         queueSave(input, onReadyToSave)
     }
 
-    private fun queueSave(
+    private suspend fun queueSave(
         input: CategoryConferenceWriteInput,
-        onReadyToSave: (CategoryConferenceWriteInput) -> Boolean,
+        onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean,
     ) {
+        val setup = _uiState.value.setup ?: return
         _uiState.value = _uiState.value.copy(
             checking = false,
+            saving = true,
             consumptionWarnings = emptyList(),
             sameDayConferences = emptyList(),
+            errorMessage = null,
         )
-        if (onReadyToSave(input)) {
-            pendingInput = null
-        } else {
+        try {
+            // O arquivo local é gravado ANTES de navegar. Interrupções do Android não
+            // perdem esta contagem: a cópia continua em Alertas → Pendências locais.
+            // Pendências jamais são enviadas automaticamente ao reconectar.
+            val metadata = com.babycatbe.nevesestoque.feature.offline.currentPendingMetadata()
+            val operation = metadata?.let {
+                com.babycatbe.nevesestoque.feature.offline.buildPendingCategoryConference(
+                    input = input,
+                    categoryLabel = setup.categoryName,
+                    productLabel = { productId ->
+                        val product = setup.products.firstOrNull { p -> p.id == productId }
+                        (product?.name ?: "Produto") to (product?.unit ?: "")
+                    },
+                    metadata = it,
+                )
+            }
+            if (operation == null) {
+                _uiState.value = _uiState.value.copy(
+                    saving = false,
+                    errorMessage = "Não foi possível proteger esta contagem no aparelho. Tente novamente.",
+                )
+                return
+            }
+            val stored = com.babycatbe.nevesestoque.feature.offline.PendingStore.save(operation)
+            if (stored is com.babycatbe.nevesestoque.feature.offline.PendingMutationResult.Failure) {
+                _uiState.value = _uiState.value.copy(
+                    saving = false,
+                    errorMessage = stored.userMessage,
+                )
+                return
+            }
+            if (onReadyToSave(input, operation.localId)) {
+                pendingInput = null
+            } else {
+                com.babycatbe.nevesestoque.feature.offline.PendingStore.delete(operation.localId)
+                _uiState.value = _uiState.value.copy(
+                    saving = false,
+                    errorMessage = "Esta Categoria já possui um envio pendente. Verifique o status na lista.",
+                )
+            }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
             _uiState.value = _uiState.value.copy(
-                errorMessage = "Esta Categoria já possui um envio pendente. Verifique o status na lista.",
+                saving = false,
+                errorMessage = "Não foi possível preparar o envio. Sua contagem não foi descartada.",
             )
         }
     }
