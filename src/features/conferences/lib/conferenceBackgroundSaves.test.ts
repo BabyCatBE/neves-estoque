@@ -24,7 +24,7 @@ const metadata: SavePendingConferenceMetadata = {
 
 function createManager(options?: { rejectSend?: boolean }) {
   const stage = vi.fn(async () => "arquivo-local");
-  const send = vi.fn(async () => {
+  const send = vi.fn(async (_input: CategoryConferenceWriteInput) => {
     if (options?.rejectSend) throw new Error("Rede indisponível");
   });
   const reconcile = vi.fn(async () => null as string | null);
