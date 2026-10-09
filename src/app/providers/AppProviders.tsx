@@ -25,14 +25,14 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   return (
     <ThemeProvider>
-    <QueryClientProvider client={queryClient}>
-      <NetworkProvider>
-        <AuthProvider>
-          <OfflineCacheSync />
-          {children}
-        </AuthProvider>
-      </NetworkProvider>
-    </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <NetworkProvider>
+          <AuthProvider>
+            <OfflineCacheSync />
+            {children}
+          </AuthProvider>
+        </NetworkProvider>
+      </QueryClientProvider>
     </ThemeProvider>
   );
 }
