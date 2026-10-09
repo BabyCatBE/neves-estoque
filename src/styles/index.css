@@ -151,19 +151,22 @@ input, select, textarea { scroll-margin-top: 6rem; scroll-margin-bottom: 7rem; }
   :root[data-neves-theme="dark"] input::placeholder,
   :root[data-neves-theme="dark"] textarea::placeholder { color: #a69e96; }
   :root[data-neves-theme="dark"] :is(input, select, textarea):disabled { color: #b8b0a7; }
-  :root[data-neves-theme="dark"] .hover\\:bg-zinc-50:hover { background-color: #2a2622; }
-  :root[data-neves-theme="dark"] .hover\\:bg-zinc-100:hover { background-color: #302b27; }
-  :root[data-neves-theme="dark"] .hover\\:bg-zinc-200:hover { background-color: #3a3430; }
-  :root[data-neves-theme="dark"] .hover\\:bg-red-50:hover { background-color: #4a2926; }
-  :root[data-neves-theme="dark"] .hover\\:bg-red-800:hover { background-color: #b91c1c; }
-  :root[data-neves-theme="dark"] .hover\\:bg-amber-100:hover { background-color: #4a391d; }
-  :root[data-neves-theme="dark"] .hover\\:text-zinc-700:hover { color: #f4f1ed; }
-  :root[data-neves-theme="dark"] .hover\\:border-zinc-300:hover { border-color: #8a8078; }
-  :root[data-neves-theme="dark"] .hover\\:border-red-200:hover { border-color: #d93a3a; }
-  :root[data-neves-theme="dark"] .disabled\\:bg-zinc-200:disabled { background-color: #3a3430; }
-  :root[data-neves-theme="dark"] .disabled\\:text-zinc-500:disabled { color: #b8b0a7; }
-  :root[data-neves-theme="dark"] .disabled\\:border-zinc-200:disabled { border-color: #3d3732; }
+  :root[data-neves-theme="dark"] .hover\:bg-zinc-50:hover { background-color: #2a2622; }
+  :root[data-neves-theme="dark"] .hover\:bg-zinc-100:hover { background-color: #302b27; }
+  :root[data-neves-theme="dark"] .hover\:bg-zinc-200:hover { background-color: #3a3430; }
+  :root[data-neves-theme="dark"] .hover\:bg-red-50:hover { background-color: #4a2926; }
+  :root[data-neves-theme="dark"] .hover\:bg-red-800:hover { background-color: #b91c1c; }
+  :root[data-neves-theme="dark"] .hover\:bg-amber-100:hover { background-color: #4a391d; }
+  :root[data-neves-theme="dark"] .hover\:text-zinc-700:hover { color: #f4f1ed; }
+  :root[data-neves-theme="dark"] .hover\:border-zinc-300:hover { border-color: #8a8078; }
+  :root[data-neves-theme="dark"] .hover\:border-red-200:hover { border-color: #d93a3a; }
+  :root[data-neves-theme="dark"] .disabled\:bg-zinc-200:disabled { background-color: #3a3430; }
+  :root[data-neves-theme="dark"] .disabled\:text-zinc-500:disabled { color: #b8b0a7; }
+  :root[data-neves-theme="dark"] .disabled\:border-zinc-200:disabled { border-color: #3d3732; }
   :root[data-neves-theme="dark"] .neves-theme-toggle { color-scheme: dark; }
+  :root[data-neves-theme] :is(.bg-white, .bg-zinc-50, .bg-zinc-100, .bg-red-50, .bg-amber-50, .bg-emerald-50) {
+    transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1), color 300ms cubic-bezier(0.4, 0, 0.2, 1), border-color 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
 
   /* Papel de conferência e de relatório permanece claro na prévia e na impressão. */
   :root[data-neves-theme="dark"] :is(.conference-print-page, .reports-print-sheet) {
