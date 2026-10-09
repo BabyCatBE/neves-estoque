@@ -122,7 +122,7 @@ export function AppShell({
       </header>
 
       {!isOnline ? (
-        <div className="border-b border-amber-200 bg-amber-50 text-amber-950">
+        <div className="neves-offline-banner border-b border-amber-200 bg-amber-50 text-amber-950">
           <div className="mx-auto max-w-6xl px-4 py-2 text-xs leading-5 sm:px-6">
             <strong>Sem internet.</strong> Consulta usando os últimos dados salvos neste aparelho
             {lastCacheUpdatedAt ? ` · atualizados em ${formatOfflineTimestamp(lastCacheUpdatedAt)}` : ""}.
