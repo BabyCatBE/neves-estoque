@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
@@ -13,7 +13,6 @@ import { createBrowserUuid } from "../../../shared/lib/browserUuid";
 import { useAuth } from "../../auth/context/AuthContext";
 import { savePendingConference } from "../../offline/lib/pendingOperations";
 import {
-  createCategoryConference,
   getCategoryConferenceSetup,
   listSameDayCategoryConferences,
   reviewConferenceConsumption,
@@ -30,6 +29,7 @@ import {
   localDateInputValue,
   parseConferenceQuantity
 } from "../lib/conferenceValidation";
+import { conferenceBackgroundSaves } from "../lib/conferenceBackgroundSaves";
 
 export function NewCategoryConferencePage() {
   const { categoryId } = useParams();
@@ -79,6 +79,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const [consumptionWarnings, setConsumptionWarnings] = useState<ConferenceConsumptionWarning[]>([]);
   const [pendingPayload, setPendingPayload] = useState<CategoryConferenceWriteInput | null>(null);
   const [checkingSave, setCheckingSave] = useState(false);
+  const [preparingSave, setPreparingSave] = useState(false);
   const [idempotencyKey] = useState(() => createBrowserUuid());
   const allowNavigationRef = useRef(false);
 
@@ -99,8 +100,6 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
       !allowNavigationRef.current &&
       currentLocation.pathname !== nextLocation.pathname
   );
-
-  const saveMutation = useMutation({ mutationFn: createCategoryConference });
 
   const focusQuantity = (productId: string) => {
     window.setTimeout(() => document.getElementById(`conference-qty-${productId}`)?.focus(), 0);
@@ -176,14 +175,25 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         return;
       }
 
-      await saveMutation.mutateAsync(payload);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["conferences"] }),
-        queryClient.invalidateQueries({ queryKey: ["products"] }),
-        queryClient.invalidateQueries({ queryKey: ["purchases"] })
-      ]);
-      allowNavigationRef.current = true;
-      navigate("/conferencias/fazer?saved=1", { replace: true });
+      if (!session?.user.id || !deviceId) {
+        throw new Error("Este acesso ainda não está pronto para registrar Conferências.");
+      }
+      setPreparingSave(true);
+      try {
+        // O IndexedDB confirma a cópia protegida ANTES de sair da tela.
+        // O envio oficial continua em memória enquanto a pessoa navega.
+        await conferenceBackgroundSaves.submit(payload, {
+          authUserId: session.user.id,
+          appUserId,
+          deviceId,
+          actorLabel: displayName ?? (username ? `@${username}` : "Usuário autorizado"),
+          categoryLabel: setup.category.name
+        }, queryClient);
+        allowNavigationRef.current = true;
+        navigate("/conferencias/fazer?queued=1", { replace: true });
+      } finally {
+        setPreparingSave(false);
+      }
     } catch (error) {
       setActionError(getConferenceErrorMessage(error));
     }
@@ -254,7 +264,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
     () => void requestSave(),
     blocker.state !== "blocked" &&
       !pendingPayload &&
-      !saveMutation.isPending &&
+      !preparingSave &&
       !checkingSave
   );
 
@@ -266,7 +276,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
     event.preventDefault();
     const next = setup.products[productIndex + 1];
     if (next) focusQuantity(next.id);
-    else document.getElementById("conference-observation")?.focus();
+    else event.currentTarget.blur();
   };
 
   const latestSameDay = sameDayConferences[0] ?? null;
@@ -416,8 +426,8 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         <div className="mx-auto flex max-w-6xl justify-end">
           <Button
             id="conference-save"
-            isLoading={saveMutation.isPending || checkingSave}
-            loadingLabel={saveMutation.isPending ? "Salvando…" : "Verificando…"}
+            isLoading={preparingSave || checkingSave}
+            loadingLabel={preparingSave ? "Preparando envio…" : "Verificando…"}
             onClick={() => void requestSave()}
           >
             {isOnline ? "Salvar Conferência" : "Salvar pendência"}
@@ -471,8 +481,8 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
                 Voltar e conferir
               </Button>
               <Button
-                isLoading={checkingSave || saveMutation.isPending}
-                loadingLabel={saveMutation.isPending ? "Salvando…" : "Verificando…"}
+                isLoading={checkingSave || preparingSave}
+                loadingLabel={preparingSave ? "Preparando envio…" : "Verificando…"}
                 onClick={() => void confirmConsumptionWarnings()}
               >
                 Confirmar mesmo assim
@@ -520,13 +530,17 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
                 variant="secondary"
                 onClick={() => {
                   allowNavigationRef.current = true;
-                  navigate(`/conferencias/${latestSameDay.id}/editar`);
+                  navigate(
+                    sameDayConferences.length === 1
+                      ? `/conferencias/${latestSameDay.id}/editar`
+                      : `/conferencias/historico/${setup.category.id}`
+                  );
                 }}
               >
                 Corrigir existente
               </Button>
               <Button
-                isLoading={saveMutation.isPending}
+                isLoading={preparingSave}
                 loadingLabel="Salvando…"
                 onClick={() => {
                   const payload = pendingPayload;
