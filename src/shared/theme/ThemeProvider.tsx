@@ -15,6 +15,8 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   useLayoutEffect(() => {
     document.documentElement.dataset.nevesTheme = mode;
     persistBrowserTheme(mode);
+    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (themeColor) themeColor.content = mode === "dark" ? "#110f0d" : "#b91c1c";
   }, [mode]);
 
   const value = useMemo(() => ({ mode, setMode }), [mode]);
