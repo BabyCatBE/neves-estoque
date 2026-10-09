@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import nevesLogo from "../../assets/neves-logo.webp";
+import { NevesThemeToggle } from "./ui/NevesThemeToggle";
 import { useNetworkStatus } from "../offline/NetworkContext";
 
 type Props = PropsWithChildren<{
@@ -81,6 +82,10 @@ export function AppShell({
               <span>Home</span>
             </Link>
           ) : null}
+
+          <div className={isHome ? "ml-auto shrink-0" : "shrink-0"}>
+            <NevesThemeToggle />
+          </div>
         </div>
 
         {breadcrumbs.length > 1 ? (
