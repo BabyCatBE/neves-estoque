@@ -218,7 +218,7 @@ function ConferenceEditForm({ details }: { details: ConferenceDetails }) {
     event.preventDefault();
     const next = details.items[productIndex + 1];
     if (next) focusQuantity(next.productId);
-    else document.getElementById("conference-edit-observation")?.focus();
+    else event.currentTarget.blur();
   };
 
   const changes = [
