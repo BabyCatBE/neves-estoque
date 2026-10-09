@@ -101,6 +101,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         responsible: String,
         observation: String,
         quantities: Map<String, String>,
+        onReadyToSave: (CategoryConferenceWriteInput) -> Boolean,
     ) {
         if (_uiState.value.checking || _uiState.value.saving) return
         val setup = _uiState.value.setup ?: return
@@ -199,7 +200,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
                         consumptionWarnings = warnings,
                     )
                 } else {
-                    continueAfterConsumptionReview(input)
+                    continueAfterConsumptionReview(input, onReadyToSave)
                 }
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
@@ -211,7 +212,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         }
     }
 
-    fun confirmConsumptionWarnings() {
+    fun confirmConsumptionWarnings(onReadyToSave: (CategoryConferenceWriteInput) -> Boolean) {
         if (_uiState.value.saving || _uiState.value.checking) return
         val input = pendingInput ?: return
         _uiState.value = _uiState.value.copy(
@@ -221,7 +222,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         )
         viewModelScope.launch {
             try {
-                continueAfterConsumptionReview(input)
+                continueAfterConsumptionReview(input, onReadyToSave)
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 _uiState.value = _uiState.value.copy(
@@ -238,14 +239,14 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         _uiState.value = _uiState.value.copy(consumptionWarnings = emptyList())
     }
 
-    fun confirmSameDay() {
+    fun confirmSameDay(onReadyToSave: (CategoryConferenceWriteInput) -> Boolean) {
         if (_uiState.value.saving || _uiState.value.checking) return
         val input = pendingInput ?: return
         _uiState.value = _uiState.value.copy(
             sameDayConferences = emptyList(),
             errorMessage = null,
         )
-        viewModelScope.launch { persist(input) }
+        queueSave(input, onReadyToSave)
     }
 
     fun dismissSameDay() {
@@ -254,7 +255,10 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         _uiState.value = _uiState.value.copy(sameDayConferences = emptyList())
     }
 
-    private suspend fun continueAfterConsumptionReview(input: CategoryConferenceWriteInput) {
+    private suspend fun continueAfterConsumptionReview(
+        input: CategoryConferenceWriteInput,
+        onReadyToSave: (CategoryConferenceWriteInput) -> Boolean,
+    ) {
         val sameDay = repository.listSameDayCategoryConferences(
             categoryId = input.categoryId,
             dateValue = conferenceLocalDate(input.effectiveAt),
@@ -267,49 +271,24 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
             )
             return
         }
-        persist(input)
+        queueSave(input, onReadyToSave)
     }
 
-    private suspend fun persist(input: CategoryConferenceWriteInput) {
+    private fun queueSave(
+        input: CategoryConferenceWriteInput,
+        onReadyToSave: (CategoryConferenceWriteInput) -> Boolean,
+    ) {
         _uiState.value = _uiState.value.copy(
             checking = false,
-            saving = true,
             consumptionWarnings = emptyList(),
             sameDayConferences = emptyList(),
-            errorMessage = null,
         )
-        try {
-            val conferenceId = repository.createCategoryConference(input)
+        if (onReadyToSave(input)) {
             pendingInput = null
+        } else {
             _uiState.value = _uiState.value.copy(
-                saving = false,
-                savedConferenceId = conferenceId,
+                errorMessage = "Esta Categoria já possui um envio pendente. Verifique o status na lista.",
             )
-        } catch (error: Throwable) {
-            if (error is CancellationException) throw error
-            val reconciledId = if (shouldReconcileConferenceFailure(error)) {
-                try {
-                    repository.findConferenceIdByIdempotencyKey(idempotencyKey)
-                } catch (reload: Throwable) {
-                    if (reload is CancellationException) throw reload
-                    null
-                }
-            } else {
-                null
-            }
-            if (reconciledId != null) {
-                pendingInput = null
-                _uiState.value = _uiState.value.copy(
-                    saving = false,
-                    savedConferenceId = reconciledId,
-                    errorMessage = null,
-                )
-            } else {
-                _uiState.value = _uiState.value.copy(
-                    saving = false,
-                    errorMessage = conferenceModuleErrorMessage(error),
-                )
-            }
         }
     }
 
