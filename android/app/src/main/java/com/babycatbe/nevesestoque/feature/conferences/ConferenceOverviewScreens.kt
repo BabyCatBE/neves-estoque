@@ -260,7 +260,8 @@ private fun ConferenceCategoriesScreen(
                 val savingBlocked = saveStatus?.phase == ConferenceSavePhase.Saving ||
                     saveStatus?.phase == ConferenceSavePhase.Failed
                 val conferredToday = category.conferredToday ||
-                    saveStatus?.phase == ConferenceSavePhase.Saved
+                    (saveStatus?.phase == ConferenceSavePhase.Saved &&
+                        saveStatus.effectiveDate == java.time.LocalDate.now().toString())
                 NevesContentCard(onClick = {
                     if (enabled && !savingBlocked) {
                         if (!historyMode && conferredToday) selectedCategoryId = category.id
