@@ -24,3 +24,171 @@ input, select, textarea { scroll-margin-top: 6rem; scroll-margin-bottom: 7rem; }
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/*
+ * Neves Web — paleta escura derivada de NevesTheme.kt / NevesColors.kt (Android).
+ * Claro mantém exatamente as utilities antigas. O seletor usa apenas light/dark.
+ * As utilities legadas recebem tradução semântica centralizada até sua migração
+ * gradual para tokens de interface; CSS de impressão não recebe este mapeamento.
+ */
+:root {
+  --neves-theme-background: #f7f7f8;
+  --neves-theme-surface: #ffffff;
+  --neves-theme-surface-variant: #f1f1f3;
+  --neves-theme-outline: #d4d4d8;
+  --neves-theme-text: #18181b;
+  --neves-theme-muted: #52525b;
+  --neves-theme-primary: #b91c1c;
+}
+
+.neves-theme-toggle {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 60px;
+  height: 32px;
+  padding: 3px 7px;
+  flex: none;
+  border: 1px solid var(--neves-theme-outline);
+  border-radius: 9999px;
+  background: var(--neves-theme-surface-variant);
+  cursor: pointer;
+  vertical-align: middle;
+  color: var(--neves-theme-muted);
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
+}
+.neves-theme-toggle::before {
+  content: "";
+  position: absolute;
+  inset: -8px -5px;
+}
+.neves-theme-toggle:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 4px;
+}
+.neves-theme-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--neves-theme-primary);
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), background-color 300ms ease;
+}
+:root[data-neves-theme="dark"] .neves-theme-toggle__thumb { transform: translateX(28px); }
+.neves-theme-toggle svg {
+  position: relative;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  transition: color 300ms ease;
+}
+.neves-theme-toggle__sun { color: #fff; }
+.neves-theme-toggle__moon { color: var(--neves-theme-muted); opacity: 0.8; }
+:root[data-neves-theme="dark"] .neves-theme-toggle__sun { color: var(--neves-theme-muted); }
+:root[data-neves-theme="dark"] .neves-theme-toggle__moon { color: #fff; opacity: 1; }
+
+@media screen {
+  :root[data-neves-theme="dark"] {
+    color-scheme: dark;
+    --neves-theme-background: #181614;
+    --neves-theme-surface: #211e1b;
+    --neves-theme-surface-variant: #2a2622;
+    --neves-theme-outline: #3d3732;
+    --neves-theme-text: #f4f1ed;
+    --neves-theme-muted: #b8b0a7;
+    --neves-theme-primary: #d93a3a;
+    background: #181614;
+    color: #f4f1ed;
+  }
+  :root[data-neves-theme="dark"] body { background: #181614; color: #f4f1ed; }
+  :root[data-neves-theme="dark"] :is(.bg-white) { background-color: #211e1b; }
+  :root[data-neves-theme="dark"] :is(.bg-white\/95) { background-color: rgba(33,30,27,.95); }
+  :root[data-neves-theme="dark"] :is(.bg-zinc-50) { background-color: #181614; }
+  :root[data-neves-theme="dark"] :is(.bg-zinc-50\/70) { background-color: rgba(42,38,34,.70); }
+  :root[data-neves-theme="dark"] :is(.bg-zinc-100) { background-color: #2a2622; }
+  :root[data-neves-theme="dark"] :is(.bg-zinc-200) { background-color: #302b27; }
+  :root[data-neves-theme="dark"] :is(.bg-zinc-300, .bg-zinc-400) { background-color: #3a3430; }
+  :root[data-neves-theme="dark"] :is(.bg-zinc-800) { background-color: #302b27; }
+  :root[data-neves-theme="dark"] :is(.bg-zinc-900) { background-color: #211e1b; }
+  :root[data-neves-theme="dark"] :is(.bg-zinc-950) { background-color: #110f0d; }
+  :root[data-neves-theme="dark"] :is(.bg-red-50) { background-color: #3a1f1c; }
+  :root[data-neves-theme="dark"] :is(.bg-red-50\/40) { background-color: rgba(58,31,28,.4); }
+  :root[data-neves-theme="dark"] :is(.bg-red-50\/50) { background-color: rgba(58,31,28,.5); }
+  :root[data-neves-theme="dark"] :is(.bg-red-50\/60) { background-color: rgba(58,31,28,.6); }
+  :root[data-neves-theme="dark"] :is(.bg-red-100) { background-color: #4a1f1b; }
+  :root[data-neves-theme="dark"] :is(.bg-red-700) { background-color: #d93a3a; }
+  :root[data-neves-theme="dark"] :is(.bg-red-800) { background-color: #b91c1c; }
+  :root[data-neves-theme="dark"] :is(.bg-amber-50) { background-color: #3a2c12; }
+  :root[data-neves-theme="dark"] :is(.bg-amber-100) { background-color: #4a391d; }
+  :root[data-neves-theme="dark"] :is(.bg-emerald-50) { background-color: #173323; }
+  :root[data-neves-theme="dark"] :is(.bg-emerald-100) { background-color: #224632; }
+  :root[data-neves-theme="dark"] :is(.text-zinc-950, .text-zinc-900, .text-zinc-800) { color: #f4f1ed; }
+  :root[data-neves-theme="dark"] :is(.text-zinc-700) { color: #e2dbd3; }
+  :root[data-neves-theme="dark"] :is(.text-zinc-600, .text-zinc-500) { color: #b8b0a7; }
+  :root[data-neves-theme="dark"] :is(.text-zinc-400) { color: #a69e96; }
+  :root[data-neves-theme="dark"] :is(.text-zinc-200) { color: #f4f1ed; }
+  :root[data-neves-theme="dark"] :is(.text-red-700, .text-red-800, .text-red-900, .text-red-950) { color: #ffb4ab; }
+  :root[data-neves-theme="dark"] :is(.text-red-100) { color: #fff0ec; }
+  :root[data-neves-theme="dark"] :is(.text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950) { color: #f5cf8a; }
+  :root[data-neves-theme="dark"] :is(.text-emerald-700, .text-emerald-800, .text-emerald-900, .text-emerald-950) { color: #9be3b8; }
+  :root[data-neves-theme="dark"] :is(.border-zinc-100, .border-zinc-200, .divide-zinc-100, .divide-zinc-200) { border-color: #3d3732; }
+  :root[data-neves-theme="dark"] :is(.border-zinc-300) { border-color: #514942; }
+  :root[data-neves-theme="dark"] :is(.border-zinc-400) { border-color: #8a8078; }
+  :root[data-neves-theme="dark"] :is(.border-red-100, .border-red-200) { border-color: #5a302d; }
+  :root[data-neves-theme="dark"] :is(.border-red-400, .border-red-500, .border-red-600, .border-red-700, .border-red-800) { border-color: #d93a3a; }
+  :root[data-neves-theme="dark"] :is(.border-amber-100, .border-amber-200) { border-color: #715528; }
+  :root[data-neves-theme="dark"] :is(.border-amber-300) { border-color: #b38338; }
+  :root[data-neves-theme="dark"] :is(.border-emerald-100, .border-emerald-200) { border-color: #39694a; }
+  :root[data-neves-theme="dark"] :is(.fill-zinc-400, .fill-zinc-500) { fill: #b8b0a7; }
+  :root[data-neves-theme="dark"] :is(.ring-red-100) { --tw-ring-color: #733330; }
+  :root[data-neves-theme="dark"] :is(.ring-red-300, .ring-red-600) { --tw-ring-color: #d93a3a; }
+  :root[data-neves-theme="dark"] :is(button, a, input, textarea, select) { --tw-ring-offset-color: #211e1b; }
+  :root[data-neves-theme="dark"] input::placeholder,
+  :root[data-neves-theme="dark"] textarea::placeholder { color: #a69e96; }
+  :root[data-neves-theme="dark"] :is(input, select, textarea):disabled { color: #b8b0a7; }
+  :root[data-neves-theme="dark"] .hover\\:bg-zinc-50:hover { background-color: #2a2622; }
+  :root[data-neves-theme="dark"] .hover\\:bg-zinc-100:hover { background-color: #302b27; }
+  :root[data-neves-theme="dark"] .hover\\:bg-zinc-200:hover { background-color: #3a3430; }
+  :root[data-neves-theme="dark"] .hover\\:bg-red-50:hover { background-color: #4a2926; }
+  :root[data-neves-theme="dark"] .hover\\:bg-red-800:hover { background-color: #b91c1c; }
+  :root[data-neves-theme="dark"] .hover\\:bg-amber-100:hover { background-color: #4a391d; }
+  :root[data-neves-theme="dark"] .hover\\:text-zinc-700:hover { color: #f4f1ed; }
+  :root[data-neves-theme="dark"] .hover\\:border-zinc-300:hover { border-color: #8a8078; }
+  :root[data-neves-theme="dark"] .hover\\:border-red-200:hover { border-color: #d93a3a; }
+  :root[data-neves-theme="dark"] .disabled\\:bg-zinc-200:disabled { background-color: #3a3430; }
+  :root[data-neves-theme="dark"] .disabled\\:text-zinc-500:disabled { color: #b8b0a7; }
+  :root[data-neves-theme="dark"] .disabled\\:border-zinc-200:disabled { border-color: #3d3732; }
+  :root[data-neves-theme="dark"] .neves-theme-toggle { color-scheme: dark; }
+
+  /* Papel de conferência e de relatório permanece claro na prévia e na impressão. */
+  :root[data-neves-theme="dark"] :is(.conference-print-page, .reports-print-sheet) {
+    background: #ffffff;
+    color: #18181b;
+    border-color: #d4d4d8;
+    color-scheme: light;
+  }
+  :root[data-neves-theme="dark"] :is(.conference-print-page, .reports-print-sheet) :is(.bg-white, .bg-zinc-50) { background-color: #ffffff; }
+  :root[data-neves-theme="dark"] :is(.conference-print-page, .reports-print-sheet) :is(.text-zinc-950, .text-zinc-900, .text-zinc-800) { color: #18181b; }
+  :root[data-neves-theme="dark"] :is(.conference-print-page, .reports-print-sheet) :is(.text-zinc-600, .text-zinc-500, .text-zinc-400) { color: #52525b; }
+  :root[data-neves-theme="dark"] :is(.conference-print-page, .reports-print-sheet) :is(.border-zinc-300, .border-zinc-400) { border-color: #a1a1aa; }
+  :root[data-neves-theme="dark"] :is(.conference-print-page, .reports-print-sheet) .bg-red-700 { background-color: #b91c1c; }
+  :root[data-neves-theme="dark"] :is(.conference-print-page, .reports-print-sheet) .text-red-700 { color: #b91c1c; }
+  :root[data-neves-theme="dark"] :is(.conference-print-page, .reports-print-sheet) .border-red-700 { border-color: #b91c1c; }
+}
+
+/* Impressões ignoram a seleção visual do usuário (inclusive cabeçalhos e tabelas). */
+@media print {
+  :root[data-neves-theme="dark"] { color-scheme: light; background: #fff; color: #18181b; }
+  :root[data-neves-theme="dark"] body { background: #fff; color: #18181b; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neves-theme-toggle,
+  .neves-theme-toggle__thumb,
+  .neves-theme-toggle svg { transition-duration: 0.01ms !important; }
+}
