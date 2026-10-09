@@ -130,6 +130,11 @@ private fun ConferenceHubCard(
 fun ConferenceCategoriesRoute(
     onBack: () -> Unit,
     onCategoryClick: (String) -> Unit,
+    onEditConference: (String) -> Unit,
+    onHistoryCategory: (String) -> Unit,
+    saveStatuses: Map<String, ConferenceSaveStatus> = emptyMap(),
+    onRetrySave: (String) -> Unit = {},
+    onDiscardFailed: (String) -> Unit = {},
     refreshKey: Long = 0L,
     noticeMessage: String? = null,
     onDismissNotice: () -> Unit = {},
@@ -144,6 +149,11 @@ fun ConferenceCategoriesRoute(
         onBack = onBack,
         onRefresh = vm::refresh,
         onCategoryClick = onCategoryClick,
+        onEditConference = onEditConference,
+        onHistoryCategory = onHistoryCategory,
+        saveStatuses = saveStatuses,
+        onRetrySave = onRetrySave,
+        onDiscardFailed = onDiscardFailed,
         historyMode = false,
         noticeMessage = noticeMessage,
         onDismissNotice = onDismissNotice,
@@ -166,6 +176,11 @@ fun ConferenceHistoryCategoriesRoute(
         onBack = onBack,
         onRefresh = vm::refresh,
         onCategoryClick = onCategoryClick,
+        onEditConference = {},
+        onHistoryCategory = {},
+        saveStatuses = emptyMap(),
+        onRetrySave = {},
+        onDiscardFailed = {},
         historyMode = true,
         noticeMessage = null,
         onDismissNotice = {},
@@ -180,10 +195,17 @@ private fun ConferenceCategoriesScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onCategoryClick: (String) -> Unit,
+    onEditConference: (String) -> Unit,
+    onHistoryCategory: (String) -> Unit,
+    saveStatuses: Map<String, ConferenceSaveStatus>,
+    onRetrySave: (String) -> Unit,
+    onDiscardFailed: (String) -> Unit,
     historyMode: Boolean,
     noticeMessage: String?,
     onDismissNotice: () -> Unit,
 ) {
+    var selectedCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var discardCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
     Scaffold(
         topBar = {
             ConferenceTopBar(
@@ -234,7 +256,17 @@ private fun ConferenceCategoriesScreen(
             }
             items(state.categories, key = { it.id }) { category ->
                 val enabled = if (historyMode) category.lastConferenceAt != null else category.productCount > 0
-                NevesContentCard(onClick = { if (enabled) onCategoryClick(category.id) }) {
+                val saveStatus = if (historyMode) null else saveStatuses[category.id]
+                val savingBlocked = saveStatus?.phase == ConferenceSavePhase.Saving ||
+                    saveStatus?.phase == ConferenceSavePhase.Failed
+                val conferredToday = category.conferredToday ||
+                    saveStatus?.phase == ConferenceSavePhase.Saved
+                NevesContentCard(onClick = {
+                    if (enabled && !savingBlocked) {
+                        if (!historyMode && conferredToday) selectedCategoryId = category.id
+                        else onCategoryClick(category.id)
+                    }
+                }) {
                     Column(
                         Modifier.fillMaxWidth().padding(16.dp)
                     ) {
@@ -248,7 +280,7 @@ private fun ConferenceCategoriesScreen(
                                     modifier = Modifier.padding(top = 3.dp),
                                 )
                             }
-                            if (!historyMode && category.conferredToday) {
+                            if (!historyMode && conferredToday) {
                                 Text(
                                     "✓ Conferida hoje",
                                     color = MaterialTheme.colorScheme.primary,
@@ -262,7 +294,11 @@ private fun ConferenceCategoriesScreen(
                                     "Última Conferência: " + formatConferenceDateShort(category.lastConferenceAt)
                                 historyMode -> "Sem Conferências registradas."
                                 category.productCount == 0 -> "Categoria sem Produtos ativos."
-                                category.conferredToday -> "Outra Conferência hoje só deve ser registrada se houve nova contagem física."
+                                saveStatus?.phase == ConferenceSavePhase.Saving ->
+                                    "Salvando em segundo plano. Aguarde a confirmação antes de reenviar."
+                                saveStatus?.phase == ConferenceSavePhase.Failed ->
+                                    "Falha no envio: " + (saveStatus.message ?: "tente novamente.")
+                                conferredToday -> "Outra Conferência hoje só deve ser registrada se houve nova contagem física."
                                 category.lastConferenceAt != null ->
                                     "Última Conferência: " + formatConferenceDateShort(category.lastConferenceAt)
                                 else -> "Nunca conferida."
@@ -270,6 +306,23 @@ private fun ConferenceCategoriesScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp),
                         )
+                        if (saveStatus?.phase == ConferenceSavePhase.Saving) {
+                            Text(
+                                "Salvando…",
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                        if (saveStatus?.phase == ConferenceSavePhase.Failed) {
+                            Row {
+                                TextButton(onClick = { onRetrySave(category.id) }) {
+                                    Text("Tentar novamente")
+                                }
+                                TextButton(onClick = { discardCategoryId = category.id }) {
+                                    Text("Descartar tentativa")
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -277,6 +330,47 @@ private fun ConferenceCategoriesScreen(
                 item { NevesContentCard { NevesStatusMessage("Ainda não existem Categorias ativas.") } }
             }
         }
+    }
+    val selected = state.categories.firstOrNull { it.id == selectedCategoryId }
+    if (!historyMode && selected != null) {
+        AlertDialog(
+            onDismissRequest = { selectedCategoryId = null },
+            title = { Text(selected.name) },
+            text = { Text("Esta Categoria já foi conferida hoje. Você deseja editar/visualizar a contagem ou fazer uma nova Conferência?") },
+            confirmButton = {
+                Button(onClick = {
+                    selectedCategoryId = null
+                    if (selected.todayConferenceCount == 1 && selected.latestConferenceId != null) {
+                        onEditConference(selected.latestConferenceId)
+                    } else {
+                        onHistoryCategory(selected.id)
+                    }
+                }) { Text("Editar/visualizar") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    selectedCategoryId = null
+                    onCategoryClick(selected.id)
+                }) { Text("Nova conferência") }
+            },
+        )
+    }
+    if (discardCategoryId != null) {
+        val id = discardCategoryId!!
+        AlertDialog(
+            onDismissRequest = { discardCategoryId = null },
+            title = { Text("Descartar tentativa?") },
+            text = { Text("A contagem preenchida para esta tentativa será perdida do aparelho. Em caso de falha de rede, verifique o Histórico antes de registrar outra.") },
+            confirmButton = {
+                Button(onClick = {
+                    onDiscardFailed(id)
+                    discardCategoryId = null
+                }) { Text("Descartar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { discardCategoryId = null }) { Text("Cancelar") }
+            },
+        )
     }
 }
 
