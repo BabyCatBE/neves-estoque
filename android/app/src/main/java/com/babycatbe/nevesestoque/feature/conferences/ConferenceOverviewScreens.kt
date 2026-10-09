@@ -344,7 +344,7 @@ private fun ConferenceCategoriesScreen(
         AlertDialog(
             onDismissRequest = { selectedCategoryId = null },
             title = { Text(selected.name) },
-            text = { Text("Esta Categoria já foi conferida hoje. Você deseja editar/visualizar a contagem ou fazer uma nova Conferência?") },
+            text = { Text("Esta Categoria já foi conferida hoje. Escolha Editar para consultar ou corrigir os valores, ou Nova conferência para registrar outra contagem física.") },
             confirmButton = {
                 Button(onClick = {
                     selectedCategoryId = null
@@ -353,7 +353,7 @@ private fun ConferenceCategoriesScreen(
                     } else {
                         onHistoryCategory(selected.id)
                     }
-                }) { Text("Editar/visualizar") }
+                }) { Text("Editar") }
             },
             dismissButton = {
                 TextButton(onClick = {
