@@ -164,6 +164,16 @@ input, select, textarea { scroll-margin-top: 6rem; scroll-margin-bottom: 7rem; }
   :root[data-neves-theme="dark"] .disabled\:text-zinc-500:disabled { color: #b8b0a7; }
   :root[data-neves-theme="dark"] .disabled\:border-zinc-200:disabled { border-color: #3d3732; }
   :root[data-neves-theme="dark"] .neves-theme-toggle { color-scheme: dark; }
+  /* Tokens específicos do Android: CardBorder / OfflineBanner / OnOfflineBanner. */
+  :root[data-neves-theme="dark"] .neves-card { border-color: #3a2a27; }
+  :root[data-neves-theme="dark"] .neves-offline-banner {
+    background-color: #5c3a10;
+    color: #fde7c2;
+    border-color: #715528;
+  }
+  :root[data-neves-theme="dark"] .accent-red-700 { accent-color: #d93a3a; }
+  :root[data-neves-theme="dark"] .focus\\:border-red-500:focus { border-color: #d93a3a; }
+  :root[data-neves-theme="dark"] .divide-zinc-100 > :not(:last-child) { border-color: #3d3732; }
   :root[data-neves-theme] :is(.bg-white, .bg-zinc-50, .bg-zinc-100, .bg-red-50, .bg-amber-50, .bg-emerald-50) {
     transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1), color 300ms cubic-bezier(0.4, 0, 0.2, 1), border-color 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
