@@ -28,6 +28,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.babycatbe.nevesestoque.feature.auth.AuthUiState
 import com.babycatbe.nevesestoque.feature.conferences.CategoryConferenceFormRoute
+import com.babycatbe.nevesestoque.feature.conferences.ConferenceBackgroundSavesViewModel
+import com.babycatbe.nevesestoque.feature.conferences.ConferenceSavePhase
 import com.babycatbe.nevesestoque.feature.conferences.CategoryConferenceHistoryRoute
 import com.babycatbe.nevesestoque.feature.conferences.ConferenceCategoriesRoute
 import com.babycatbe.nevesestoque.feature.conferences.ConferenceDetailRoute
@@ -117,6 +119,15 @@ private const val NOTICE_KEY = "catalog-notice"
 @Composable
 fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
     val navController = rememberNavController()
+    // Escopo do app autenticado, não da tela de formulário: a navegação não cancela envios.
+    val conferenceSaves: ConferenceBackgroundSavesViewModel = viewModel()
+    val conferenceSaveStatuses by conferenceSaves.statuses.collectAsStateWithLifecycle()
+    LaunchedEffect(authState.appUserId) {
+        conferenceSaves.bindUser(authState.appUserId.orEmpty())
+    }
+    val confirmedConferenceCount = conferenceSaveStatuses.values.count {
+        it.phase == ConferenceSavePhase.Saved
+    }
 
     // Pré-carregamento enxuto: somente Estoque Atual e Produtos, as telas mais abertas.
     // Primeiro a cópia local do aparelho, depois a leitura oficial em segundo plano.
@@ -549,7 +560,12 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             ConferenceCategoriesRoute(
                 onBack = { navController.popBackStack() },
                 onCategoryClick = { navController.navigate("conferences/categories/$it/new") },
-                refreshKey = refreshKey,
+                onEditConference = { navController.navigate("conferences/detail/$it/edit") },
+                onHistoryCategory = { navController.navigate("conferences/history/$it") },
+                saveStatuses = conferenceSaveStatuses,
+                onRetrySave = conferenceSaves::retry,
+                onDiscardFailed = conferenceSaves::discardFailed,
+                refreshKey = refreshKey + confirmedConferenceCount,
                 noticeMessage = notice,
                 onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
             )
@@ -569,6 +585,17 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                         set(NOTICE_KEY, message)
                     }
                     navController.popBackStack()
+                },
+                onReadyToSave = { input, localId ->
+                    val accepted = conferenceSaves.submit(input, localId)
+                    if (accepted) {
+                        navController.previousBackStackEntry?.savedStateHandle?.apply {
+                            set(REFRESH_KEY, System.currentTimeMillis())
+                            set(NOTICE_KEY, "Conferência em envio. Você pode seguir para outra Categoria.")
+                        }
+                        navController.popBackStack()
+                    }
+                    accepted
                 },
             )
         }
