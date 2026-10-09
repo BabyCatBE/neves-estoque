@@ -586,8 +586,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     }
                     navController.popBackStack()
                 },
-                onReadyToSave = { input ->
-                    val accepted = conferenceSaves.submit(input)
+                onReadyToSave = { input, localId ->
+                    val accepted = conferenceSaves.submit(input, localId)
                     if (accepted) {
                         navController.previousBackStackEntry?.savedStateHandle?.apply {
                             set(REFRESH_KEY, System.currentTimeMillis())
