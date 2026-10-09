@@ -21,6 +21,7 @@ enum class ConferenceSavePhase { Saving, Saved, Failed }
 data class ConferenceSaveStatus(
     val phase: ConferenceSavePhase,
     val message: String? = null,
+    val effectiveDate: String? = null,
 )
 
 private data class StagedConference(
@@ -94,7 +95,10 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
         val categoryId = staged.input.categoryId
         if (jobs[categoryId]?.isActive == true) return
         _statuses.value = _statuses.value + (
-            categoryId to ConferenceSaveStatus(ConferenceSavePhase.Saving)
+            categoryId to ConferenceSaveStatus(
+                ConferenceSavePhase.Saving,
+                effectiveDate = conferenceLocalDate(staged.input.effectiveAt),
+            )
         )
         jobs[categoryId] = viewModelScope.launch {
             try {
@@ -118,6 +122,7 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
                         categoryId to ConferenceSaveStatus(
                             ConferenceSavePhase.Failed,
                             conferenceModuleErrorMessage(error),
+                            effectiveDate = conferenceLocalDate(staged.input.effectiveAt),
                         )
                     )
                 }
@@ -136,6 +141,7 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
                 if (result is PendingMutationResult.Failure) {
                     "Salva no servidor. Não foi possível limpar a cópia local; revise Alertas → Pendências locais."
                 } else null,
+                effectiveDate = conferenceLocalDate(staged.input.effectiveAt),
             )
         )
     }
