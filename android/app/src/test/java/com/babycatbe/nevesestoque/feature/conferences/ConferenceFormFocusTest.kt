@@ -7,7 +7,7 @@ import org.junit.Test
 class ConferenceFormFocusTest {
 
     @Test
-    fun quantitiesAdvanceInScreenOrderAndEndAtObservation() {
+    fun quantitiesAdvanceInScreenOrderAndLastClosesKeyboard() {
         val ids = listOf("a", "b", "c")
         assertEquals("b", nextConferenceProductId(ids, "a"))
         assertEquals("c", nextConferenceProductId(ids, "b"))
