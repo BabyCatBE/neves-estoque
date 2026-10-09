@@ -3,14 +3,17 @@ package com.babycatbe.nevesestoque.feature.conferences
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 
 /**
  * Ordem de foco da Conferência por Categoria (nova e correção):
- * Data → Responsável → quantidade de cada Produto, na ordem da tela → Observação.
+ * Data → Responsável → quantidades na ordem; último Concluir remove foco/teclado.
+ * A Observação é opcional e recebe foco apenas por toque (ou em erro de validação).
  *
  * Quantidades usam o teclado do app; Data, Responsável e Observação usam o teclado do celular.
  * Quem chama valida o campo atual antes de avançar: com erro, o foco não sai do campo.
@@ -19,6 +22,7 @@ import com.babycatbe.nevesestoque.ui.input.requestFocusSafely
 class ConferenceFocusFlow internal constructor(
     private val productIds: List<String>,
     private val keyboard: SoftwareKeyboardController?,
+    private val focusManager: FocusManager,
 ) {
     val date = FocusRequester()
     val responsible = FocusRequester()
@@ -40,7 +44,10 @@ class ConferenceFocusFlow internal constructor(
 
     fun afterQuantity(productId: String) {
         val next = nextConferenceProductId(productIds, productId)
-        if (next != null) quantity(next).requestFocusSafely() else focusObservation()
+        if (next != null) quantity(next).requestFocusSafely() else {
+            focusManager.clearFocus(force = true)
+            keyboard?.hide()
+        }
     }
 
     fun focusObservation() {
@@ -70,7 +77,8 @@ class ConferenceFocusFlow internal constructor(
 @Composable
 fun rememberConferenceFocusFlow(productIds: List<String>): ConferenceFocusFlow {
     val keyboard = LocalSoftwareKeyboardController.current
-    return remember(productIds, keyboard) { ConferenceFocusFlow(productIds, keyboard) }
+    val focusManager = LocalFocusManager.current
+    return remember(productIds, keyboard, focusManager) { ConferenceFocusFlow(productIds, keyboard, focusManager) }
 }
 
 /** Próximo Produto na ordem da tela, ou null quando [current] é o último (ou não existe). */
