@@ -7,7 +7,8 @@ import nevesPrintLogo from "../../../assets/neves-logo-print.webp";
 import { CategoryIllustrationVisual } from "../../categories/components/CategoryIllustrationVisual";
 import { listConferencePrintData, type ConferencePrintCategory } from "../api/conferences";
 
-const ROWS_PER_PAGE = 18;
+// Até 18 itens usa a altura original; 19–22 usam linhas adaptadas para caber no A4.
+const ROWS_PER_PAGE = 22;
 
 type PrintPage = {
   category: ConferencePrintCategory;
@@ -46,6 +47,8 @@ export function ConferencePrintPage() {
   return (
     <AppShell title="Papéis de Conferência" showBack backTo="/conferencias">
       <style>{`
+        .conference-print-page.compact tbody td { height: 9.5mm; padding-top: 1mm; padding-bottom: 1mm; }
+        .conference-print-page.dense tbody td { height: 8.5mm; padding-top: .8mm; padding-bottom: .8mm; }
         @media print {
           @page { size: A4 portrait; margin: 0; }
           body { background: white !important; }
@@ -105,7 +108,7 @@ export function ConferencePrintPage() {
         {pages.map((page, pageIndex) => (
           <article
             key={`${page.category.id}-${page.categoryPage}`}
-            className="conference-print-page relative flex w-full max-w-[210mm] flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white p-[10mm] shadow-sm"
+            className={`conference-print-page ${page.products.length > 20 ? "dense" : page.products.length > 18 ? "compact" : ""} relative flex w-full max-w-[210mm] flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white p-[10mm] shadow-sm`}
             style={{ minHeight: "297mm" }}
           >
             <div className="flex items-center gap-4 border-b-2 border-red-700 pb-4">
