@@ -667,6 +667,23 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     }
                     navController.popBackStack()
                 },
+                onReadyToCorrect = { input, localId, categoryId, products ->
+                    val online = com.babycatbe.nevesestoque.data.offline.ConnectivityMonitor.isOnline
+                    val accepted = if (online) conferenceSaves.submitCorrection(input, localId, categoryId, products)
+                        else true // Sem internet: já está guardada. Envio posterior somente manual.
+                    if (accepted) {
+                        navController.navigate(CONFERENCE_CATEGORIES_ROUTE) {
+                            popUpTo(HOME_ROUTE) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        navController.currentBackStackEntry?.savedStateHandle?.set(
+                            NOTICE_KEY,
+                            if (online) "Correção protegida. Verificação e atualização em segundo plano."
+                            else "Correção guardada em Pendências locais. Envie manualmente quando houver internet."
+                        )
+                    }
+                    accepted
+                },
             )
         }
 
