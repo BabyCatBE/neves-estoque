@@ -213,6 +213,7 @@ fun buildPendingCategoryConference(
 /** Correção protegida em pendência específica: NUNCA criar nova conferência a partir dela. */
 fun buildPendingCategoryConferenceCorrection(
     input: CategoryConferenceUpdateInput,
+    categoryId: String,
     categoryLabel: String,
     productLabel: (String) -> Pair<String, String>,
     metadata: PendingMetadata,
@@ -229,7 +230,7 @@ fun buildPendingCategoryConferenceCorrection(
     actorLabel = metadata.actorLabel,
     idempotencyKey = UUID.randomUUID().toString(), // identidade da cópia, NÃO é RPC de atualização
     categoryConference = PendingCategoryConferencePayload(
-        categoryId = "", // categoria informativa é carregada pelo formulário do registro
+        categoryId = categoryId,
         conferenceId = input.conferenceId,
         categoryLabel = categoryLabel,
         effectiveAt = input.effectiveAt,
