@@ -348,13 +348,6 @@ fun EditConferenceRoute(
     )
     val state by vm.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.savedMessage) {
-        state.savedMessage?.let {
-            vm.consumeSavedMessage()
-            onSaved(it)
-        }
-    }
-
     EditConferenceScreen(
         state = state,
         onBack = onBack,
