@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.babycatbe.nevesestoque.feature.offline.PendingMutationResult
 import com.babycatbe.nevesestoque.feature.offline.PendingStore
 import com.babycatbe.nevesestoque.feature.offline.PendingKind
+import com.babycatbe.nevesestoque.feature.offline.PendingOperation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,23 @@ data class ConferenceSaveStatus(
     val products: List<ConferenceProduct> = emptyList(),
 )
 
+/** Contrato puro testável: uma pendência editada não pode ser enviada com valores antigos. */
+internal fun conferencePendingMatches(
+    input: CategoryConferenceWriteInput,
+    localId: String,
+    pending: PendingOperation?,
+): Boolean {
+    if (pending == null || pending.localId != localId || pending.kind != PendingKind.CategoryConference) return false
+    val payload = pending.categoryConference ?: return false
+    return pending.idempotencyKey == input.idempotencyKey &&
+        pending.deviceId == input.deviceId &&
+        payload.categoryId == input.categoryId &&
+        payload.effectiveAt == input.effectiveAt &&
+        payload.physicalResponsible == input.physicalResponsible &&
+        payload.observation == input.observation &&
+        payload.items.map { it.productId to it.quantity } ==
+            input.items.map { it.productId to it.quantity }
+}
 private data class StagedConference(
     val input: CategoryConferenceWriteInput,
     val localId: String,
@@ -120,20 +138,8 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
     }
 
     /** Não enviar uma versão anterior se alguém editou a pendência local. */
-    private fun matchesLocalCopy(staged: StagedConference): Boolean {
-        val pending = PendingStore.find(staged.localId) ?: return false
-        val payload = pending.categoryConference ?: return false
-        val input = staged.input
-        return pending.kind == PendingKind.CategoryConference &&
-            pending.idempotencyKey == input.idempotencyKey &&
-            pending.deviceId == input.deviceId &&
-            payload.categoryId == input.categoryId &&
-            payload.effectiveAt == input.effectiveAt &&
-            payload.physicalResponsible == input.physicalResponsible &&
-            payload.observation == input.observation &&
-            payload.items.map { it.productId to it.quantity } ==
-                input.items.map { it.productId to it.quantity }
-    }
+    private fun matchesLocalCopy(staged: StagedConference): Boolean =
+        conferencePendingMatches(staged.input, staged.localId, PendingStore.find(staged.localId))
 
     private fun stopStaleSave(staged: StagedConference) {
         _statuses.value = _statuses.value + (
