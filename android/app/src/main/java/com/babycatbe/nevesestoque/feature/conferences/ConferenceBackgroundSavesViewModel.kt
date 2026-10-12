@@ -16,17 +16,23 @@ import kotlinx.coroutines.launch
  * fora da tela do formulário. Nenhuma pendência é enviada automaticamente ao reconectar:
  * caso esta tentativa falhe, o usuário deve fazer nova ação manual.
  */
-enum class ConferenceSavePhase { Saving, Saved, Failed }
+enum class ConferenceSavePhase { Checking, ReviewConsumption, ReviewSameDay, Saving, Saved, Failed }
 
 data class ConferenceSaveStatus(
     val phase: ConferenceSavePhase,
     val message: String? = null,
     val effectiveDate: String? = null,
+    val warnings: List<ConferenceConsumptionWarning> = emptyList(),
+    val sameDay: List<ConferenceHistoryItem> = emptyList(),
+    val products: List<ConferenceProduct> = emptyList(),
 )
 
 private data class StagedConference(
     val input: CategoryConferenceWriteInput,
     val localId: String,
+    val products: List<ConferenceProduct>,
+    val consumptionApproved: Boolean = false,
+    val sameDayApproved: Boolean = false,
 )
 
 class ConferenceBackgroundSavesViewModel : ViewModel() {
@@ -48,15 +54,14 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
         currentUserId = userId
     }
 
-    /**
-     * O formulário já validou as quantidades, revisão de consumo, mesma data e
-     * guardou o payload no PendingStore em armazenamento privado/atômico.
-     */
-    fun submit(input: CategoryConferenceWriteInput, localId: String): Boolean {
+    /** O formulário validou os campos e criou cópia local. Checagens remotas ocorrem aqui. */
+    fun submit(input: CategoryConferenceWriteInput, localId: String, products: List<ConferenceProduct>): Boolean {
         if (currentUserId.isNullOrBlank()) return false
         val current = _statuses.value[input.categoryId]?.phase
-        if (current == ConferenceSavePhase.Saving || current == ConferenceSavePhase.Failed) return false
-        val staged = StagedConference(input, localId)
+        if (current == ConferenceSavePhase.Checking || current == ConferenceSavePhase.Saving ||
+            current == ConferenceSavePhase.ReviewConsumption || current == ConferenceSavePhase.ReviewSameDay ||
+            current == ConferenceSavePhase.Failed) return false
+        val staged = StagedConference(input, localId, products)
         retryInputs[input.categoryId] = staged
         start(staged)
         return true
@@ -66,12 +71,26 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
     fun retry(categoryId: String) {
         if (_statuses.value[categoryId]?.phase != ConferenceSavePhase.Failed) return
         val staged = retryInputs[categoryId] ?: return
-        start(staged)
+        start(staged.copy(consumptionApproved = false, sameDayApproved = false))
+    }
+
+    /** Uma verificação posterior exige decisão humana; nunca salvar silenciosamente. */
+    fun confirmReview(categoryId: String) {
+        val phase = _statuses.value[categoryId]?.phase
+        val staged = retryInputs[categoryId] ?: return
+        when (phase) {
+            ConferenceSavePhase.ReviewConsumption -> start(staged.copy(consumptionApproved = true))
+            ConferenceSavePhase.ReviewSameDay -> start(staged.copy(sameDayApproved = true))
+            else -> Unit
+        }
     }
 
     /** Depois do alerta explícito, descarta o arquivo local, sem excluir nada do servidor. */
     fun discardFailed(categoryId: String) {
-        if (_statuses.value[categoryId]?.phase != ConferenceSavePhase.Failed) return
+        if (_statuses.value[categoryId]?.phase !in setOf(
+                ConferenceSavePhase.Failed, ConferenceSavePhase.ReviewConsumption,
+                ConferenceSavePhase.ReviewSameDay,
+            )) return
         val staged = retryInputs[categoryId] ?: return
         _statuses.value = _statuses.value + (
             categoryId to ConferenceSaveStatus(ConferenceSavePhase.Saving, "Descartando cópia local…")
@@ -94,14 +113,47 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
     private fun start(staged: StagedConference) {
         val categoryId = staged.input.categoryId
         if (jobs[categoryId]?.isActive == true) return
+        retryInputs[categoryId] = staged
+        val effectiveDate = conferenceLocalDate(staged.input.effectiveAt)
         _statuses.value = _statuses.value + (
-            categoryId to ConferenceSaveStatus(
-                ConferenceSavePhase.Saving,
-                effectiveDate = conferenceLocalDate(staged.input.effectiveAt),
-            )
+            categoryId to ConferenceSaveStatus(ConferenceSavePhase.Checking, effectiveDate = effectiveDate)
         )
         jobs[categoryId] = viewModelScope.launch {
             try {
+                if (!staged.consumptionApproved) {
+                    val warnings = repository.reviewConsumption(
+                        effectiveAt = staged.input.effectiveAt,
+                        items = staged.input.items,
+                    )
+                    if (warnings.isNotEmpty()) {
+                        _statuses.value = _statuses.value + (
+                            categoryId to ConferenceSaveStatus(
+                                ConferenceSavePhase.ReviewConsumption,
+                                "Consumo fora do padrão. Confira antes de confirmar.",
+                                effectiveDate, warnings = warnings, products = staged.products,
+                            )
+                        )
+                        return@launch
+                    }
+                }
+                if (!staged.sameDayApproved) {
+                    val sameDay = repository.listSameDayCategoryConferences(
+                        categoryId = categoryId, dateValue = effectiveDate,
+                    )
+                    if (sameDay.isNotEmpty()) {
+                        _statuses.value = _statuses.value + (
+                            categoryId to ConferenceSaveStatus(
+                                ConferenceSavePhase.ReviewSameDay,
+                                "Já existe conferência nesta data. Confirme se é outra contagem.",
+                                effectiveDate, sameDay = sameDay,
+                            )
+                        )
+                        return@launch
+                    }
+                }
+                _statuses.value = _statuses.value + (
+                    categoryId to ConferenceSaveStatus(ConferenceSavePhase.Saving, effectiveDate = effectiveDate)
+                )
                 repository.createCategoryConference(staged.input)
                 finishSuccessful(staged)
             } catch (error: Throwable) {
@@ -117,12 +169,11 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
                 if (reconciled) {
                     finishSuccessful(staged)
                 } else {
-                    // O arquivo local permanece até retry, descarte explícito ou recuperação em Alertas.
+                    // A cópia permanece. Nenhuma nova tentativa ocorre por simples reconexão.
                     _statuses.value = _statuses.value + (
                         categoryId to ConferenceSaveStatus(
-                            ConferenceSavePhase.Failed,
-                            conferenceModuleErrorMessage(error),
-                            effectiveDate = conferenceLocalDate(staged.input.effectiveAt),
+                            ConferenceSavePhase.Failed, conferenceModuleErrorMessage(error),
+                            effectiveDate = effectiveDate,
                         )
                     )
                 }
@@ -131,7 +182,6 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
             }
         }
     }
-
     private suspend fun finishSuccessful(staged: StagedConference) {
         val result = PendingStore.delete(staged.localId)
         retryInputs.remove(staged.input.categoryId)
