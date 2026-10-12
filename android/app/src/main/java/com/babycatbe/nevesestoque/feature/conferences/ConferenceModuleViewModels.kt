@@ -225,9 +225,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
                 )
                 return
             }
-            if (onReadyToSave(input, operation.localId, setup.products)) {
-                pendingInput = null
-            } else {
+            if (!onReadyToSave(input, operation.localId, setup.products)) {
                 com.babycatbe.nevesestoque.feature.offline.PendingStore.delete(operation.localId)
                 _uiState.value = _uiState.value.copy(
                     saving = false,
