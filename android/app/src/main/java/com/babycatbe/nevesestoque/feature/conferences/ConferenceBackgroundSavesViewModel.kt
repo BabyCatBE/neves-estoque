@@ -6,6 +6,7 @@ import com.babycatbe.nevesestoque.feature.offline.PendingMutationResult
 import com.babycatbe.nevesestoque.feature.offline.PendingStore
 import com.babycatbe.nevesestoque.feature.offline.PendingKind
 import com.babycatbe.nevesestoque.feature.offline.PendingOperation
+import com.babycatbe.nevesestoque.feature.offline.toCategoryConferenceUpdateInput
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,10 +47,26 @@ internal fun conferencePendingMatches(
         payload.items.map { it.productId to it.quantity } ==
             input.items.map { it.productId to it.quantity }
 }
+/** Se a pendência de correção mudar, nunca enviar a versão anterior. */
+internal fun conferenceCorrectionPendingMatches(
+    input: CategoryConferenceUpdateInput, localId: String, pending: PendingOperation?,
+): Boolean {
+    if (pending == null || pending.localId != localId ||
+        pending.kind != PendingKind.CategoryConferenceCorrection) return false
+    val payload = pending.categoryConference ?: return false
+    return payload.conferenceId == input.conferenceId &&
+        pending.deviceId == input.deviceId &&
+        payload.effectiveAt == input.effectiveAt &&
+        payload.physicalResponsible == input.physicalResponsible &&
+        payload.observation == input.observation &&
+        payload.items.map { it.productId to it.quantity } ==
+            input.items.map { it.productId to it.quantity }
+}
 private data class StagedConference(
     val input: CategoryConferenceWriteInput,
     val localId: String,
     val products: List<ConferenceProduct>,
+    val correctionInput: CategoryConferenceUpdateInput? = null,
     val consumptionApproved: Boolean = false,
     val sameDayApproved: Boolean = false,
 )
@@ -86,6 +103,29 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
         return true
     }
 
+    /** Correção histórica: nunca criar outro registro; atualizar somente o ID existente. */
+    fun submitCorrection(
+        correction: CategoryConferenceUpdateInput, localId: String,
+        categoryId: String, products: List<ConferenceProduct>,
+    ): Boolean {
+        if (currentUserId.isNullOrBlank()) return false
+        val current = _statuses.value[categoryId]?.phase
+        if (current in setOf(ConferenceSavePhase.Checking, ConferenceSavePhase.Saving,
+                ConferenceSavePhase.ReviewConsumption, ConferenceSavePhase.ReviewSameDay,
+                ConferenceSavePhase.Failed)) return false
+        val pending = PendingStore.find(localId) ?: return false
+        if (!conferenceCorrectionPendingMatches(correction, localId, pending)) return false
+        val input = CategoryConferenceWriteInput(
+            categoryId = categoryId, effectiveAt = correction.effectiveAt,
+            physicalResponsible = correction.physicalResponsible, deviceId = correction.deviceId,
+            idempotencyKey = pending.idempotencyKey, observation = correction.observation,
+            items = correction.items,
+        )
+        val staged = StagedConference(input, localId, products, correctionInput = correction)
+        retryInputs[categoryId] = staged
+        start(staged)
+        return true
+    }
     /** Reenvio somente por toque; preserva a MESMA idempotencyKey da primeira tentativa. */
     fun retry(categoryId: String) {
         if (_statuses.value[categoryId]?.phase != ConferenceSavePhase.Failed) return
@@ -138,8 +178,11 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
     }
 
     /** Não enviar uma versão anterior se alguém editou a pendência local. */
-    private fun matchesLocalCopy(staged: StagedConference): Boolean =
-        conferencePendingMatches(staged.input, staged.localId, PendingStore.find(staged.localId))
+    private fun matchesLocalCopy(staged: StagedConference): Boolean {
+        val pending = PendingStore.find(staged.localId)
+        return staged.correctionInput?.let { conferenceCorrectionPendingMatches(it, staged.localId, pending) }
+            ?: conferencePendingMatches(staged.input, staged.localId, pending)
+    }
 
     private fun stopStaleSave(staged: StagedConference) {
         _statuses.value = _statuses.value + (
@@ -168,6 +211,7 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
                     val warnings = repository.reviewConsumption(
                         effectiveAt = staged.input.effectiveAt,
                         items = staged.input.items,
+                        excludeConferenceId = staged.correctionInput?.conferenceId,
                     )
                     if (warnings.isNotEmpty()) {
                         _statuses.value = _statuses.value + (
@@ -180,7 +224,7 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
                         return@launch
                     }
                 }
-                if (!staged.sameDayApproved) {
+                if (staged.correctionInput == null && !staged.sameDayApproved) {
                     val sameDay = repository.listSameDayCategoryConferences(
                         categoryId = categoryId, dateValue = effectiveDate,
                     )
@@ -202,13 +246,20 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
                 _statuses.value = _statuses.value + (
                     categoryId to ConferenceSaveStatus(ConferenceSavePhase.Saving, effectiveDate = effectiveDate)
                 )
-                repository.createCategoryConference(staged.input)
+                val correction = staged.correctionInput
+                if (correction != null) {
+                    // Atualização não possui idempotencyKey na RPC: conferir estado antes de reenviar.
+                    if (!repository.isUpdateApplied(correction)) repository.updateCategoryConference(correction)
+                } else {
+                    repository.createCategoryConference(staged.input)
+                }
                 finishSuccessful(staged)
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 val reconciled = if (shouldReconcileConferenceFailure(error)) {
                     try {
-                        repository.findConferenceIdByIdempotencyKey(staged.input.idempotencyKey) != null
+                        staged.correctionInput?.let { repository.isUpdateApplied(it) }
+                            ?: (repository.findConferenceIdByIdempotencyKey(staged.input.idempotencyKey) != null)
                     } catch (lookupError: Throwable) {
                         if (lookupError is CancellationException) throw lookupError
                         false
