@@ -50,6 +50,7 @@ fun CategoryConferenceFormRoute(
     categoryId: String,
     onBack: () -> Unit,
     onSaved: (String) -> Unit,
+    onReadyToSave: (CategoryConferenceWriteInput, String, List<ConferenceProduct>) -> Boolean,
 ) {
     val vm: CategoryConferenceFormViewModel = viewModel(
         key = "category-conference-form-" + categoryId,
@@ -74,11 +75,9 @@ fun CategoryConferenceFormRoute(
     CategoryConferenceFormScreen(
         state = state,
         onBack = onBack,
-        onSave = vm::requestSave,
-        onConfirmWarnings = vm::confirmConsumptionWarnings,
-        onDismissWarnings = vm::dismissConsumptionWarnings,
-        onConfirmSameDay = vm::confirmSameDay,
-        onDismissSameDay = vm::dismissSameDay,
+        onSave = { date, responsible, observation, quantities ->
+            vm.requestSave(date, responsible, observation, quantities, onReadyToSave)
+        },
         onClearError = vm::clearError,
     )
 }
@@ -88,10 +87,6 @@ private fun CategoryConferenceFormScreen(
     state: CategoryConferenceFormUiState,
     onBack: () -> Unit,
     onSave: (String, String, String, Map<String, String>) -> Unit,
-    onConfirmWarnings: () -> Unit,
-    onDismissWarnings: () -> Unit,
-    onConfirmSameDay: () -> Unit,
-    onDismissSameDay: () -> Unit,
     onClearError: () -> Unit,
 ) {
     val setup = state.setup
@@ -102,7 +97,7 @@ private fun CategoryConferenceFormScreen(
     var initialized by remember { mutableStateOf(false) }
     var leaveOpen by rememberSaveable { mutableStateOf(false) }
 
-    // Fluxo de preenchimento: Data → Responsável → quantidades (teclado do app) → Observação.
+    // O último Concluir fecha o teclado; Observação é opcional, somente por toque.
     val keypad = rememberNumericKeypadState()
     val flow = rememberConferenceFocusFlow(setup?.products.orEmpty().map { it.id })
     var localErrors by remember { mutableStateOf(CategoryConferenceFormErrors()) }
@@ -325,42 +320,6 @@ private fun CategoryConferenceFormScreen(
         }
     }
 
-    if (state.consumptionWarnings.isNotEmpty()) {
-        ConsumptionWarningsDialog(
-            warnings = state.consumptionWarnings,
-            products = setup?.products.orEmpty(),
-            onConfirm = onConfirmWarnings,
-            onDismiss = onDismissWarnings,
-        )
-    }
-
-    if (state.sameDayConferences.isNotEmpty()) {
-        AlertDialog(
-            onDismissRequest = onDismissSameDay,
-            title = { Text("Já existe Conferência nesta data") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Só continue se esta for realmente outra contagem física. Para corrigir uma Conferência anterior, use o Histórico."
-                    )
-                    state.sameDayConferences.forEach { existing ->
-                        Text(
-                            "• " + formatConferenceTime(existing.effectiveAt) +
-                                " · " + existing.physicalResponsible,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = onConfirmSameDay) { Text("É outra contagem") }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissSameDay) { NevesIcon(NevesIcons.Back, "Voltar") }
-            },
-        )
-    }
-
     if (leaveOpen) {
         AlertDialog(
             onDismissRequest = { leaveOpen = false },
@@ -381,6 +340,7 @@ fun EditConferenceRoute(
     conferenceId: String,
     onBack: () -> Unit,
     onSaved: (String) -> Unit,
+    onReadyToCorrect: (CategoryConferenceUpdateInput, String, String, List<ConferenceProduct>) -> Boolean,
 ) {
     val vm: EditConferenceViewModel = viewModel(
         key = "edit-conference-" + conferenceId,
@@ -388,19 +348,12 @@ fun EditConferenceRoute(
     )
     val state by vm.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.savedMessage) {
-        state.savedMessage?.let {
-            vm.consumeSavedMessage()
-            onSaved(it)
-        }
-    }
-
     EditConferenceScreen(
         state = state,
         onBack = onBack,
-        onRequestReview = vm::requestReview,
-        onConfirmSave = vm::confirmSave,
-        onDismissReview = vm::dismissReview,
+        onRequestReview = { date, responsible, observation, quantities ->
+            vm.requestReview(date, responsible, observation, quantities, onReadyToCorrect)
+        },
     )
 }
 
@@ -409,8 +362,6 @@ private fun EditConferenceScreen(
     state: EditConferenceUiState,
     onBack: () -> Unit,
     onRequestReview: (String, String, String, Map<String, String>) -> Unit,
-    onConfirmSave: () -> Unit,
-    onDismissReview: () -> Unit,
 ) {
     val details = state.details
     var date by rememberSaveable { mutableStateOf("") }
@@ -595,48 +546,10 @@ private fun EditConferenceScreen(
                     enabled = dirty && !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(if (state.checking) "Verificando…" else "Revisar correção")
+                    Text(if (state.saving) "Preparando…" else "Salvar correção")
                 }
             }
         }
-    }
-
-    if (state.reviewOpen && details != null) {
-        AlertDialog(
-            onDismissRequest = onDismissReview,
-            title = { Text("Salvar correção?") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("O registro manterá o mesmo ID e a auditoria guardará o antes/depois.")
-                    if (state.consumptionWarnings.isNotEmpty()) {
-                        Text(
-                            "Há consumo fora do padrão em " +
-                                state.consumptionWarnings.size + " Produto(s).",
-                            color = MaterialTheme.colorScheme.tertiary,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        state.consumptionWarnings.forEach { warning ->
-                            val productName = details.items
-                                .firstOrNull { it.productId == warning.productId }
-                                ?.productName ?: "Produto"
-                            Text("• " + productName + ": " + consumptionWarningText(warning))
-                        }
-                    } else {
-                        Text("Nenhum alerta de consumo atípico foi identificado.")
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = onConfirmSave, enabled = !state.saving) {
-                    Text(if (state.saving) "Salvando…" else "Salvar correção")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissReview, enabled = !state.saving) {
-                    Text("Cancelar")
-                }
-            },
-        )
     }
 
     if (leaveOpen) {
@@ -683,7 +596,7 @@ private fun ConsumptionWarningsDialog(
     )
 }
 
-private fun consumptionWarningText(warning: ConferenceConsumptionWarning): String =
+internal fun consumptionWarningText(warning: ConferenceConsumptionWarning): String =
     when (warning.kind) {
         ConferenceConsumptionWarningKind.Inconsistent ->
             "a contagem indica aumento de estoque não explicado pelas Entradas."

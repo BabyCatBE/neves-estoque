@@ -72,7 +72,6 @@ data class CategoryConferenceFormUiState(
 class CategoryConferenceFormViewModel(private val categoryId: String) : ViewModel() {
     private val repository = ConferenceModuleRepository()
     private val idempotencyKey = UUID.randomUUID().toString()
-    private var pendingInput: CategoryConferenceWriteInput? = null
     private val _uiState = MutableStateFlow(CategoryConferenceFormUiState())
     val uiState: StateFlow<CategoryConferenceFormUiState> = _uiState.asStateFlow()
 
@@ -101,6 +100,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         responsible: String,
         observation: String,
         quantities: Map<String, String>,
+        onReadyToSave: (CategoryConferenceWriteInput, String, List<ConferenceProduct>) -> Boolean,
     ) {
         if (_uiState.value.checking || _uiState.value.saving) return
         val setup = _uiState.value.setup ?: return
@@ -178,99 +178,15 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
             return
         }
 
-        _uiState.value = _uiState.value.copy(
-            checking = true,
-            fieldErrors = CategoryConferenceFormErrors(),
-            consumptionWarnings = emptyList(),
-            sameDayConferences = emptyList(),
-            errorMessage = null,
-        )
-
-        viewModelScope.launch {
-            try {
-                val warnings = repository.reviewConsumption(
-                    effectiveAt = input.effectiveAt,
-                    items = input.items,
-                )
-                if (warnings.isNotEmpty()) {
-                    pendingInput = input
-                    _uiState.value = _uiState.value.copy(
-                        checking = false,
-                        consumptionWarnings = warnings,
-                    )
-                } else {
-                    continueAfterConsumptionReview(input)
-                }
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                _uiState.value = _uiState.value.copy(
-                    checking = false,
-                    errorMessage = conferenceModuleErrorMessage(error),
-                )
-            }
-        }
+        // Campos já foram validados. Verificações de consumo/mesma data ocorrem
+        // depois da cópia local e da navegação, no escopo da sessão autenticada.
+        viewModelScope.launch { queueSave(input, onReadyToSave) }
     }
-
-    fun confirmConsumptionWarnings() {
-        if (_uiState.value.saving || _uiState.value.checking) return
-        val input = pendingInput ?: return
-        _uiState.value = _uiState.value.copy(
-            checking = true,
-            consumptionWarnings = emptyList(),
-            errorMessage = null,
-        )
-        viewModelScope.launch {
-            try {
-                continueAfterConsumptionReview(input)
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                _uiState.value = _uiState.value.copy(
-                    checking = false,
-                    errorMessage = conferenceModuleErrorMessage(error),
-                )
-            }
-        }
-    }
-
-    fun dismissConsumptionWarnings() {
-        if (_uiState.value.saving) return
-        pendingInput = null
-        _uiState.value = _uiState.value.copy(consumptionWarnings = emptyList())
-    }
-
-    fun confirmSameDay() {
-        if (_uiState.value.saving || _uiState.value.checking) return
-        val input = pendingInput ?: return
-        _uiState.value = _uiState.value.copy(
-            sameDayConferences = emptyList(),
-            errorMessage = null,
-        )
-        viewModelScope.launch { persist(input) }
-    }
-
-    fun dismissSameDay() {
-        if (_uiState.value.saving) return
-        pendingInput = null
-        _uiState.value = _uiState.value.copy(sameDayConferences = emptyList())
-    }
-
-    private suspend fun continueAfterConsumptionReview(input: CategoryConferenceWriteInput) {
-        val sameDay = repository.listSameDayCategoryConferences(
-            categoryId = input.categoryId,
-            dateValue = conferenceLocalDate(input.effectiveAt),
-        )
-        if (sameDay.isNotEmpty()) {
-            pendingInput = input
-            _uiState.value = _uiState.value.copy(
-                checking = false,
-                sameDayConferences = sameDay,
-            )
-            return
-        }
-        persist(input)
-    }
-
-    private suspend fun persist(input: CategoryConferenceWriteInput) {
+    private suspend fun queueSave(
+        input: CategoryConferenceWriteInput,
+        onReadyToSave: (CategoryConferenceWriteInput, String, List<ConferenceProduct>) -> Boolean,
+    ) {
+        val setup = _uiState.value.setup ?: return
         _uiState.value = _uiState.value.copy(
             checking = false,
             saving = true,
@@ -279,37 +195,49 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
             errorMessage = null,
         )
         try {
-            val conferenceId = repository.createCategoryConference(input)
-            pendingInput = null
-            _uiState.value = _uiState.value.copy(
-                saving = false,
-                savedConferenceId = conferenceId,
-            )
+            // O arquivo local é gravado ANTES de navegar. Interrupções do Android não
+            // perdem esta contagem: a cópia continua em Alertas → Pendências locais.
+            // Pendências jamais são enviadas automaticamente ao reconectar.
+            val metadata = com.babycatbe.nevesestoque.feature.offline.currentPendingMetadata()
+            val operation = metadata?.let {
+                com.babycatbe.nevesestoque.feature.offline.buildPendingCategoryConference(
+                    input = input,
+                    categoryLabel = setup.categoryName,
+                    productLabel = { productId ->
+                        val product = setup.products.firstOrNull { p -> p.id == productId }
+                        (product?.name ?: "Produto") to (product?.unit ?: "")
+                    },
+                    metadata = it,
+                )
+            }
+            if (operation == null) {
+                _uiState.value = _uiState.value.copy(
+                    saving = false,
+                    errorMessage = "Não foi possível proteger esta contagem no aparelho. Tente novamente.",
+                )
+                return
+            }
+            val stored = com.babycatbe.nevesestoque.feature.offline.PendingStore.save(operation)
+            if (stored is com.babycatbe.nevesestoque.feature.offline.PendingMutationResult.Failure) {
+                _uiState.value = _uiState.value.copy(
+                    saving = false,
+                    errorMessage = stored.userMessage,
+                )
+                return
+            }
+            if (!onReadyToSave(input, operation.localId, setup.products)) {
+                com.babycatbe.nevesestoque.feature.offline.PendingStore.delete(operation.localId)
+                _uiState.value = _uiState.value.copy(
+                    saving = false,
+                    errorMessage = "Esta Categoria já possui um envio pendente. Verifique o status na lista.",
+                )
+            }
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
-            val reconciledId = if (shouldReconcileConferenceFailure(error)) {
-                try {
-                    repository.findConferenceIdByIdempotencyKey(idempotencyKey)
-                } catch (reload: Throwable) {
-                    if (reload is CancellationException) throw reload
-                    null
-                }
-            } else {
-                null
-            }
-            if (reconciledId != null) {
-                pendingInput = null
-                _uiState.value = _uiState.value.copy(
-                    saving = false,
-                    savedConferenceId = reconciledId,
-                    errorMessage = null,
-                )
-            } else {
-                _uiState.value = _uiState.value.copy(
-                    saving = false,
-                    errorMessage = conferenceModuleErrorMessage(error),
-                )
-            }
+            _uiState.value = _uiState.value.copy(
+                saving = false,
+                errorMessage = "Não foi possível preparar o envio. Sua contagem não foi descartada.",
+            )
         }
     }
 
@@ -482,7 +410,6 @@ data class EditConferenceUiState(
 
 class EditConferenceViewModel(private val conferenceId: String) : ViewModel() {
     private val repository = ConferenceModuleRepository()
-    private var pendingInput: CategoryConferenceUpdateInput? = null
     private val _uiState = MutableStateFlow(EditConferenceUiState())
     val uiState: StateFlow<EditConferenceUiState> = _uiState.asStateFlow()
 
@@ -506,136 +433,70 @@ class EditConferenceViewModel(private val conferenceId: String) : ViewModel() {
         }
     }
 
+    /** Validação local apenas; nenhuma consulta de rede retém a tela do formulário. */
     fun requestReview(
-        date: String,
-        responsible: String,
-        observation: String,
-        quantities: Map<String, String>,
+        date: String, responsible: String, observation: String, quantities: Map<String, String>,
+        onReadyToCorrect: (CategoryConferenceUpdateInput, String, String, List<ConferenceProduct>) -> Boolean,
     ) {
-        if (_uiState.value.checking || _uiState.value.saving) return
+        if (_uiState.value.saving) return
         val details = _uiState.value.details ?: return
-        val validation = validateCategoryConferenceEdit(
-            details = details,
-            date = date,
-            responsible = responsible,
-            observation = observation,
-            quantities = quantities,
-        )
-        if (
-            validation.errors.hasErrors ||
-            validation.effectiveAt == null ||
-            validation.responsible == null
-        ) {
-            _uiState.value = _uiState.value.copy(
-                fieldErrors = validation.errors,
-                errorMessage = null,
-            )
+        val validation = validateCategoryConferenceEdit(details, date, responsible, observation, quantities)
+        if (validation.errors.hasErrors || validation.effectiveAt == null || validation.responsible == null) {
+            _uiState.value = _uiState.value.copy(fieldErrors = validation.errors, errorMessage = null)
             return
         }
-
         val deviceId = DeviceIdentityStore.registeredDeviceId()
         if (deviceId == null) {
-            _uiState.value = _uiState.value.copy(
-                errorMessage = "Este dispositivo ainda não está pronto para corrigir Conferências.",
-            )
+            _uiState.value = _uiState.value.copy(errorMessage = "Dispositivo não autorizado para corrigir.")
             return
         }
-
+        // Não sobrescrever uma correção que já está aguardando revisão ou envio.
+        if (com.babycatbe.nevesestoque.feature.offline.PendingStore.pending.value.any { pending ->
+                pending.kind == com.babycatbe.nevesestoque.feature.offline.PendingKind.CategoryConferenceCorrection &&
+                    pending.categoryConference?.conferenceId == details.id
+            }) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Esta conferência já tem correção pendente em Alertas → Pendências locais.")
+            return
+        }
         val input = CategoryConferenceUpdateInput(
-            conferenceId = details.id,
-            effectiveAt = validation.effectiveAt,
-            physicalResponsible = validation.responsible,
-            deviceId = deviceId,
-            observation = validation.observation,
-            items = validation.items,
+            conferenceId = details.id, effectiveAt = validation.effectiveAt,
+            physicalResponsible = validation.responsible, deviceId = deviceId,
+            observation = validation.observation, items = validation.items,
         )
-        _uiState.value = _uiState.value.copy(
-            checking = true,
-            fieldErrors = CategoryConferenceFormErrors(),
-            errorMessage = null,
-        )
-
+        _uiState.value = _uiState.value.copy(saving = true, fieldErrors = CategoryConferenceFormErrors(), errorMessage = null)
         viewModelScope.launch {
             try {
-                val warnings = repository.reviewConsumption(
-                    effectiveAt = input.effectiveAt,
-                    items = input.items,
-                    excludeConferenceId = details.id,
-                )
-                pendingInput = input
-                _uiState.value = _uiState.value.copy(
-                    checking = false,
-                    reviewOpen = true,
-                    consumptionWarnings = warnings,
-                )
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                _uiState.value = _uiState.value.copy(
-                    checking = false,
-                    errorMessage = conferenceModuleErrorMessage(error),
-                )
-            }
-        }
-    }
-
-    fun dismissReview() {
-        if (_uiState.value.saving) return
-        pendingInput = null
-        _uiState.value = _uiState.value.copy(
-            reviewOpen = false,
-            consumptionWarnings = emptyList(),
-        )
-    }
-
-    fun confirmSave() {
-        if (_uiState.value.saving || _uiState.value.checking) return
-        val input = pendingInput ?: return
-        _uiState.value = _uiState.value.copy(
-            reviewOpen = false,
-            saving = true,
-            errorMessage = null,
-        )
-        viewModelScope.launch {
-            try {
-                repository.updateCategoryConference(input)
-                pendingInput = null
-                _uiState.value = _uiState.value.copy(
-                    saving = false,
-                    consumptionWarnings = emptyList(),
-                    savedMessage = "Correção da Conferência salva com sucesso.",
-                )
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                val reconciled = if (shouldReconcileConferenceFailure(error)) {
-                    try {
-                        repository.isUpdateApplied(input)
-                    } catch (reload: Throwable) {
-                        if (reload is CancellationException) throw reload
-                        false
+                val metadata = com.babycatbe.nevesestoque.feature.offline.currentPendingMetadata()
+                val operation = metadata?.let {
+                    com.babycatbe.nevesestoque.feature.offline.buildPendingCategoryConferenceCorrection(
+                        input = input, categoryId = details.categoryId, categoryLabel = details.categoryName,
+                        productLabel = { productId ->
+                            val item = details.items.firstOrNull { it.productId == productId }
+                            (item?.productName ?: "Produto") to (item?.unit ?: "")
+                        }, metadata = it,
+                    )
+                }
+                if (operation == null) {
+                    _uiState.value = _uiState.value.copy(saving = false, errorMessage = "Não foi possível proteger a correção no aparelho.")
+                    return@launch
+                }
+                when (val result = com.babycatbe.nevesestoque.feature.offline.PendingStore.save(operation)) {
+                    com.babycatbe.nevesestoque.feature.offline.PendingMutationResult.Success -> {
+                        val products = details.items.map { ConferenceProduct(it.productId, it.productName, it.unit, it.position) }
+                        if (!onReadyToCorrect(input, operation.localId, details.categoryId, products)) {
+                            _uiState.value = _uiState.value.copy(saving = false, errorMessage =
+                                "Correção protegida em Alertas → Pendências locais. Envio não iniciado.")
+                        }
                     }
-                } else {
-                    false
+                    is com.babycatbe.nevesestoque.feature.offline.PendingMutationResult.Failure ->
+                        _uiState.value = _uiState.value.copy(saving = false, errorMessage = result.userMessage)
                 }
-                if (reconciled) {
-                    pendingInput = null
-                    _uiState.value = _uiState.value.copy(
-                        saving = false,
-                        consumptionWarnings = emptyList(),
-                        savedMessage = "Correção da Conferência salva com sucesso.",
-                        errorMessage = null,
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        saving = false,
-                        errorMessage = conferenceModuleErrorMessage(error),
-                    )
-                }
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                _uiState.value = _uiState.value.copy(saving = false, errorMessage =
+                    "Não foi possível preparar a correção. Revise Alertas → Pendências locais.")
             }
         }
-    }
-
-    fun consumeSavedMessage() {
-        _uiState.value = _uiState.value.copy(savedMessage = null)
     }
 
     class Factory(private val conferenceId: String) : ViewModelProvider.Factory {
@@ -644,7 +505,6 @@ class EditConferenceViewModel(private val conferenceId: String) : ViewModel() {
             EditConferenceViewModel(conferenceId) as T
     }
 }
-
 data class ConferencePrintUiState(
     val loading: Boolean = true,
     val data: ConferencePrintData? = null,
