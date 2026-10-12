@@ -77,11 +77,19 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
     /** Uma verificação posterior exige decisão humana; nunca salvar silenciosamente. */
     fun confirmReview(categoryId: String) {
         val phase = _statuses.value[categoryId]?.phase
+        if (phase != ConferenceSavePhase.ReviewConsumption &&
+            phase != ConferenceSavePhase.ReviewSameDay) return
         val staged = retryInputs[categoryId] ?: return
-        when (phase) {
-            ConferenceSavePhase.ReviewConsumption -> start(staged.copy(consumptionApproved = true))
-            ConferenceSavePhase.ReviewSameDay -> start(staged.copy(sameDayApproved = true))
-            else -> Unit
+        val userId = currentUserId
+        // Uma confirmação rápida não pode ser perdida enquanto o Job de verificação encerra.
+        viewModelScope.launch {
+            jobs[categoryId]?.join()
+            if (userId != currentUserId || _statuses.value[categoryId]?.phase != phase) return@launch
+            when (phase) {
+                ConferenceSavePhase.ReviewConsumption -> start(staged.copy(consumptionApproved = true))
+                ConferenceSavePhase.ReviewSameDay -> start(staged.copy(sameDayApproved = true))
+                else -> Unit
+            }
         }
     }
 
