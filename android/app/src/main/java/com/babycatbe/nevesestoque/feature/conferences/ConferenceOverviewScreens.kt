@@ -329,7 +329,7 @@ private fun ConferenceCategoriesScreen(
                         if (saveStatus?.phase == ConferenceSavePhase.Checking ||
                             saveStatus?.phase == ConferenceSavePhase.Saving) {
                             Text(
-                                if (saveStatus.phase == ConferenceSavePhase.Checking) "Verificando…" else "Salvando…",
+                                if (saveStatus?.phase == ConferenceSavePhase.Checking) "Verificando…" else "Salvando…",
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
@@ -387,8 +387,8 @@ private fun ConferenceCategoriesScreen(
         )
     }
     val reviewStatus = reviewCategoryId?.let { saveStatuses[it] }
-    if (reviewStatus?.phase == ConferenceSavePhase.ReviewConsumption ||
-        reviewStatus?.phase == ConferenceSavePhase.ReviewSameDay) {
+    if (reviewStatus != null && (reviewStatus.phase == ConferenceSavePhase.ReviewConsumption ||
+        reviewStatus.phase == ConferenceSavePhase.ReviewSameDay)) {
         val categoryId = reviewCategoryId!!
         val consumptionReview = reviewStatus.phase == ConferenceSavePhase.ReviewConsumption
         AlertDialog(
