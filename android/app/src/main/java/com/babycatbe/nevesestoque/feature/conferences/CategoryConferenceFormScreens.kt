@@ -50,7 +50,7 @@ fun CategoryConferenceFormRoute(
     categoryId: String,
     onBack: () -> Unit,
     onSaved: (String) -> Unit,
-    onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean,
+    onReadyToSave: (CategoryConferenceWriteInput, String, List<ConferenceProduct>) -> Boolean,
 ) {
     val vm: CategoryConferenceFormViewModel = viewModel(
         key = "category-conference-form-" + categoryId,
@@ -78,10 +78,6 @@ fun CategoryConferenceFormRoute(
         onSave = { date, responsible, observation, quantities ->
             vm.requestSave(date, responsible, observation, quantities, onReadyToSave)
         },
-        onConfirmWarnings = { vm.confirmConsumptionWarnings(onReadyToSave) },
-        onDismissWarnings = vm::dismissConsumptionWarnings,
-        onConfirmSameDay = { vm.confirmSameDay(onReadyToSave) },
-        onDismissSameDay = vm::dismissSameDay,
         onClearError = vm::clearError,
     )
 }
@@ -91,10 +87,6 @@ private fun CategoryConferenceFormScreen(
     state: CategoryConferenceFormUiState,
     onBack: () -> Unit,
     onSave: (String, String, String, Map<String, String>) -> Unit,
-    onConfirmWarnings: () -> Unit,
-    onDismissWarnings: () -> Unit,
-    onConfirmSameDay: () -> Unit,
-    onDismissSameDay: () -> Unit,
     onClearError: () -> Unit,
 ) {
     val setup = state.setup
@@ -326,42 +318,6 @@ private fun CategoryConferenceFormScreen(
                 }
             }
         }
-    }
-
-    if (state.consumptionWarnings.isNotEmpty()) {
-        ConsumptionWarningsDialog(
-            warnings = state.consumptionWarnings,
-            products = setup?.products.orEmpty(),
-            onConfirm = onConfirmWarnings,
-            onDismiss = onDismissWarnings,
-        )
-    }
-
-    if (state.sameDayConferences.isNotEmpty()) {
-        AlertDialog(
-            onDismissRequest = onDismissSameDay,
-            title = { Text("Já existe Conferência nesta data") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Só continue se esta for realmente outra contagem física. Para corrigir uma Conferência anterior, use o Histórico."
-                    )
-                    state.sameDayConferences.forEach { existing ->
-                        Text(
-                            "• " + formatConferenceTime(existing.effectiveAt) +
-                                " · " + existing.physicalResponsible,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = onConfirmSameDay) { Text("É outra contagem") }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissSameDay) { NevesIcon(NevesIcons.Back, "Voltar") }
-            },
-        )
     }
 
     if (leaveOpen) {
