@@ -72,7 +72,6 @@ data class CategoryConferenceFormUiState(
 class CategoryConferenceFormViewModel(private val categoryId: String) : ViewModel() {
     private val repository = ConferenceModuleRepository()
     private val idempotencyKey = UUID.randomUUID().toString()
-    private var pendingInput: CategoryConferenceWriteInput? = null
     private val _uiState = MutableStateFlow(CategoryConferenceFormUiState())
     val uiState: StateFlow<CategoryConferenceFormUiState> = _uiState.asStateFlow()
 
@@ -101,7 +100,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
         responsible: String,
         observation: String,
         quantities: Map<String, String>,
-        onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean,
+        onReadyToSave: (CategoryConferenceWriteInput, String, List<ConferenceProduct>) -> Boolean,
     ) {
         if (_uiState.value.checking || _uiState.value.saving) return
         val setup = _uiState.value.setup ?: return
@@ -179,104 +178,13 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
             return
         }
 
-        _uiState.value = _uiState.value.copy(
-            checking = true,
-            fieldErrors = CategoryConferenceFormErrors(),
-            consumptionWarnings = emptyList(),
-            sameDayConferences = emptyList(),
-            errorMessage = null,
-        )
-
-        viewModelScope.launch {
-            try {
-                val warnings = repository.reviewConsumption(
-                    effectiveAt = input.effectiveAt,
-                    items = input.items,
-                )
-                if (warnings.isNotEmpty()) {
-                    pendingInput = input
-                    _uiState.value = _uiState.value.copy(
-                        checking = false,
-                        consumptionWarnings = warnings,
-                    )
-                } else {
-                    continueAfterConsumptionReview(input, onReadyToSave)
-                }
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                _uiState.value = _uiState.value.copy(
-                    checking = false,
-                    errorMessage = conferenceModuleErrorMessage(error),
-                )
-            }
-        }
-    }
-
-    fun confirmConsumptionWarnings(onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean) {
-        if (_uiState.value.saving || _uiState.value.checking) return
-        val input = pendingInput ?: return
-        _uiState.value = _uiState.value.copy(
-            checking = true,
-            consumptionWarnings = emptyList(),
-            errorMessage = null,
-        )
-        viewModelScope.launch {
-            try {
-                continueAfterConsumptionReview(input, onReadyToSave)
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                _uiState.value = _uiState.value.copy(
-                    checking = false,
-                    errorMessage = conferenceModuleErrorMessage(error),
-                )
-            }
-        }
-    }
-
-    fun dismissConsumptionWarnings() {
-        if (_uiState.value.saving) return
-        pendingInput = null
-        _uiState.value = _uiState.value.copy(consumptionWarnings = emptyList())
-    }
-
-    fun confirmSameDay(onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean) {
-        if (_uiState.value.saving || _uiState.value.checking) return
-        val input = pendingInput ?: return
-        _uiState.value = _uiState.value.copy(
-            sameDayConferences = emptyList(),
-            errorMessage = null,
-        )
+        // Campos já foram validados. Verificações de consumo/mesma data ocorrem
+        // depois da cópia local e da navegação, no escopo da sessão autenticada.
         viewModelScope.launch { queueSave(input, onReadyToSave) }
     }
-
-    fun dismissSameDay() {
-        if (_uiState.value.saving) return
-        pendingInput = null
-        _uiState.value = _uiState.value.copy(sameDayConferences = emptyList())
-    }
-
-    private suspend fun continueAfterConsumptionReview(
-        input: CategoryConferenceWriteInput,
-        onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean,
-    ) {
-        val sameDay = repository.listSameDayCategoryConferences(
-            categoryId = input.categoryId,
-            dateValue = conferenceLocalDate(input.effectiveAt),
-        )
-        if (sameDay.isNotEmpty()) {
-            pendingInput = input
-            _uiState.value = _uiState.value.copy(
-                checking = false,
-                sameDayConferences = sameDay,
-            )
-            return
-        }
-        queueSave(input, onReadyToSave)
-    }
-
     private suspend fun queueSave(
         input: CategoryConferenceWriteInput,
-        onReadyToSave: (CategoryConferenceWriteInput, String) -> Boolean,
+        onReadyToSave: (CategoryConferenceWriteInput, String, List<ConferenceProduct>) -> Boolean,
     ) {
         val setup = _uiState.value.setup ?: return
         _uiState.value = _uiState.value.copy(
@@ -317,7 +225,7 @@ class CategoryConferenceFormViewModel(private val categoryId: String) : ViewMode
                 )
                 return
             }
-            if (onReadyToSave(input, operation.localId)) {
+            if (onReadyToSave(input, operation.localId, setup.products)) {
                 pendingInput = null
             } else {
                 com.babycatbe.nevesestoque.feature.offline.PendingStore.delete(operation.localId)
