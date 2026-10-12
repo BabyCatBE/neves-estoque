@@ -340,6 +340,7 @@ fun EditConferenceRoute(
     conferenceId: String,
     onBack: () -> Unit,
     onSaved: (String) -> Unit,
+    onReadyToCorrect: (CategoryConferenceUpdateInput, String, String, List<ConferenceProduct>) -> Boolean,
 ) {
     val vm: EditConferenceViewModel = viewModel(
         key = "edit-conference-" + conferenceId,
@@ -357,9 +358,9 @@ fun EditConferenceRoute(
     EditConferenceScreen(
         state = state,
         onBack = onBack,
-        onRequestReview = vm::requestReview,
-        onConfirmSave = vm::confirmSave,
-        onDismissReview = vm::dismissReview,
+        onRequestReview = { date, responsible, observation, quantities ->
+            vm.requestReview(date, responsible, observation, quantities, onReadyToCorrect)
+        },
     )
 }
 
@@ -368,8 +369,6 @@ private fun EditConferenceScreen(
     state: EditConferenceUiState,
     onBack: () -> Unit,
     onRequestReview: (String, String, String, Map<String, String>) -> Unit,
-    onConfirmSave: () -> Unit,
-    onDismissReview: () -> Unit,
 ) {
     val details = state.details
     var date by rememberSaveable { mutableStateOf("") }
@@ -554,48 +553,10 @@ private fun EditConferenceScreen(
                     enabled = dirty && !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(if (state.checking) "Verificando…" else "Revisar correção")
+                    Text(if (state.saving) "Preparando…" else "Salvar correção")
                 }
             }
         }
-    }
-
-    if (state.reviewOpen && details != null) {
-        AlertDialog(
-            onDismissRequest = onDismissReview,
-            title = { Text("Salvar correção?") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("O registro manterá o mesmo ID e a auditoria guardará o antes/depois.")
-                    if (state.consumptionWarnings.isNotEmpty()) {
-                        Text(
-                            "Há consumo fora do padrão em " +
-                                state.consumptionWarnings.size + " Produto(s).",
-                            color = MaterialTheme.colorScheme.tertiary,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        state.consumptionWarnings.forEach { warning ->
-                            val productName = details.items
-                                .firstOrNull { it.productId == warning.productId }
-                                ?.productName ?: "Produto"
-                            Text("• " + productName + ": " + consumptionWarningText(warning))
-                        }
-                    } else {
-                        Text("Nenhum alerta de consumo atípico foi identificado.")
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = onConfirmSave, enabled = !state.saving) {
-                    Text(if (state.saving) "Salvando…" else "Salvar correção")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissReview, enabled = !state.saving) {
-                    Text("Cancelar")
-                }
-            },
-        )
     }
 
     if (leaveOpen) {
