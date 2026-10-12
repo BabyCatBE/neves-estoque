@@ -564,6 +564,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 onHistoryCategory = { navController.navigate("conferences/history/$it") },
                 saveStatuses = conferenceSaveStatuses,
                 onRetrySave = conferenceSaves::retry,
+                onConfirmReview = conferenceSaves::confirmReview,
                 onDiscardFailed = conferenceSaves::discardFailed,
                 refreshKey = refreshKey + confirmedConferenceCount,
                 noticeMessage = notice,
@@ -586,12 +587,12 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     }
                     navController.popBackStack()
                 },
-                onReadyToSave = { input, localId ->
-                    val accepted = conferenceSaves.submit(input, localId)
+                onReadyToSave = { input, localId, products ->
+                    val accepted = conferenceSaves.submit(input, localId, products)
                     if (accepted) {
                         navController.previousBackStackEntry?.savedStateHandle?.apply {
                             set(REFRESH_KEY, System.currentTimeMillis())
-                            set(NOTICE_KEY, "Conferência em envio. Você pode seguir para outra Categoria.")
+                            set(NOTICE_KEY, "Contagem protegida no aparelho. Verificação e envio em segundo plano.")
                         }
                         navController.popBackStack()
                     }
