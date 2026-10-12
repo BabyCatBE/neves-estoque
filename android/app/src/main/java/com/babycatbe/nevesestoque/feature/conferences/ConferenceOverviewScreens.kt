@@ -133,6 +133,7 @@ fun ConferenceCategoriesRoute(
     onEditConference: (String) -> Unit,
     onHistoryCategory: (String) -> Unit,
     saveStatuses: Map<String, ConferenceSaveStatus> = emptyMap(),
+    onConfirmReview: (String) -> Unit,
     onRetrySave: (String) -> Unit = {},
     onDiscardFailed: (String) -> Unit = {},
     refreshKey: Long = 0L,
@@ -153,6 +154,7 @@ fun ConferenceCategoriesRoute(
         onHistoryCategory = onHistoryCategory,
         saveStatuses = saveStatuses,
         onRetrySave = onRetrySave,
+        onConfirmReview = onConfirmReview,
         onDiscardFailed = onDiscardFailed,
         historyMode = false,
         noticeMessage = noticeMessage,
@@ -180,6 +182,7 @@ fun ConferenceHistoryCategoriesRoute(
         onHistoryCategory = {},
         saveStatuses = emptyMap(),
         onRetrySave = {},
+        onConfirmReview = {},
         onDiscardFailed = {},
         historyMode = true,
         noticeMessage = null,
@@ -198,6 +201,7 @@ private fun ConferenceCategoriesScreen(
     onEditConference: (String) -> Unit,
     onHistoryCategory: (String) -> Unit,
     saveStatuses: Map<String, ConferenceSaveStatus>,
+    onConfirmReview: (String) -> Unit,
     onRetrySave: (String) -> Unit,
     onDiscardFailed: (String) -> Unit,
     historyMode: Boolean,
@@ -206,6 +210,7 @@ private fun ConferenceCategoriesScreen(
 ) {
     var selectedCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
     var discardCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var reviewCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
     Scaffold(
         topBar = {
             ConferenceTopBar(
@@ -257,8 +262,11 @@ private fun ConferenceCategoriesScreen(
             items(state.categories, key = { it.id }) { category ->
                 val enabled = if (historyMode) category.lastConferenceAt != null else category.productCount > 0
                 val saveStatus = if (historyMode) null else saveStatuses[category.id]
-                val savingBlocked = saveStatus?.phase == ConferenceSavePhase.Saving ||
-                    saveStatus?.phase == ConferenceSavePhase.Failed
+                val savingBlocked = saveStatus?.phase in setOf(
+                    ConferenceSavePhase.Checking, ConferenceSavePhase.Saving,
+                    ConferenceSavePhase.ReviewConsumption, ConferenceSavePhase.ReviewSameDay,
+                    ConferenceSavePhase.Failed,
+                )
                 val conferredToday = category.conferredToday ||
                     (saveStatus?.phase == ConferenceSavePhase.Saved &&
                         saveStatus.effectiveDate == java.time.LocalDate.now().toString())
@@ -295,8 +303,12 @@ private fun ConferenceCategoriesScreen(
                                     "Última Conferência: " + formatConferenceDateShort(category.lastConferenceAt)
                                 historyMode -> "Sem Conferências registradas."
                                 category.productCount == 0 -> "Categoria sem Produtos ativos."
+                                saveStatus?.phase == ConferenceSavePhase.Checking ->
+                                    "Verificando em segundo plano. Você pode conferir outra Categoria."
                                 saveStatus?.phase == ConferenceSavePhase.Saving ->
-                                    "Salvando em segundo plano. Aguarde a confirmação antes de reenviar."
+                                    "Salvando em segundo plano. Você pode conferir outra Categoria."
+                                saveStatus?.phase in setOf(ConferenceSavePhase.ReviewConsumption, ConferenceSavePhase.ReviewSameDay) ->
+                                    "Precisa de atenção: " + (saveStatus?.message ?: "revise a contagem.")
                                 saveStatus?.phase == ConferenceSavePhase.Failed ->
                                     "Falha no envio: " + (saveStatus.message ?: "tente novamente.")
                                 conferredToday -> "Outra Conferência hoje só deve ser registrada se houve nova contagem física."
@@ -314,12 +326,23 @@ private fun ConferenceCategoriesScreen(
                                 modifier = Modifier.padding(top = 8.dp),
                             )
                         }
-                        if (saveStatus?.phase == ConferenceSavePhase.Saving) {
+                        if (saveStatus?.phase == ConferenceSavePhase.Checking ||
+                            saveStatus?.phase == ConferenceSavePhase.Saving) {
                             Text(
-                                "Salvando…",
+                                if (saveStatus.phase == ConferenceSavePhase.Checking) "Verificando…" else "Salvando…",
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
+                        }
+                        if (saveStatus?.phase in setOf(ConferenceSavePhase.ReviewConsumption, ConferenceSavePhase.ReviewSameDay)) {
+                            Row {
+                                TextButton(onClick = { reviewCategoryId = category.id }) {
+                                    Text("Revisar alerta")
+                                }
+                                TextButton(onClick = { discardCategoryId = category.id }) {
+                                    Text("Descartar tentativa")
+                                }
+                            }
                         }
                         if (saveStatus?.phase == ConferenceSavePhase.Failed) {
                             Row {
@@ -361,6 +384,43 @@ private fun ConferenceCategoriesScreen(
                     onCategoryClick(selected.id)
                 }) { Text("Nova conferência") }
             },
+        )
+    }
+    val reviewStatus = reviewCategoryId?.let { saveStatuses[it] }
+    if (reviewStatus?.phase == ConferenceSavePhase.ReviewConsumption ||
+        reviewStatus?.phase == ConferenceSavePhase.ReviewSameDay) {
+        val categoryId = reviewCategoryId!!
+        val consumptionReview = reviewStatus.phase == ConferenceSavePhase.ReviewConsumption
+        AlertDialog(
+            onDismissRequest = { reviewCategoryId = null },
+            title = { Text(if (consumptionReview) "Revisar consumo" else "Já existe Conferência nesta data") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (consumptionReview)
+                        "A contagem ainda NÃO foi salva. Confirme somente se os números físicos estão corretos."
+                        else "A contagem ainda NÃO foi salva. Confirme apenas se houve outra contagem física; correções devem ser feitas pelo Histórico."
+                    )
+                    if (consumptionReview) {
+                        reviewStatus.warnings.forEach { warning ->
+                            val productName = reviewStatus.products.firstOrNull { it.id == warning.productId }?.name ?: "Produto"
+                            Text("• " + productName + ": " + consumptionWarningText(warning))
+                        }
+                    } else {
+                        reviewStatus.sameDay.forEach { previous ->
+                            Text("• " + formatConferenceTime(previous.effectiveAt) +
+                                " · " + previous.physicalResponsible)
+                        }
+                    }
+                    Text("Se precisar corrigir os valores, a cópia está em Alertas → Pendências locais.")
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    reviewCategoryId = null
+                    onConfirmReview(categoryId)
+                }) { Text(if (consumptionReview) "Contagem está correta" else "É outra contagem") }
+            },
+            dismissButton = { TextButton(onClick = { reviewCategoryId = null }) { Text("Deixar pendente") } },
         )
     }
     if (discardCategoryId != null) {
