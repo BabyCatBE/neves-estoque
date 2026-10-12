@@ -642,7 +642,7 @@ private fun ConsumptionWarningsDialog(
     )
 }
 
-private fun consumptionWarningText(warning: ConferenceConsumptionWarning): String =
+internal fun consumptionWarningText(warning: ConferenceConsumptionWarning): String =
     when (warning.kind) {
         ConferenceConsumptionWarningKind.Inconsistent ->
             "a contagem indica aumento de estoque não explicado pelas Entradas."
