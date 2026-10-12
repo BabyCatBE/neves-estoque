@@ -2,6 +2,7 @@ package com.babycatbe.nevesestoque.feature.offline
 
 import com.babycatbe.nevesestoque.data.offline.OfflineStore
 import com.babycatbe.nevesestoque.feature.conferences.CategoryConferenceWriteInput
+import com.babycatbe.nevesestoque.feature.conferences.CategoryConferenceUpdateInput
 import com.babycatbe.nevesestoque.feature.conferences.CategoryConferenceWriteItem
 import com.babycatbe.nevesestoque.feature.conferences.ProductConferenceWriteInput
 import com.babycatbe.nevesestoque.feature.entries.EntryCreateInput
@@ -34,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 
 @Serializable
-enum class PendingKind { Entry, CategoryConference, ProductConference }
+enum class PendingKind { Entry, CategoryConference, ProductConference, CategoryConferenceCorrection }
 
 @Serializable
 data class PendingEntryItem(
@@ -68,6 +69,7 @@ data class PendingConferenceItem(
 @Serializable
 data class PendingCategoryConferencePayload(
     val categoryId: String,
+    val conferenceId: String? = null,
     val categoryLabel: String,
     val effectiveAt: String,
     val physicalResponsible: String,
@@ -109,13 +111,14 @@ data class PendingOperation(
         get() = when (kind) {
             PendingKind.Entry -> "Entrada"
             PendingKind.CategoryConference -> "Conferência por Categoria"
+            PendingKind.CategoryConferenceCorrection -> "Correção de Conferência"
             PendingKind.ProductConference -> "Conferência unitária"
         }
 
     val summaryTitle: String
         get() = when (kind) {
             PendingKind.Entry -> entry?.supplierLabel?.ifBlank { null } ?: "Fornecedor não identificado"
-            PendingKind.CategoryConference -> categoryConference?.categoryLabel?.ifBlank { null } ?: "Categoria não identificada"
+            PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection -> categoryConference?.categoryLabel?.ifBlank { null } ?: "Categoria não identificada"
             PendingKind.ProductConference -> productConference?.productLabel?.ifBlank { null } ?: "Produto não identificado"
         }
 
@@ -125,7 +128,7 @@ data class PendingOperation(
                 val count = entry?.items?.size ?: 0
                 "$count ${if (count == 1) "item" else "itens"}" + (entry?.observation?.let { " · $it" } ?: "")
             }
-            PendingKind.CategoryConference -> "Responsável físico: ${categoryConference?.physicalResponsible.orEmpty()}"
+            PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection -> "Responsável físico: ${categoryConference?.physicalResponsible.orEmpty()}"
             PendingKind.ProductConference -> "Responsável físico: ${productConference?.physicalResponsible.orEmpty()}"
         }
 }
@@ -207,6 +210,37 @@ fun buildPendingCategoryConference(
     ),
 )
 
+/** Correção protegida em pendência específica: NUNCA criar nova conferência a partir dela. */
+fun buildPendingCategoryConferenceCorrection(
+    input: CategoryConferenceUpdateInput,
+    categoryLabel: String,
+    productLabel: (String) -> Pair<String, String>,
+    metadata: PendingMetadata,
+    localId: String = UUID.randomUUID().toString(),
+    now: String = OffsetDateTime.now().toString(),
+): PendingOperation = PendingOperation(
+    localId = localId,
+    kind = PendingKind.CategoryConferenceCorrection,
+    createdAt = now,
+    updatedAt = now,
+    authUserId = metadata.authUserId,
+    appUserId = metadata.appUserId,
+    deviceId = input.deviceId,
+    actorLabel = metadata.actorLabel,
+    idempotencyKey = UUID.randomUUID().toString(), // identidade da cópia, NÃO é RPC de atualização
+    categoryConference = PendingCategoryConferencePayload(
+        categoryId = "", // categoria informativa é carregada pelo formulário do registro
+        conferenceId = input.conferenceId,
+        categoryLabel = categoryLabel,
+        effectiveAt = input.effectiveAt,
+        physicalResponsible = input.physicalResponsible,
+        observation = input.observation,
+        items = input.items.map { item ->
+            val (name, unit) = productLabel(item.productId)
+            PendingConferenceItem(item.productId, name, unit, item.quantity)
+        },
+    ),
+)
 fun buildPendingProductConference(
     input: ProductConferenceWriteInput,
     productLabel: String,
@@ -271,6 +305,18 @@ fun PendingOperation.toCategoryConferenceInput(deviceIdNow: String): CategoryCon
     )
 }
 
+fun PendingOperation.toCategoryConferenceUpdateInput(deviceIdNow: String): CategoryConferenceUpdateInput {
+    require(kind == PendingKind.CategoryConferenceCorrection) { "Pendência não é correção." }
+    val payload = requireNotNull(categoryConference) { "Correção sem dados." }
+    return CategoryConferenceUpdateInput(
+        conferenceId = requireNotNull(payload.conferenceId) { "Correção sem ID original." },
+        effectiveAt = payload.effectiveAt,
+        physicalResponsible = payload.physicalResponsible,
+        deviceId = deviceIdNow,
+        observation = payload.observation,
+        items = payload.items.map { CategoryConferenceWriteItem(it.productId, it.quantity) },
+    )
+}
 fun PendingOperation.toProductConferenceInput(deviceIdNow: String): ProductConferenceWriteInput {
     val payload = requireNotNull(productConference) { "Pendência não é uma Conferência unitária." }
     return ProductConferenceWriteInput(
