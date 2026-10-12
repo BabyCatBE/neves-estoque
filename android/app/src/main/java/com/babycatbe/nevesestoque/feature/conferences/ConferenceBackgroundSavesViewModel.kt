@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.babycatbe.nevesestoque.feature.offline.PendingMutationResult
 import com.babycatbe.nevesestoque.feature.offline.PendingStore
+import com.babycatbe.nevesestoque.feature.offline.PendingKind
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -118,6 +119,31 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
         }
     }
 
+    /** Não enviar uma versão anterior se alguém editou a pendência local. */
+    private fun matchesLocalCopy(staged: StagedConference): Boolean {
+        val pending = PendingStore.find(staged.localId) ?: return false
+        val payload = pending.categoryConference ?: return false
+        val input = staged.input
+        return pending.kind == PendingKind.CategoryConference &&
+            pending.idempotencyKey == input.idempotencyKey &&
+            pending.deviceId == input.deviceId &&
+            payload.categoryId == input.categoryId &&
+            payload.effectiveAt == input.effectiveAt &&
+            payload.physicalResponsible == input.physicalResponsible &&
+            payload.observation == input.observation &&
+            payload.items.map { it.productId to it.quantity } ==
+                input.items.map { it.productId to it.quantity }
+    }
+
+    private fun stopStaleSave(staged: StagedConference) {
+        _statuses.value = _statuses.value + (
+            staged.input.categoryId to ConferenceSaveStatus(
+                ConferenceSavePhase.Failed,
+                "A cópia local foi alterada ou removida. Confira Alertas → Pendências locais antes de enviar.",
+                conferenceLocalDate(staged.input.effectiveAt),
+            )
+        )
+    }
     private fun start(staged: StagedConference) {
         val categoryId = staged.input.categoryId
         if (jobs[categoryId]?.isActive == true) return
@@ -128,6 +154,10 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
         )
         jobs[categoryId] = viewModelScope.launch {
             try {
+                if (!matchesLocalCopy(staged)) {
+                    stopStaleSave(staged)
+                    return@launch
+                }
                 if (!staged.consumptionApproved) {
                     val warnings = repository.reviewConsumption(
                         effectiveAt = staged.input.effectiveAt,
@@ -158,6 +188,10 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
                         )
                         return@launch
                     }
+                }
+                if (!matchesLocalCopy(staged)) {
+                    stopStaleSave(staged)
+                    return@launch
                 }
                 _statuses.value = _statuses.value + (
                     categoryId to ConferenceSaveStatus(ConferenceSavePhase.Saving, effectiveDate = effectiveDate)
@@ -191,14 +225,18 @@ class ConferenceBackgroundSavesViewModel : ViewModel() {
         }
     }
     private suspend fun finishSuccessful(staged: StagedConference) {
-        val result = PendingStore.delete(staged.localId)
+        val changed = !matchesLocalCopy(staged)
+        val result = if (changed) null else PendingStore.delete(staged.localId)
         retryInputs.remove(staged.input.categoryId)
         _statuses.value = _statuses.value + (
             staged.input.categoryId to ConferenceSaveStatus(
                 ConferenceSavePhase.Saved,
-                if (result is PendingMutationResult.Failure) {
-                    "Salva no servidor. Não foi possível limpar a cópia local; revise Alertas → Pendências locais."
-                } else null,
+                when {
+                    changed -> "Salva no servidor, mas a cópia local mudou. Revise Alertas → Pendências locais."
+                    result is PendingMutationResult.Failure ->
+                        "Salva no servidor. Não foi possível limpar a cópia local; revise Alertas → Pendências locais."
+                    else -> null
+                },
                 effectiveDate = conferenceLocalDate(staged.input.effectiveAt),
             )
         )
