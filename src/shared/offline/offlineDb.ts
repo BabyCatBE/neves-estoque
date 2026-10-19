@@ -30,6 +30,18 @@ export type OfflinePendingOperationRecord = {
   payload: unknown;
 };
 
+/** Contagem incompleta: diferente de pendingOperations e nunca enviável. */
+export type OfflineConferenceDraftRecord = {
+  id: string;
+  ownerId: string;
+  categoryId: string;
+  date: string;
+  responsible: string;
+  observation: string;
+  quantities: Record<string, string>;
+  updatedAt: string;
+};
+
 export type VerifiedOfflineAccessRecord = {
   authUserId: string;
   appUserId: string;
@@ -46,6 +58,7 @@ class NevesOfflineDatabase extends Dexie {
   snapshots!: Table<OfflineSnapshotRecord, string>;
   illustrationBlobs!: Table<OfflineIllustrationRecord, string>;
   pendingOperations!: Table<OfflinePendingOperationRecord, string>;
+  conferenceDrafts!: Table<OfflineConferenceDraftRecord, string>;
   verifiedAccess!: Table<VerifiedOfflineAccessRecord, string>;
 
   constructor() {
@@ -66,6 +79,15 @@ class NevesOfflineDatabase extends Dexie {
       snapshots: "&key,updatedAt",
       illustrationBlobs: "&path,updatedAt",
       pendingOperations: "&id,kind,status,createdAt,effectiveAt,authUserId",
+      verifiedAccess: "&authUserId,verifiedAt,deviceId"
+    });
+
+    // Upgrade apenas da cópia local do navegador; preservar pendências e cache.
+    this.version(4).stores({
+      snapshots: "&key,updatedAt",
+      illustrationBlobs: "&path,updatedAt",
+      pendingOperations: "&id,kind,status,createdAt,effectiveAt,authUserId",
+      conferenceDrafts: "&id,ownerId,categoryId,updatedAt",
       verifiedAccess: "&authUserId,verifiedAt,deviceId"
     });
   }
