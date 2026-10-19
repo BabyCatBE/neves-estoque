@@ -28,6 +28,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,6 +40,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -63,6 +66,8 @@ private data class EntryLineUi(
     val draftProduct: EntryDraftProduct? = null,
     val quantity: String = "",
     val unitPrice: String = "",
+    val totalPrice: String = "",
+    val priceByTotal: Boolean = false,
 )
 
 private data class EntryItemFieldErrors(
@@ -83,7 +88,31 @@ private data class EditEntryLineUi(
     val unit: String,
     val quantity: String,
     val unitPrice: String,
+    val totalPrice: String = "",
+    val priceByTotal: Boolean = false,
 )
+
+/** Alternância discreta, sem substituir o teclado numérico Neves. */
+@Composable
+private fun EntryTotalPriceToggle(isTotal: Boolean, onChanged: (Boolean) -> Unit, enabled: Boolean = true) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End,
+    ) {
+        Text(
+            "Informar total da nota",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Switch(
+            checked = isTotal,
+            onCheckedChange = onChanged,
+            enabled = enabled,
+            modifier = Modifier.scale(0.78f),
+        )
+    }
+}
 
 @Composable
 fun NewEntryRoute(
