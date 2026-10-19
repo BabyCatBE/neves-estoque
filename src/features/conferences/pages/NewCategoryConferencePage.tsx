@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { useNetworkStatus } from "../../../shared/offline/NetworkContext";
-import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { TextField } from "../../../shared/components/ui/TextField";
@@ -90,13 +89,15 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
 
   useEffect(() => {
     let cancelled = false;
-    setDraftError(null);
     if (!ownerId) {
-      setDraftError("Não foi possível identificar o usuário para recuperar o rascunho.");
-      return;
+      void Promise.resolve().then(() => {
+        if (!cancelled) setDraftError("Não foi possível identificar o usuário para recuperar o rascunho.");
+      });
+      return () => { cancelled = true; };
     }
     void readConferenceDraft(ownerId, setup.category.id).then((draft) => {
       if (cancelled) return;
+      setDraftError(null);
       if (draft) {
         setDate(draft.date);
         setResponsible(draft.responsible);
