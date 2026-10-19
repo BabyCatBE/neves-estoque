@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { useNetworkStatus } from "../../../shared/offline/NetworkContext";
@@ -30,6 +30,7 @@ import {
   parseConferenceQuantity
 } from "../lib/conferenceValidation";
 import { conferenceBackgroundSaves } from "../lib/conferenceBackgroundSaves";
+import { readConferenceDraft, saveConferenceDraft, discardConferenceDraft } from "../lib/conferenceDrafts";
 
 export function NewCategoryConferencePage() {
   const { categoryId } = useParams();
@@ -81,6 +82,35 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const [checkingSave, setCheckingSave] = useState(false);
   const [preparingSave, setPreparingSave] = useState(false);
   const [idempotencyKey] = useState(() => createBrowserUuid());
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [leavingBusy, setLeavingBusy] = useState(false);
+  const ownerId = session?.user.id ?? "";
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!ownerId) {
+      setDraftError("Não foi possível identificar o usuário para recuperar o rascunho.");
+      return;
+    }
+    void readConferenceDraft(ownerId, setup.category.id).then((draft) => {
+      if (cancelled) return;
+      if (draft) {
+        setDate(draft.date);
+        setResponsible(draft.responsible);
+        setObservation(draft.observation);
+        setQuantities(Object.fromEntries(setup.products.map((product) =>
+          [product.id, draft.quantities[product.id] ?? ""])));
+        setHasDraft(true);
+      }
+      setDraftLoaded(true);
+    }).catch(() => {
+      if (!cancelled) setDraftError("Falha ao ler o rascunho. A cópia local não foi substituída.");
+    });
+    return () => { cancelled = true; };
+  }, [ownerId, setup.category.id, setup.products]);
+
   const allowNavigationRef = useRef(false);
 
   const dirty = useMemo(
@@ -96,7 +126,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      dirty &&
+      (dirty || hasDraft) &&
       !allowNavigationRef.current &&
       currentLocation.pathname !== nextLocation.pathname
   );
