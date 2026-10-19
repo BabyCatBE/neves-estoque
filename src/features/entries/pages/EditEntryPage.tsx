@@ -692,10 +692,6 @@ function safeQuantity(value: string) {
   try { return parsePositiveDecimal(value, "Quantidade"); } catch { return null; }
 }
 
-function safePrice(value: string) {
-  try { return parseOptionalPrice(value); } catch { return null; }
-}
-
 function validationMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
