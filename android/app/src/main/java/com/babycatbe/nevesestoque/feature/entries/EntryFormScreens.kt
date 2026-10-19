@@ -1429,7 +1429,7 @@ private fun buildEditChangeSummary(
     if (entryLocalDate(original.effectiveAt) != date) changes += "Data alterada."
     if (original.observation.orEmpty().trim() != observation.trim()) changes += "Observação alterada."
     val oldItems = original.items.map {
-        "${it.productId}|${formatEntryNumber(it.quantity)}|${it.unitPrice?.let(::formatEntryNumber).orEmpty()}"
+        "${it.productId}|${formatEntryNumber(it.quantity)}|${it.unitPrice?.toString().orEmpty()}"
     }
     val newItems = items.map {
         val price = resolveEntryItemUnitPrice(it.quantity, it.unitPrice, it.totalPrice, it.priceByTotal).value
