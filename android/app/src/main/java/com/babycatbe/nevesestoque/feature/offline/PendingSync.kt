@@ -213,6 +213,10 @@ class PendingSyncRepository {
                 val sameDay = conferences.listSameDayCategoryConferences(input.categoryId, localDateOf(input.effectiveAt))
                 warnings to sameDay
             }
+            PendingKind.CategoryConferenceCorrection -> {
+                val input = operation.toCategoryConferenceUpdateInput(deviceId)
+                conferences.reviewConsumption(input.effectiveAt, input.items, excludeConferenceId = input.conferenceId) to emptyList()
+            }
             PendingKind.ProductConference -> {
                 val input = operation.toProductConferenceInput(deviceId)
                 listOfNotNull(
@@ -235,6 +239,10 @@ class PendingSyncRepository {
             when (operation.kind) {
                 PendingKind.Entry -> entries.createEntry(operation.toEntryCreateInput(entryEffectiveAt))
                 PendingKind.CategoryConference -> conferences.createCategoryConference(operation.toCategoryConferenceInput(deviceId))
+                PendingKind.CategoryConferenceCorrection -> {
+                    val input = operation.toCategoryConferenceUpdateInput(deviceId)
+                    if (!conferences.isUpdateApplied(input)) conferences.updateCategoryConference(input)
+                }
                 PendingKind.ProductConference -> productConferences.createProductConference(operation.toProductConferenceInput(deviceId))
             }
             sentResultAfterLocalDelete(operation)
@@ -244,6 +252,8 @@ class PendingSyncRepository {
                 when (operation.kind) {
                     PendingKind.Entry ->
                         shouldReconcileEntryFailure(error) && entries.findEntryIdByIdempotencyKey(operation.idempotencyKey) != null
+                    PendingKind.CategoryConferenceCorrection ->
+                        conferences.isUpdateApplied(operation.toCategoryConferenceUpdateInput(deviceId))
                     else -> conferences.findConferenceIdByIdempotencyKey(operation.idempotencyKey) != null
                 }
             }.getOrDefault(false)
@@ -259,12 +269,19 @@ class PendingSyncRepository {
     private fun sentMessage(operation: PendingOperation): String =
         "${operation.kindLabel} “${operation.summaryTitle}” enviada ao estoque oficial. A pendência local foi removida."
 
-    private suspend fun sentResultAfterLocalDelete(operation: PendingOperation): PendingSendResult =
-        when (PendingStore.delete(operation.localId)) {
+    private suspend fun sentResultAfterLocalDelete(operation: PendingOperation): PendingSendResult {
+        // Não descartar cópia local alterada durante RPC: ela contém trabalho ainda não enviado.
+        if (operation.kind == PendingKind.CategoryConferenceCorrection &&
+            PendingStore.find(operation.localId) != operation
+        ) return PendingSendResult.Sent(
+            "Correção aplicada ao servidor, mas a cópia local foi alterada. Revise Pendências locais."
+        )
+        return when (PendingStore.delete(operation.localId)) {
             PendingMutationResult.Success -> PendingSendResult.Sent(sentMessage(operation))
             is PendingMutationResult.Failure -> PendingSendResult.Sent(
                 "${operation.kindLabel} “${operation.summaryTitle}” foi enviada ao estoque oficial, " +
                     "mas a cópia local não pôde ser removida. Tente excluí-la novamente em Pendências locais."
             )
         }
+    }
 }

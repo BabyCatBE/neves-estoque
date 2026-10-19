@@ -231,14 +231,14 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
     val observationFocus = remember { FocusRequester() }
     val rows = when (operation.kind) {
         PendingKind.Entry -> operation.entry?.items.orEmpty().indices.map { "entry-$it" }
-        PendingKind.CategoryConference -> operation.categoryConference?.items.orEmpty().map { "conf-${it.productId}" }
+        PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection -> operation.categoryConference?.items.orEmpty().map { "conf-${it.productId}" }
         PendingKind.ProductConference -> listOf("unit-${operation.productConference?.productId}")
     }
     val order = when (operation.kind) {
         PendingKind.Entry -> operation.entry?.items.orEmpty().indices
             .filterNot { it in draft.removedItems }
             .flatMap { listOf("$it-q" to "entry-$it", "$it-p" to "entry-$it") }
-        PendingKind.CategoryConference -> operation.categoryConference?.items.orEmpty()
+        PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection -> operation.categoryConference?.items.orEmpty()
             .map { it.productId to "conf-${it.productId}" }
         PendingKind.ProductConference -> operation.productConference?.let { listOf(it.productId to "unit-${it.productId}") }.orEmpty()
     }
@@ -374,7 +374,7 @@ private fun LazyListScope.editItems(
                 }
             }
         }
-        PendingKind.CategoryConference -> {
+        PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection -> {
             val payload = operation.categoryConference ?: return
             items(payload.items, key = { "conf-${it.productId}" }) { item ->
                 QuantityRow(

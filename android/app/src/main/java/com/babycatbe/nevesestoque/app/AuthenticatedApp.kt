@@ -20,6 +20,9 @@ import com.babycatbe.nevesestoque.data.offline.OfflineBanner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.babycatbe.nevesestoque.feature.conferences.ConferenceDraftStore
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,6 +31,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.babycatbe.nevesestoque.feature.auth.AuthUiState
 import com.babycatbe.nevesestoque.feature.conferences.CategoryConferenceFormRoute
+import com.babycatbe.nevesestoque.feature.conferences.ConferenceBackgroundSavesViewModel
+import com.babycatbe.nevesestoque.feature.conferences.ConferenceSavePhase
 import com.babycatbe.nevesestoque.feature.conferences.CategoryConferenceHistoryRoute
 import com.babycatbe.nevesestoque.feature.conferences.ConferenceCategoriesRoute
 import com.babycatbe.nevesestoque.feature.conferences.ConferenceDetailRoute
@@ -117,6 +122,16 @@ private const val NOTICE_KEY = "catalog-notice"
 @Composable
 fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
     val navController = rememberNavController()
+    val appScope = rememberCoroutineScope()
+    // Escopo do app autenticado, não da tela de formulário: a navegação não cancela envios.
+    val conferenceSaves: ConferenceBackgroundSavesViewModel = viewModel()
+    val conferenceSaveStatuses by conferenceSaves.statuses.collectAsStateWithLifecycle()
+    LaunchedEffect(authState.appUserId) {
+        conferenceSaves.bindUser(authState.appUserId.orEmpty())
+    }
+    val confirmedConferenceCount = conferenceSaveStatuses.values.count {
+        it.phase == ConferenceSavePhase.Saved
+    }
 
     // Pré-carregamento enxuto: somente Estoque Atual e Produtos, as telas mais abertas.
     // Primeiro a cópia local do aparelho, depois a leitura oficial em segundo plano.
@@ -548,8 +563,15 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             ConferenceCategoriesRoute(
                 onBack = { navController.popBackStack() },
+                ownerId = authState.appUserId.orEmpty(),
                 onCategoryClick = { navController.navigate("conferences/categories/$it/new") },
-                refreshKey = refreshKey,
+                onEditConference = { navController.navigate("conferences/detail/$it/edit") },
+                onHistoryCategory = { navController.navigate("conferences/history/$it") },
+                saveStatuses = conferenceSaveStatuses,
+                onRetrySave = conferenceSaves::retry,
+                onConfirmReview = conferenceSaves::confirmReview,
+                onDiscardFailed = conferenceSaves::discardFailed,
+                refreshKey = refreshKey + confirmedConferenceCount,
                 noticeMessage = notice,
                 onDismissNotice = { entry.savedStateHandle[NOTICE_KEY] = null },
             )
@@ -562,13 +584,30 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             val categoryId = entry.arguments?.getString("categoryId").orEmpty()
             CategoryConferenceFormRoute(
                 categoryId = categoryId,
-                onBack = { navController.popBackStack() },
+                ownerId = authState.appUserId.orEmpty(),
+                onBack = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(REFRESH_KEY, System.currentTimeMillis())
+                    navController.popBackStack()
+                },
                 onSaved = { message ->
                     navController.previousBackStackEntry?.savedStateHandle?.apply {
                         set(REFRESH_KEY, System.currentTimeMillis())
                         set(NOTICE_KEY, message)
                     }
                     navController.popBackStack()
+                },
+                onReadyToSave = { input, localId, products ->
+                    val accepted = conferenceSaves.submit(input, localId, products)
+                    if (accepted) {
+                        // A cópia enviável já está persistida; remover apenas o rascunho incompleto.
+                        appScope.launch { ConferenceDraftStore.delete(authState.appUserId.orEmpty(), categoryId) }
+                        navController.previousBackStackEntry?.savedStateHandle?.apply {
+                            set(REFRESH_KEY, System.currentTimeMillis())
+                            set(NOTICE_KEY, "Contagem protegida no aparelho. Verificação e envio em segundo plano.")
+                        }
+                        navController.popBackStack()
+                    }
+                    accepted
                 },
             )
         }
@@ -638,6 +677,23 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                         set(NOTICE_KEY, message)
                     }
                     navController.popBackStack()
+                },
+                onReadyToCorrect = { input, localId, categoryId, products ->
+                    val online = com.babycatbe.nevesestoque.data.offline.ConnectivityMonitor.isOnline
+                    val accepted = if (online) conferenceSaves.submitCorrection(input, localId, categoryId, products)
+                        else true // Sem internet: já está guardada. Envio posterior somente manual.
+                    if (accepted) {
+                        navController.navigate(CONFERENCE_CATEGORIES_ROUTE) {
+                            popUpTo(HOME_ROUTE) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        navController.currentBackStackEntry?.savedStateHandle?.set(
+                            NOTICE_KEY,
+                            if (online) "Correção protegida. Verificação e atualização em segundo plano."
+                            else "Correção guardada em Pendências locais. Envie manualmente quando houver internet."
+                        )
+                    }
+                    accepted
                 },
             )
         }

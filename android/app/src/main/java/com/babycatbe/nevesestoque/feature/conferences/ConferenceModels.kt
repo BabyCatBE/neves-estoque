@@ -67,6 +67,8 @@ data class ConferenceCategorySummary(
     val productCount: Int,
     val lastConferenceAt: String?,
     val conferredToday: Boolean,
+    val latestConferenceId: String? = null,
+    val todayConferenceCount: Int = 0,
 )
 
 data class CategoryConferenceSetup(

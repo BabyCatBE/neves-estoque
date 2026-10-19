@@ -46,7 +46,7 @@ fun initialEditDraft(operation: PendingOperation): PendingEditDraft = when (oper
             }.toMap(),
         )
     }
-    PendingKind.CategoryConference -> {
+    PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection -> {
         val payload = operation.categoryConference!!
         PendingEditDraft(
             date = localDateOf(payload.effectiveAt),
@@ -131,7 +131,7 @@ fun applyPendingEdit(
                 )
             }
         }
-        PendingKind.CategoryConference -> {
+        PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection -> {
             val payload = operation.categoryConference!!
             val effectiveAt = editedEffectiveAt(draft.date, payload.effectiveAt, errors)
             val responsible = cleanResponsible(draft.responsible, errors)
