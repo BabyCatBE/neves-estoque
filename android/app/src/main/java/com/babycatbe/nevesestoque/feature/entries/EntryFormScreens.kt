@@ -1018,7 +1018,11 @@ private fun EditEntryScreen(
 
     fun signature(): String = buildString {
         append(supplierId).append('|').append(date).append('|').append(observation.trim())
-        items.forEach { append('|').append(it.productId).append(':').append(it.quantity.trim()).append(':').append(it.unitPrice.trim()) }
+        items.forEach {
+            val price = resolveEntryItemUnitPrice(it.quantity, it.unitPrice, it.totalPrice, it.priceByTotal)
+            append('|').append(it.productId).append(':').append(it.quantity.trim()).append(':')
+                .append(price.value?.toString() ?: if (price.error == null) "" else "invalid:${it.totalPrice}")
+        }
     }
 
     LaunchedEffect(data?.entry?.id) {
@@ -1260,19 +1264,45 @@ private fun EditEntryScreen(
                                 enabled = !state.saving,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
+                            EntryTotalPriceToggle(
+                                isTotal = line.priceByTotal,
+                                onChanged = { useTotal ->
+                                    items = items.map { current ->
+                                        if (current.localId != line.localId) current
+                                        else if (useTotal) {
+                                            val total = entryItemLineTotal(current.quantity, current.unitPrice, "", false)
+                                            current.copy(priceByTotal = true, totalPrice = total?.let(::formatEntryPriceInput).orEmpty())
+                                        } else {
+                                            val unit = resolveEntryItemUnitPrice(
+                                                current.quantity, current.unitPrice, current.totalPrice, true
+                                            ).value
+                                            current.copy(priceByTotal = false, unitPrice = unit?.let(::formatEntryPriceInput).orEmpty())
+                                        }
+                                    }
+                                    itemErrors = itemErrors - line.localId
+                                },
+                                enabled = !state.saving,
+                            )
                             NevesNumericField(
-                                value = line.unitPrice,
+                                value = if (line.priceByTotal) line.totalPrice else line.unitPrice,
                                 onValueChange = { value ->
-                                    items = items.map { if (it.localId == line.localId) it.copy(unitPrice = value) else it }
+                                    items = items.map {
+                                        if (it.localId == line.localId) {
+                                            if (it.priceByTotal) it.copy(totalPrice = value)
+                                            else it.copy(unitPrice = value)
+                                        } else it
+                                    }
                                     itemErrors = itemErrors - line.localId
                                 },
                                 keypad = keypad,
-                                label = "Preço unitário",
+                                label = if (line.priceByTotal) "Preço total da nota" else "Preço unitário",
                                 placeholder = "Vazio = não informado",
                                 errorMessage = itemErrors[line.localId]?.unitPrice,
                                 onConfirm = {
-                                    val current = items.firstOrNull { it.localId == line.localId }?.unitPrice.orEmpty()
-                                    val error = parseEntryOptionalPrice(current).error
+                                    val current = items.firstOrNull { it.localId == line.localId }
+                                    val error = current?.let {
+                                        resolveEntryItemUnitPrice(it.quantity, it.unitPrice, it.totalPrice, it.priceByTotal).error
+                                    }
                                     when {
                                         error != null ->
                                             itemErrors = itemErrors + (line.localId to EntryItemFieldErrors(unitPrice = error))
@@ -1295,6 +1325,8 @@ private fun EditEntryScreen(
                                     else -> "—"
                                 },
                             )
+                            if (line.priceByTotal && price != null)
+                                EntryInfoLine("Unitário calculado", formatEntryMoney(price))
                         }
                     }
                 }
@@ -1399,7 +1431,10 @@ private fun buildEditChangeSummary(
     val oldItems = original.items.map {
         "${it.productId}|${formatEntryNumber(it.quantity)}|${it.unitPrice?.let(::formatEntryNumber).orEmpty()}"
     }
-    val newItems = items.map { "${it.productId}|${it.quantity.trim()}|${it.unitPrice.trim()}" }
+    val newItems = items.map {
+        val price = resolveEntryItemUnitPrice(it.quantity, it.unitPrice, it.totalPrice, it.priceByTotal).value
+        "${it.productId}|${it.quantity.trim()}|${price?.toString().orEmpty()}"
+    }
     if (oldItems != newItems) changes += "Itens recebidos alterados (${original.items.size} → ${items.size} linhas)."
     return changes.ifEmpty { listOf("Nenhuma alteração detectada.") }
 }
