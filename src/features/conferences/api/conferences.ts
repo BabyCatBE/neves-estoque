@@ -228,6 +228,23 @@ export async function createCategoryConference(input: CategoryConferenceWriteInp
   return data;
 }
 
+/**
+ * Reconciliador de resultado incerto: a chamada RPC pode ter sido gravada no
+ * servidor antes de uma queda de rede. Nunca repetir com nova idempotencyKey.
+ */
+export async function findCategoryConferenceByIdempotencyKey(key: string): Promise<string | null> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from("conferences")
+    .select("id")
+    .eq("idempotency_key", key)
+    .eq("scope_type", "category")
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
 export async function updateCategoryConference(input: CategoryConferenceUpdateInput) {
   const client = requireClient();
   const { error } = await client.rpc("update_category_conference", {

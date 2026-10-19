@@ -1,9 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { useNetworkStatus } from "../../../shared/offline/NetworkContext";
-import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { Button } from "../../../shared/components/ui/Button";
 import { Card } from "../../../shared/components/ui/Card";
 import { TextField } from "../../../shared/components/ui/TextField";
@@ -13,7 +12,6 @@ import { createBrowserUuid } from "../../../shared/lib/browserUuid";
 import { useAuth } from "../../auth/context/AuthContext";
 import { savePendingConference } from "../../offline/lib/pendingOperations";
 import {
-  createCategoryConference,
   getCategoryConferenceSetup,
   listSameDayCategoryConferences,
   reviewConferenceConsumption,
@@ -30,9 +28,12 @@ import {
   localDateInputValue,
   parseConferenceQuantity
 } from "../lib/conferenceValidation";
+import { conferenceBackgroundSaves } from "../lib/conferenceBackgroundSaves";
+import { readConferenceDraft, saveConferenceDraft, discardConferenceDraft } from "../lib/conferenceDrafts";
 
 export function NewCategoryConferencePage() {
   const { categoryId } = useParams();
+  const { appUserId } = useAuth();
   const setupQuery = useQuery({
     queryKey: ["conferences", "setup", categoryId],
     queryFn: () => {
@@ -53,7 +54,7 @@ export function NewCategoryConferencePage() {
         </Card>
       ) : null}
       {setupQuery.data ? (
-        <CategoryConferenceForm key={setupQuery.data.category.id} setup={setupQuery.data} />
+        <CategoryConferenceForm key={setupQuery.data.category.id + ":" + (appUserId ?? "")} setup={setupQuery.data} />
       ) : null}
     </AppShell>
   );
@@ -79,7 +80,47 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const [consumptionWarnings, setConsumptionWarnings] = useState<ConferenceConsumptionWarning[]>([]);
   const [pendingPayload, setPendingPayload] = useState<CategoryConferenceWriteInput | null>(null);
   const [checkingSave, setCheckingSave] = useState(false);
+  const [preparingSave, setPreparingSave] = useState(false);
   const [idempotencyKey] = useState(() => createBrowserUuid());
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [leavingBusy, setLeavingBusy] = useState(false);
+  const ownerId = appUserId ?? session?.user.id ?? "";
+  const productKey = setup.products.map((product) => product.id).join("|");
+  const productIds = useMemo(() => productKey ? productKey.split("|") : [], [productKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!ownerId) {
+      void Promise.resolve().then(() => {
+        if (!cancelled) setDraftError("Não foi possível identificar o usuário para recuperar o rascunho.");
+      });
+      return () => { cancelled = true; };
+    }
+    void readConferenceDraft(ownerId, setup.category.id).then((draft) => {
+      if (cancelled) return;
+      setDraftError(null);
+      if (draft) {
+        const products = new Set(productIds);
+        if (Object.keys(draft.quantities).some((id) => !products.has(id))) {
+          setDraftError("O catálogo mudou desde a contagem. Rascunho original preservado para revisão.");
+          return;
+        }
+        setDate(draft.date);
+        setResponsible(draft.responsible);
+        setObservation(draft.observation);
+        setQuantities(Object.fromEntries(productIds.map((id) =>
+          [id, draft.quantities[id] ?? ""])));
+        setHasDraft(true);
+      }
+      setDraftLoaded(true);
+    }).catch(() => {
+      if (!cancelled) setDraftError("Falha ao ler o rascunho. A cópia local não foi substituída.");
+    });
+    return () => { cancelled = true; };
+  }, [ownerId, setup.category.id, productIds]);
+
   const allowNavigationRef = useRef(false);
 
   const dirty = useMemo(
@@ -95,12 +136,41 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      dirty &&
+      (dirty || hasDraft) &&
       !allowNavigationRef.current &&
       currentLocation.pathname !== nextLocation.pathname
   );
 
-  const saveMutation = useMutation({ mutationFn: createCategoryConference });
+  // Rascunhos não têm caminho de envio: armazenados em tabela IndexedDB separada.
+  useEffect(() => {
+    if (!draftLoaded || !ownerId || !dirty || draftError || leavingBusy || allowNavigationRef.current) return;
+    const timer = window.setTimeout(() => {
+      void saveConferenceDraft({
+        ownerId, categoryId: setup.category.id, date, responsible, observation, quantities
+      }).then(() => setHasDraft(true))
+        .catch(() => setDraftError("Não foi possível guardar o rascunho neste navegador. Não saia da tela."));
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [draftLoaded, ownerId, dirty, date, responsible, observation, quantities, draftError, leavingBusy, setup.category.id]);
+
+  const saveAndLeave = async (discard: boolean) => {
+    if (!ownerId || leavingBusy) return;
+    setLeavingBusy(true);
+    setDraftError(null);
+    try {
+      if (discard) await discardConferenceDraft(ownerId, setup.category.id);
+      else await saveConferenceDraft({ ownerId, categoryId: setup.category.id, date, responsible, observation, quantities });
+      allowNavigationRef.current = true;
+      blocker.proceed?.();
+    } catch {
+      setDraftError(discard
+        ? "Não foi possível descartar o rascunho. Ele foi preservado."
+        : "Não foi possível guardar o rascunho. Continue nesta tela.");
+      blocker.reset?.();
+    } finally {
+      setLeavingBusy(false);
+    }
+  };
 
   const focusQuantity = (productId: string) => {
     window.setTimeout(() => document.getElementById(`conference-qty-${productId}`)?.focus(), 0);
@@ -172,18 +242,31 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         });
 
         allowNavigationRef.current = true;
+        await discardConferenceDraft(ownerId, setup.category.id).catch(() => {});
         navigate("/alertas/pendencias-locais?saved=conference", { replace: true });
         return;
       }
 
-      await saveMutation.mutateAsync(payload);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["conferences"] }),
-        queryClient.invalidateQueries({ queryKey: ["products"] }),
-        queryClient.invalidateQueries({ queryKey: ["purchases"] })
-      ]);
-      allowNavigationRef.current = true;
-      navigate("/conferencias/fazer?saved=1", { replace: true });
+      if (!session?.user.id || !deviceId) {
+        throw new Error("Este acesso ainda não está pronto para registrar Conferências.");
+      }
+      setPreparingSave(true);
+      try {
+        // O IndexedDB confirma a cópia protegida ANTES de sair da tela.
+        // O envio oficial continua em memória enquanto a pessoa navega.
+        await conferenceBackgroundSaves.submit(payload, {
+          authUserId: session.user.id,
+          appUserId,
+          deviceId,
+          actorLabel: displayName ?? (username ? `@${username}` : "Usuário autorizado"),
+          categoryLabel: setup.category.name
+        }, queryClient);
+        allowNavigationRef.current = true;
+        await discardConferenceDraft(ownerId, setup.category.id).catch(() => {});
+        navigate("/conferencias/fazer?queued=1", { replace: true });
+      } finally {
+        setPreparingSave(false);
+      }
     } catch (error) {
       setActionError(getConferenceErrorMessage(error));
     }
@@ -254,7 +337,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
     () => void requestSave(),
     blocker.state !== "blocked" &&
       !pendingPayload &&
-      !saveMutation.isPending &&
+      !preparingSave &&
       !checkingSave
   );
 
@@ -266,13 +349,20 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
     event.preventDefault();
     const next = setup.products[productIndex + 1];
     if (next) focusQuantity(next.id);
-    else document.getElementById("conference-observation")?.focus();
+    else event.currentTarget.blur();
   };
 
   const latestSameDay = sameDayConferences[0] ?? null;
 
+  if (!draftLoaded) {
+    return <Card className="p-5 text-sm text-zinc-600">
+      {draftError ?? "Recuperando rascunho local…"}
+    </Card>;
+  }
+
   return (
     <section className="pb-28">
+      {draftError ? <Card className="mb-3 border-red-200 p-4 text-sm text-red-800" role="alert">{draftError}</Card> : null}
       {!isOnline ? (
         <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
           Você está offline. Ao salvar, esta Conferência ficará somente neste aparelho como <strong>PENDENTE DE CONFIRMAÇÃO</strong>. Consumo atípico e possíveis Conferências do mesmo dia serão verificados quando você confirmar o envio online.
@@ -416,8 +506,8 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         <div className="mx-auto flex max-w-6xl justify-end">
           <Button
             id="conference-save"
-            isLoading={saveMutation.isPending || checkingSave}
-            loadingLabel={saveMutation.isPending ? "Salvando…" : "Verificando…"}
+            isLoading={preparingSave || checkingSave}
+            loadingLabel={preparingSave ? "Preparando envio…" : "Verificando…"}
             onClick={() => void requestSave()}
           >
             {isOnline ? "Salvar Conferência" : "Salvar pendência"}
@@ -471,8 +561,8 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
                 Voltar e conferir
               </Button>
               <Button
-                isLoading={checkingSave || saveMutation.isPending}
-                loadingLabel={saveMutation.isPending ? "Salvando…" : "Verificando…"}
+                isLoading={checkingSave || preparingSave}
+                loadingLabel={preparingSave ? "Preparando envio…" : "Verificando…"}
                 onClick={() => void confirmConsumptionWarnings()}
               >
                 Confirmar mesmo assim
@@ -520,13 +610,17 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
                 variant="secondary"
                 onClick={() => {
                   allowNavigationRef.current = true;
-                  navigate(`/conferencias/${latestSameDay.id}/editar`);
+                  navigate(
+                    sameDayConferences.length === 1
+                      ? `/conferencias/${latestSameDay.id}/editar`
+                      : `/conferencias/historico/${setup.category.id}`
+                  );
                 }}
               >
                 Corrigir existente
               </Button>
               <Button
-                isLoading={saveMutation.isPending}
+                isLoading={preparingSave}
                 loadingLabel="Salvando…"
                 onClick={() => {
                   const payload = pendingPayload;
@@ -542,18 +636,23 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         </div>
       ) : null}
 
-      <ConfirmDialog
-        open={blocker.state === "blocked"}
-        title="Sair da Conferência?"
-        description="As quantidades preenchidas ainda não foram salvas."
-        confirmLabel="Descartar e sair"
-        variant="warning"
-        onCancel={() => blocker.reset?.()}
-        onConfirm={() => {
-          allowNavigationRef.current = true;
-          blocker.proceed?.();
-        }}
-      />
+      {blocker.state === "blocked" ? (
+        <div role="dialog" aria-modal="true" aria-labelledby="conference-draft-leave-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6">
+          <Card className="w-full max-w-md p-5 shadow-xl">
+            <h3 id="conference-draft-leave-title" className="text-xl font-semibold">Conferência incompleta</h3>
+            <p className="mt-2 text-sm text-zinc-600">
+              Guarde a contagem no navegador e termine depois. Campos em branco não serão enviados nem alteram o estoque.
+            </p>
+            {draftError ? <p className="mt-3 text-sm text-red-700" role="alert">{draftError}</p> : null}
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button variant="ghost" disabled={leavingBusy} onClick={() => blocker.reset?.()}>Continuar</Button>
+              <Button variant="secondary" disabled={leavingBusy} onClick={() => void saveAndLeave(true)}>Descartar</Button>
+              <Button isLoading={leavingBusy} onClick={() => void saveAndLeave(false)}>Guardar e sair</Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </section>
   );
 }
