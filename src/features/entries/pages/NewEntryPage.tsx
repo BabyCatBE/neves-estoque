@@ -35,7 +35,11 @@ import {
   getFutureOperationalDateError,
   localDateInputValue,
   parseOptionalPrice,
-  parsePositiveDecimal
+  parsePositiveDecimal,
+  resolveEntryUnitPrice,
+  resolveEntryLineTotal,
+  formatCalculatedUnitPrice,
+  type EntryPriceMode
 } from "../lib/entryValidation";
 
 type DraftSupplier = {
@@ -55,6 +59,8 @@ type DraftItem = {
   draftProduct?: DraftProduct;
   quantity: string;
   unitPrice: string;
+  totalPrice?: string;
+  priceMode?: EntryPriceMode;
 };
 
 type ItemFieldErrors = Record<string, {
@@ -342,7 +348,7 @@ export function NewEntryPage() {
 
   const validatePriceNow = (item: DraftItem) => {
     try {
-      parseOptionalPrice(item.unitPrice);
+      resolveEntryUnitPrice(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode);
       setItemError(item.localId, "unitPrice");
       return true;
     } catch (error) {
@@ -358,9 +364,9 @@ export function NewEntryPage() {
     for (const item of items) {
       try {
         const quantity = parsePositiveDecimal(item.quantity, "Quantidade");
-        const price = parseOptionalPrice(item.unitPrice);
+        const price = resolveEntryUnitPrice(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode);
         if (price === null) missingPrices += 1;
-        else totalKnown += quantity * price;
+        else totalKnown += resolveEntryLineTotal(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode) ?? quantity * price;
       } catch {
         // Campos inválidos não entram na prévia de total; serão destacados no salvamento.
       }
@@ -544,7 +550,7 @@ export function NewEntryPage() {
       }
 
       try {
-        unitPrice = parseOptionalPrice(item.unitPrice);
+        unitPrice = resolveEntryUnitPrice(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode);
       } catch (error) {
         errors[item.localId] = {
           ...errors[item.localId],
@@ -875,8 +881,8 @@ export function NewEntryPage() {
         <div className="mt-4 space-y-3">
           {items.map((item, index) => {
             const quantity = safeQuantity(item.quantity);
-            const price = safePrice(item.unitPrice);
-            const lineTotal = quantity !== null && price !== null ? quantity * price : null;
+            const price = (() => { try { return resolveEntryUnitPrice(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode); } catch { return null; } })();
+            const lineTotal = resolveEntryLineTotal(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode);
 
             return (
               <Card id={`entry-item-${item.localId}`} key={item.localId} className="p-4">
@@ -902,6 +908,29 @@ export function NewEntryPage() {
                   </button>
                 </div>
 
+                <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Forma de informar o preço">
+                  <span className="text-xs font-semibold text-zinc-500">Informar preço:</span>
+                  {(["unit", "total"] as const).map((mode) => (
+                    <button
+                      type="button"
+                      key={mode}
+                      aria-pressed={(item.priceMode ?? "unit") === mode}
+                      className={`rounded-lg border px-3 py-2 text-sm font-semibold ${(item.priceMode ?? "unit") === mode ? "border-red-600 bg-red-50 text-red-800" : "border-zinc-300 text-zinc-700"}`}
+                      onClick={() => setItems((current) => current.map((candidate) => {
+                        if (candidate.localId !== item.localId) return candidate;
+                        if (mode === "total") {
+                          const computed = resolveEntryLineTotal(candidate.quantity, candidate.unitPrice, candidate.totalPrice ?? "", "unit");
+                          return { ...candidate, priceMode: "total", totalPrice: computed === null ? "" : String(computed).replace(".", ",") };
+                        }
+                        let computed: number | null = null;
+                        try { computed = resolveEntryUnitPrice(candidate.quantity, candidate.unitPrice, candidate.totalPrice ?? "", "total"); } catch { /* input inválido continua editável */ }
+                        return { ...candidate, priceMode: "unit", unitPrice: computed === null ? candidate.unitPrice : String(computed).replace(".", ",") };
+                      }))}
+                    >
+                      {mode === "unit" ? "Unitário" : "Total da nota"}
+                    </button>
+                  ))}
+                </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_160px]">
                   <TextField
                     id={`entry-qty-${item.localId}`}
@@ -934,18 +963,18 @@ export function NewEntryPage() {
                   />
                   <TextField
                     id={`entry-price-${item.localId}`}
-                    label="Preço unitário"
+                    label={(item.priceMode ?? "unit") === "total" ? "Preço total da nota" : "Preço unitário"}
                     inputMode="decimal"
                     placeholder="Vazio = não informado"
-                    value={item.unitPrice}
+                    value={(item.priceMode ?? "unit") === "total" ? item.totalPrice ?? "" : item.unitPrice}
                     error={itemErrors[item.localId]?.unitPrice}
                     aria-invalid={Boolean(itemErrors[item.localId]?.unitPrice)}
                     onChange={(event) => {
                       const value = event.target.value;
-                      setItems((current) => current.map((candidate) => candidate.localId === item.localId ? { ...candidate, unitPrice: value } : candidate));
+                      setItems((current) => current.map((candidate) => candidate.localId === item.localId ? (item.priceMode === "total" ? { ...candidate, totalPrice: value } : { ...candidate, unitPrice: value }) : candidate));
                       if (itemErrors[item.localId]?.unitPrice) {
                         try {
-                          parseOptionalPrice(value);
+                          resolveEntryUnitPrice(item.quantity, item.priceMode === "total" ? item.unitPrice : value, item.priceMode === "total" ? value : item.totalPrice ?? "", item.priceMode);
                           setItemError(item.localId, "unitPrice");
                         } catch {
                           // Mantém o erro visível até o valor se tornar válido.
@@ -978,6 +1007,7 @@ export function NewEntryPage() {
                     <p className="mt-2 font-semibold">
                       {price === 0 && quantity !== null ? "Bonificação" : lineTotal === null ? "—" : formatMoney(lineTotal)}
                     </p>
+                    {item.priceMode === "total" && price !== null ? <p className="mt-1 text-xs text-zinc-600">Unitário calculado: R$ {formatCalculatedUnitPrice(price)}</p> : null}
                   </div>
                 </div>
               </Card>
