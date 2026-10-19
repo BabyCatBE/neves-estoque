@@ -98,24 +98,24 @@ private fun CategoryConferenceFormScreen(
     onClearError: () -> Unit,
 ) {
     val setup = state.setup
-    var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var responsible by rememberSaveable { mutableStateOf("") }
-    var observation by rememberSaveable { mutableStateOf("") }
-    var quantities by rememberSaveable { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var initialized by rememberSaveable { mutableStateOf(false) }
-    var leaveOpen by rememberSaveable { mutableStateOf(false) }
+    var date by rememberSaveable(ownerId) { mutableStateOf(LocalDate.now().toString()) }
+    var responsible by rememberSaveable(ownerId) { mutableStateOf("") }
+    var observation by rememberSaveable(ownerId) { mutableStateOf("") }
+    var quantities by rememberSaveable(ownerId) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var initialized by rememberSaveable(ownerId) { mutableStateOf(false) }
+    var leaveOpen by rememberSaveable(ownerId) { mutableStateOf(false) }
 
     // O último Concluir fecha o teclado; Observação é opcional, somente por toque.
     val keypad = rememberNumericKeypadState()
     val flow = rememberConferenceFocusFlow(setup?.products.orEmpty().map { it.id })
     var localErrors by remember { mutableStateOf(CategoryConferenceFormErrors()) }
-    var initialFocusDone by rememberSaveable { mutableStateOf(false) }
+    var initialFocusDone by rememberSaveable(ownerId) { mutableStateOf(false) }
 
     val draftScope = rememberCoroutineScope()
     var draftBusy by remember { mutableStateOf(false) }
     var draftError by remember { mutableStateOf<String?>(null) }
     var draftLoadBlocked by remember { mutableStateOf(false) }
-    var hadDraft by rememberSaveable { mutableStateOf(false) }
+    var hadDraft by rememberSaveable(ownerId) { mutableStateOf(false) }
     var leaving by remember { mutableStateOf(false) }
 
     LaunchedEffect(setup?.categoryId, ownerId) {
