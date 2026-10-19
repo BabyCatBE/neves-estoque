@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildEffectiveAt,
+  entryUnitPriceFromFields,
+  entryLineTotalFromFields,
+  formatEntryUnitPriceDisplay,
   getFutureOperationalDateError,
   localDateInputValue,
   parseOptionalPrice,
@@ -19,6 +22,33 @@ describe("entryValidation", () => {
   it("diferencia preço vazio de bonificação", () => {
     expect(parseOptionalPrice("")).toBeNull();
     expect(parseOptionalPrice("0")).toBe(0);
+  });
+
+
+  it("calcula preço unitário a partir do total da nota sem truncar o valor enviado", () => {
+    const unit = entryUnitPriceFromFields("3", "", "100,00", "total");
+    expect(unit).not.toBeNull();
+    expect(unit! * 3).toBeCloseTo(100, 10);
+    expect(formatEntryUnitPriceDisplay(unit!)).toBe("33,33");
+    expect(entryLineTotalFromFields("3", "", "100,00", "total")).toBe(100);
+  });
+
+  it("recalcula quando a quantidade muda e mantém unidades decimais", () => {
+    expect(entryUnitPriceFromFields("2,5", "", "15", "total")).toBe(6);
+    expect(entryUnitPriceFromFields("3", "", "15", "total")).toBe(5);
+  });
+
+  it("preserva o preço unitário antigo, branco e bonificação", () => {
+    expect(entryUnitPriceFromFields("3", "4,50", "", "unit")).toBe(4.5);
+    expect(entryUnitPriceFromFields("3", "", "", "total")).toBeNull();
+    expect(entryUnitPriceFromFields("3", "", "0", "total")).toBe(0);
+    expect(entryUnitPriceFromFields("3", "", "0", "unit")).toBeNull();
+  });
+
+  it("não divide por zero nem aceita total inválido", () => {
+    expect(() => entryUnitPriceFromFields("0", "", "100", "total")).toThrow();
+    expect(() => entryUnitPriceFromFields("2", "", "-4", "total")).toThrow("Preço total inválido.");
+    expect(() => entryUnitPriceFromFields("2", "", "abc", "total")).toThrow("Preço total inválido.");
   });
 
   it("gera data local para o input", () => {

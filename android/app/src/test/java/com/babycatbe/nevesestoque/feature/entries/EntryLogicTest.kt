@@ -25,6 +25,36 @@ class EntryLogicTest {
     }
 
     @Test
+    fun totalPriceIsConvertedWithoutRoundingTheStoredUnit() {
+        val value = entryUnitPriceFromFields("3", "", "100,00", EntryPriceSource.Total)
+        assertNull(value.error)
+        assertNotNull(value.value)
+        assertEquals(100.0, value.value!! * 3, 0.000000001)
+        assertEquals("33,33", formatEntryUnitPriceDisplay(value.value))
+        assertEquals(100.0, entryLineTotalFromFields("3", "", "100,00", EntryPriceSource.Total)!!, 0.0)
+    }
+
+    @Test
+    fun changingQuantityRecalculatesTotalBasedUnit() {
+        assertEquals(6.0, entryUnitPriceFromFields("2,5", "", "15", EntryPriceSource.Total).value!!, 0.0)
+        assertEquals(5.0, entryUnitPriceFromFields("3", "", "15", EntryPriceSource.Total).value!!, 0.0)
+    }
+
+    @Test
+    fun blankZeroAndExistingUnitPriceAreDifferent() {
+        assertNull(entryUnitPriceFromFields("3", "", "", EntryPriceSource.Total).value)
+        assertEquals(0.0, entryUnitPriceFromFields("3", "", "0", EntryPriceSource.Total).value!!, 0.0)
+        assertEquals(4.5, entryUnitPriceFromFields("3", "4,5", "", EntryPriceSource.Unit).value!!, 0.0)
+    }
+
+    @Test
+    fun totalPriceRejectsInvalidNumbersAndZeroQuantity() {
+        assertNotNull(entryUnitPriceFromFields("0", "", "100", EntryPriceSource.Total).error)
+        assertEquals("Preço total inválido.", entryUnitPriceFromFields("2", "", "-4", EntryPriceSource.Total).error)
+        assertEquals("Preço total inválido.", entryUnitPriceFromFields("2", "", "abc", EntryPriceSource.Total).error)
+    }
+
+    @Test
     fun futureDateIsRejected() {
         val today = LocalDate.of(2026, 9, 28)
         assertNull(entryDateError("2026-09-28", today))

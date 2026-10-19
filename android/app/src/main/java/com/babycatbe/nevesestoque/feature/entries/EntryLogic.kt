@@ -46,6 +46,46 @@ fun parseEntryOptionalPrice(value: String): EntryDecimalResult {
     }
 }
 
+/** Opção apenas da UI. O contrato do servidor continua usando o preço unitário. */
+enum class EntryPriceSource { Unit, Total }
+
+/** Calcula sem arredondar o valor que será persistido no banco. */
+fun entryUnitPriceFromFields(
+    quantityText: String,
+    unitPriceText: String,
+    totalPriceText: String,
+    source: EntryPriceSource,
+): EntryDecimalResult {
+    if (source == EntryPriceSource.Unit) return parseEntryOptionalPrice(unitPriceText)
+    val total = parseEntryOptionalPrice(totalPriceText)
+    if (total.error != null) return EntryDecimalResult(null, "Preço total inválido.")
+    val value = total.value ?: return EntryDecimalResult(null, null)
+    val quantity = parseEntryPositiveDecimal(quantityText, "Quantidade")
+    if (quantity.error != null || quantity.value == null) {
+        return EntryDecimalResult(null, quantity.error ?: "Quantidade inválida.")
+    }
+    val result = value / quantity.value
+    return if (!result.isFinite() || result < 0.0) {
+        EntryDecimalResult(null, "Preço total ou quantidade fora do limite.")
+    } else EntryDecimalResult(result, null)
+}
+
+fun entryLineTotalFromFields(
+    quantityText: String,
+    unitPriceText: String,
+    totalPriceText: String,
+    source: EntryPriceSource,
+): Double? {
+    if (source == EntryPriceSource.Total) return parseEntryOptionalPrice(totalPriceText).value
+    val unit = parseEntryOptionalPrice(unitPriceText).value ?: return null
+    val quantity = parseEntryPositiveDecimal(quantityText, "Quantidade").value ?: return null
+    return quantity * unit
+}
+
+/** Somente para visualização; não alterar a precisão da API ou dos cálculos. */
+fun formatEntryUnitPriceDisplay(value: Double): String =
+    String.format(Locale.forLanguageTag("pt-BR"), "%.2f", value)
+
 fun todayEntryDate(): String = LocalDate.now().toString()
 
 fun entryDateError(value: String, today: LocalDate = LocalDate.now()): String? {

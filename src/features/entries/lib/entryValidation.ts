@@ -22,6 +22,58 @@ export function parseOptionalPrice(value: string) {
   return parsed;
 }
 
+/** Modo de preenchimento local; a API continua recebendo somente unitPrice. */
+export type EntryPriceSource = "unit" | "total";
+
+/**
+ * Preserva a divisão completa para envio mesmo que o valor unitário seja exibido
+ * com duas casas. Total vazio é preço não informado; total zero é bonificação.
+ */
+export function entryUnitPriceFromFields(
+  quantityText: string,
+  unitPriceText: string,
+  totalPriceText: string,
+  source: EntryPriceSource
+): number | null {
+  if (source === "unit") return parseOptionalPrice(unitPriceText);
+  let total: number | null;
+  try {
+    total = parseOptionalPrice(totalPriceText);
+  } catch {
+    throw new Error("Preço total inválido.");
+  }
+  if (total === null) return null;
+  const quantity = parsePositiveDecimal(quantityText, "Quantidade");
+  const calculated = total / quantity;
+  if (!Number.isFinite(calculated) || calculated < 0) {
+    throw new Error("Preço total ou quantidade fora do limite.");
+  }
+  return calculated;
+}
+
+export function entryLineTotalFromFields(
+  quantityText: string,
+  unitPriceText: string,
+  totalPriceText: string,
+  source: EntryPriceSource
+): number | null {
+  try {
+    if (source === "total") return parseOptionalPrice(totalPriceText);
+    const unit = parseOptionalPrice(unitPriceText);
+    return unit === null ? null : parsePositiveDecimal(quantityText, "Quantidade") * unit;
+  } catch {
+    return null;
+  }
+}
+
+/** Apenas visualização; não arredondar o valor enviado à API. */
+export function formatEntryUnitPriceDisplay(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
 export function localDateInputValue(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
