@@ -232,6 +232,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         });
 
         allowNavigationRef.current = true;
+        await discardConferenceDraft(ownerId, setup.category.id).catch(() => {});
         navigate("/alertas/pendencias-locais?saved=conference", { replace: true });
         return;
       }
@@ -251,6 +252,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
           categoryLabel: setup.category.name
         }, queryClient);
         allowNavigationRef.current = true;
+        await discardConferenceDraft(ownerId, setup.category.id).catch(() => {});
         navigate("/conferencias/fazer?queued=1", { replace: true });
       } finally {
         setPreparingSave(false);
@@ -342,8 +344,15 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
 
   const latestSameDay = sameDayConferences[0] ?? null;
 
+  if (!draftLoaded) {
+    return <Card className="p-5 text-sm text-zinc-600">
+      {draftError ?? "Recuperando rascunho local…"}
+    </Card>;
+  }
+
   return (
     <section className="pb-28">
+      {draftError ? <Card className="mb-3 border-red-200 p-4 text-sm text-red-800" role="alert">{draftError}</Card> : null}
       {!isOnline ? (
         <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
           Você está offline. Ao salvar, esta Conferência ficará somente neste aparelho como <strong>PENDENTE DE CONFIRMAÇÃO</strong>. Consumo atípico e possíveis Conferências do mesmo dia serão verificados quando você confirmar o envio online.
@@ -617,18 +626,23 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         </div>
       ) : null}
 
-      <ConfirmDialog
-        open={blocker.state === "blocked"}
-        title="Sair da Conferência?"
-        description="As quantidades preenchidas ainda não foram salvas."
-        confirmLabel="Descartar e sair"
-        variant="warning"
-        onCancel={() => blocker.reset?.()}
-        onConfirm={() => {
-          allowNavigationRef.current = true;
-          blocker.proceed?.();
-        }}
-      />
+      {blocker.state === "blocked" ? (
+        <div role="dialog" aria-modal="true" aria-labelledby="conference-draft-leave-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6">
+          <Card className="w-full max-w-md p-5 shadow-xl">
+            <h3 id="conference-draft-leave-title" className="text-xl font-semibold">Conferência incompleta</h3>
+            <p className="mt-2 text-sm text-zinc-600">
+              Guarde a contagem no navegador e termine depois. Campos em branco não serão enviados nem alteram o estoque.
+            </p>
+            {draftError ? <p className="mt-3 text-sm text-red-700" role="alert">{draftError}</p> : null}
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button variant="ghost" disabled={leavingBusy} onClick={() => blocker.reset?.()}>Continuar</Button>
+              <Button variant="secondary" disabled={leavingBusy} onClick={() => void saveAndLeave(true)}>Descartar</Button>
+              <Button isLoading={leavingBusy} onClick={() => void saveAndLeave(false)}>Guardar e sair</Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </section>
   );
 }
