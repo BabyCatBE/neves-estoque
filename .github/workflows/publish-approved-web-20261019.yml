@@ -79,9 +79,9 @@ jobs:
               sys.exit("Invalid public Supabase configuration: deployment blocked.")
           with open(os.environ["GITHUB_ENV"],"a",encoding="utf-8") as out:
               for name,value in zip(names,(url,key)):
-                  if "\\n" in value or "\\r" in value:
+                  if "\n" in value or "\r" in value:
                       sys.exit("Unexpected newline in build variable.")
-                  out.write(f"{name}={value}\\n")
+                  out.write(f"{name}={value}\n")
           print("Verified and injected both PUBLIC Supabase build settings; values not logged.")
           PY
 
