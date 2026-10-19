@@ -33,5 +33,5 @@ export async function discardConferenceDraft(ownerId: string, categoryId: string
 }
 
 export function conferenceDraftFilledCount(draft: ConferenceDraft, productIds: string[]): number {
-  return productIds.filter((id) => draft.quantities[id]?.trim() !== "").length;
+  return productIds.filter((id) => (draft.quantities[id] ?? "").trim() !== "").length;
 }
