@@ -25,6 +25,25 @@ class EntryLogicTest {
     }
 
     @Test
+    fun invoiceTotalCalculatesUnitWithoutLosingStoragePrecision() {
+        val unit = resolveEntryItemUnitPrice("3", "", "10,00", true)
+        assertNull(unit.error)
+        assertEquals(10.0 / 3.0, unit.value!!, 0.000000000001)
+        assertEquals("3,33", formatEntryPriceInput(unit.value))
+        assertEquals(10.0, entryItemLineTotal("3", "", "10,00", true)!!, 0.0)
+    }
+
+    @Test
+    fun invoiceTotalPreservesMissingAndBonus() {
+        assertNull(resolveEntryItemUnitPrice("5", "", "", true).value)
+        assertEquals(0.0, resolveEntryItemUnitPrice("5", "", "0", true).value!!, 0.0)
+        assertEquals(8.5, resolveEntryItemUnitPrice("12", "8,50", "", false).value!!, 0.0)
+        assertEquals(102.0, entryItemLineTotal("12", "8,50", "", false)!!, 0.0)
+        assertNotNull(resolveEntryItemUnitPrice("0", "", "10", true).error)
+        assertNotNull(resolveEntryItemUnitPrice("2", "", "-10", true).error)
+    }
+
+    @Test
     fun futureDateIsRejected() {
         val today = LocalDate.of(2026, 9, 28)
         assertNull(entryDateError("2026-09-28", today))
