@@ -304,7 +304,7 @@ private fun NewEntryScreen(
         val errors = mutableMapOf<String, EntryItemFieldErrors>()
         val parsed = items.map { line ->
             val quantity = parseEntryPositiveDecimal(line.quantity, "Quantidade")
-            val price = parseEntryOptionalPrice(line.unitPrice)
+            val price = resolveEntryItemUnitPrice(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal)
             if (quantity.error != null || price.error != null) {
                 errors[line.localId] = EntryItemFieldErrors(quantity.error, price.error)
             }
@@ -590,7 +590,7 @@ private fun NewEntryScreen(
 
                 items.forEachIndexed { index, line ->
                     val quantity = parseEntryPositiveDecimal(line.quantity, "Quantidade").value
-                    val price = parseEntryOptionalPrice(line.unitPrice).value
+                    val price = resolveEntryItemUnitPrice(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal).value
                     NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Row(Modifier.fillMaxWidth()) {
@@ -630,21 +630,44 @@ private fun NewEntryScreen(
                                 focusRequester = focus.quantity,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
+                            EntryTotalPriceToggle(
+                                isTotal = line.priceByTotal,
+                                onChanged = { useTotal ->
+                                    items = items.map { current ->
+                                        if (current.localId != line.localId) current
+                                        else if (useTotal) {
+                                            val total = entryItemLineTotal(current.quantity, current.unitPrice, "", false)
+                                            current.copy(priceByTotal = true, totalPrice = total?.let(::formatEntryPriceInput).orEmpty())
+                                        } else {
+                                            val unit = resolveEntryItemUnitPrice(
+                                                current.quantity, current.unitPrice, current.totalPrice, true
+                                            ).value
+                                            current.copy(priceByTotal = false, unitPrice = unit?.let(::formatEntryPriceInput).orEmpty())
+                                        }
+                                    }
+                                    itemErrors = itemErrors - line.localId
+                                },
+                            )
                             NevesNumericField(
-                                value = line.unitPrice,
+                                value = if (line.priceByTotal) line.totalPrice else line.unitPrice,
                                 onValueChange = { value ->
                                     items = items.map {
-                                        if (it.localId == line.localId) it.copy(unitPrice = value) else it
+                                        if (it.localId == line.localId) {
+                                            if (it.priceByTotal) it.copy(totalPrice = value)
+                                            else it.copy(unitPrice = value)
+                                        } else it
                                     }
                                     itemErrors = itemErrors - line.localId
                                 },
                                 keypad = keypad,
-                                label = "Preço unitário",
+                                label = if (line.priceByTotal) "Preço total da nota" else "Preço unitário",
                                 placeholder = "Vazio = não informado",
                                 errorMessage = itemErrors[line.localId]?.unitPrice,
                                 onConfirm = {
-                                    val current = items.firstOrNull { it.localId == line.localId }?.unitPrice.orEmpty()
-                                    val error = parseEntryOptionalPrice(current).error
+                                    val current = items.firstOrNull { it.localId == line.localId }
+                                    val error = current?.let {
+                                        resolveEntryItemUnitPrice(it.quantity, it.unitPrice, it.totalPrice, it.priceByTotal).error
+                                    }
                                     if (error != null) {
                                         itemErrors = itemErrors + (line.localId to EntryItemFieldErrors(unitPrice = error))
                                     } else {
@@ -657,22 +680,25 @@ private fun NewEntryScreen(
                             )
                             val totalLabel = when {
                                 quantity != null && price == 0.0 -> "Bonificação"
-                                quantity != null && price != null -> formatEntryMoney(quantity * price)
+                                quantity != null && price != null -> formatEntryMoney(
+                                    entryItemLineTotal(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal) ?: quantity * price
+                                )
                                 else -> "—"
                             }
                             EntryInfoLine("Total", totalLabel)
+                            if (line.priceByTotal && price != null) EntryInfoLine("Unitário calculado", formatEntryMoney(price))
                         }
                     }
                 }
 
                 val totalKnown = items.sumOf { line ->
                     val q = parseEntryPositiveDecimal(line.quantity, "Quantidade").value
-                    val p = parseEntryOptionalPrice(line.unitPrice).value
-                    if (q != null && p != null) q * p else 0.0
+                    val p = resolveEntryItemUnitPrice(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal).value
+                    if (q != null && p != null) entryItemLineTotal(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal) ?: q * p else 0.0
                 }
                 val missingPrices = items.count {
-                    it.quantity.isNotBlank() && parseEntryOptionalPrice(it.unitPrice).error == null &&
-                        parseEntryOptionalPrice(it.unitPrice).value == null
+                    it.quantity.isNotBlank() && resolveEntryItemUnitPrice(it.quantity, it.unitPrice, it.totalPrice, it.priceByTotal).error == null &&
+                        resolveEntryItemUnitPrice(it.quantity, it.unitPrice, it.totalPrice, it.priceByTotal).value == null
                 }
 
                 // Observação depois dos itens: segue a ordem do lançamento (… → Preço → Observação → Salvar).
@@ -1057,7 +1083,7 @@ private fun EditEntryScreen(
         val errors = mutableMapOf<String, EntryItemFieldErrors>()
         val parsed = items.map { line ->
             val quantity = parseEntryPositiveDecimal(line.quantity, "Quantidade")
-            val price = parseEntryOptionalPrice(line.unitPrice)
+            val price = resolveEntryItemUnitPrice(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal)
             if (quantity.error != null || price.error != null) {
                 errors[line.localId] = EntryItemFieldErrors(quantity.error, price.error)
             }
@@ -1195,7 +1221,7 @@ private fun EditEntryScreen(
 
                 items.forEachIndexed { index, line ->
                     val quantity = parseEntryPositiveDecimal(line.quantity, "Quantidade").value
-                    val price = parseEntryOptionalPrice(line.unitPrice).value
+                    val price = resolveEntryItemUnitPrice(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal).value
                     NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
                             Row(Modifier.fillMaxWidth()) {
@@ -1263,7 +1289,9 @@ private fun EditEntryScreen(
                                 "Total",
                                 when {
                                     quantity != null && price == 0.0 -> "Bonificação"
-                                    quantity != null && price != null -> formatEntryMoney(quantity * price)
+                                    quantity != null && price != null -> formatEntryMoney(
+                                    entryItemLineTotal(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal) ?: quantity * price
+                                )
                                     else -> "—"
                                 },
                             )
@@ -1273,8 +1301,8 @@ private fun EditEntryScreen(
 
                 val totalKnown = items.sumOf { line ->
                     val q = parseEntryPositiveDecimal(line.quantity, "Quantidade").value
-                    val p = parseEntryOptionalPrice(line.unitPrice).value
-                    if (q != null && p != null) q * p else 0.0
+                    val p = resolveEntryItemUnitPrice(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal).value
+                    if (q != null && p != null) entryItemLineTotal(line.quantity, line.unitPrice, line.totalPrice, line.priceByTotal) ?: q * p else 0.0
                 }
                 NevesContentCard {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
