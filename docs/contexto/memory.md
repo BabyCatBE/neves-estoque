@@ -167,6 +167,16 @@ A Release `android-v0.36.0-alpha01` foi publicada manualmente a partir do artifa
 
 Pendência futura: criar um fluxo oficial de Release disparável sem promover o código do app para `main`. Tratar em bloco próprio; não improvisar credenciais ou alterar `main` por conveniência.
 
+## Aprendizados permanentes — CP257 (19/10/2026)
+
+- Rascunho de Conferência **incompleta** não é pendência enviável: conservar zero e branco diferentes; guardar atomicamente no Android e em IndexedDB na Web, separado de cache e pending; proteger isolamento por usuário e mudanças do catálogo. Voltar oferece guardar/continuar/descartar e finalização exige todos os itens.
+- Correção histórica da Conferência deve atualizar registro existente, não criar duplicata; checagem remota em segundo plano não prende formulário após persistência local.
+- Entrada pode receber **total do item da nota** ou preço unitário; cálculo interno preserva precisão, interface exibe duas casas. Total geral da Entrada continua derivado dos itens; NULL não é bonificação 0.
+- Cloudflare Wrangler publica arquivos **já compilados**: em Vite, a URL e a chave **públicas** do Supabase precisam existir **durante build**, ou a CI/deploy podem aprovar um site que não permite login. Validar presença no JS gerado; não colocar segredos de backend no frontend/docs.
+- Publicação Android pode reutilizar APK assinado da CI sem recompilar, com verificação de árvore, SHA256, assinatura, applicationId e versionCode. Workflow pontual não substitui fluxo permanente de releases.
+- Distinguir CI, deploy Cloudflare, GitHub Release, instalação no aparelho e teste funcional. Em CP257 login Web pós-hotfix confirmado pelo responsável; conferências e entradas da nova versão ainda dependem de uso real.
+- Ver [CHECKPOINT 257](checkpoints/2026-10-19-cp257-web-android-publicacao.md) para evidências e falhas intermediárias.
+
 ## Consolidação no ecossistema Neves
 
 Quando Elias pedir consolidação de bloco do Neves Estoque, além do repositório técnico, Contexto Mestre no Drive e painel Notion, atualizar também a camada correspondente em `BabyCatBE/BabyCat-OS` quando houver mudança relevante de estado, decisão ou pendência.
