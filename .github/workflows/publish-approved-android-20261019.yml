@@ -69,7 +69,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager "build-tools;36.0.0" >/dev/null
+          sdkmanager "build-tools;36.0.0" >/dev/null
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs signed/app-release.apk > signed/verified-signature.txt
           grep -q "Signer #1 certificate SHA-256 digest: 9901a1ea1fac3b993449a981770f63759b3b74e8c007f3ff9f56f1cbc7e6017a" signed/verified-signature.txt
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging signed/app-release.apk > signed/verified-badging.txt
@@ -87,7 +87,7 @@ jobs:
         run: |
           set -euo pipefail
           cp signed/app-release.apk signed/neves-estoque-android.apk
-          (cd signed && sha256sum neves-estoque-android.apk > SHA256SUMS-release)
+          (cd signed && sha256sum neves-estoque-android.apk > SHA256SUMS)
           printf '%s\n' \
             'Neves Estoque Android 0.37.0-alpha01' \
             '' \
@@ -101,7 +101,7 @@ jobs:
             'CI Android validada. Teste funcional em aparelho ficou para uso operacional posterior, conforme autorização.' > release-notes.md
           gh release create "$TAG" \
             signed/neves-estoque-android.apk \
-            signed/SHA256SUMS-release#SHA256SUMS \
+            signed/SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" \
             --target "$APPROVED_SOURCE_SHA" \
             --title "Neves Estoque Android $EXPECTED_VERSION" \
