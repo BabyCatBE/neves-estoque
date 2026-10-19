@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
@@ -16,6 +16,7 @@ import {
   useConferenceSaveStatuses
 } from "../lib/conferenceBackgroundSaves";
 import { formatConferenceDate, localDateInputValue } from "../lib/conferenceValidation";
+import { CONFERENCE_DRAFTS_UPDATED_EVENT, listConferenceDrafts, conferenceDraftFilledCount, type ConferenceDraft } from "../lib/conferenceDrafts";
 
 export function ConferenceCategoriesPage() {
   const [searchParams] = useSearchParams();
@@ -24,6 +25,24 @@ export function ConferenceCategoriesPage() {
   const { isOnline } = useNetworkStatus();
   const statuses = useConferenceSaveStatuses();
   const ownerId = session?.user.id ?? "";
+  const [drafts, setDrafts] = useState<Record<string, ConferenceDraft>>({});
+  const [draftsError, setDraftsError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      void listConferenceDrafts(ownerId).then((data) => {
+        if (active) {
+          setDrafts(Object.fromEntries(data.map((draft) => [draft.categoryId, draft])));
+          setDraftsError(null);
+        }
+      }).catch(() => {
+        if (active) setDraftsError("Não foi possível ler os rascunhos guardados neste navegador.");
+      });
+    };
+    refresh();
+    window.addEventListener(CONFERENCE_DRAFTS_UPDATED_EVENT, refresh);
+    return () => { active = false; window.removeEventListener(CONFERENCE_DRAFTS_UPDATED_EVENT, refresh); };
+  }, [ownerId]);
   const [selectedCategory, setSelectedCategory] = useState<{ id: string; name: string } | null>(null);
   const [openingEdit, setOpeningEdit] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
@@ -97,9 +116,12 @@ export function ConferenceCategoriesPage() {
           </Card>
         ) : null}
 
+        {draftsError ? <Card className="mt-4 border-red-200 p-4 text-sm text-red-700" role="alert">{draftsError}</Card> : null}
+
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(categoriesQuery.data ?? []).map((category) => {
             const status = statuses[ownerId + ":" + category.id];
+            const draft = drafts[category.id];
             const blocked = status?.phase === "saving" || status?.phase === "failed";
             const conferredToday = category.conferredToday ||
               (status?.phase === "saved" && status.effectiveDate === localDateInputValue());
@@ -111,6 +133,9 @@ export function ConferenceCategoriesPage() {
                     <p className="mt-1 text-xs text-zinc-500">
                       {category.productCount} {category.productCount === 1 ? "produto" : "produtos"}
                     </p>
+                    {draft ? <p className="mt-2 text-xs font-semibold text-red-700">
+                      Rascunho: {conferenceDraftFilledCount(draft, Object.keys(draft.quantities))}/{category.productCount} preenchidos · continuar
+                    </p> : null}
                   </div>
                   {conferredToday ? (
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
@@ -125,8 +150,10 @@ export function ConferenceCategoriesPage() {
                       ? "Salvando em segundo plano. Aguarde a confirmação antes de registrar outra contagem nesta categoria."
                       : status?.phase === "failed"
                         ? "Falha no envio: " + (status.message ?? "Revise a tentativa.")
-                        : conferredToday
-                          ? "Outra Conferência hoje só deve ser registrada se houve nova contagem física."
+                        : draft
+                          ? "Contagem incompleta guardada somente neste navegador; não foi enviada."
+                          : conferredToday
+                            ? "Outra Conferência hoje só deve ser registrada se houve nova contagem física."
                           : category.lastConferenceAt
                             ? `Última conferência: ${formatConferenceDate(category.lastConferenceAt)}`
                             : "Nunca conferida"}
@@ -146,7 +173,9 @@ export function ConferenceCategoriesPage() {
                     type="button"
                     disabled={blocked}
                     onClick={() => {
-                      if (conferredToday) {
+                      if (draft) {
+                        navigate(`/conferencias/fazer/${category.id}`);
+                      } else if (conferredToday) {
                         setDialogError(null);
                         setSelectedCategory({ id: category.id, name: category.name });
                       } else {
