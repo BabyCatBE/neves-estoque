@@ -129,6 +129,7 @@ private fun ConferenceHubCard(
 @Composable
 fun ConferenceCategoriesRoute(
     onBack: () -> Unit,
+    ownerId: String,
     onCategoryClick: (String) -> Unit,
     onEditConference: (String) -> Unit,
     onHistoryCategory: (String) -> Unit,
@@ -143,10 +144,23 @@ fun ConferenceCategoriesRoute(
     val vm: ConferenceCategoriesViewModel = viewModel()
     val state by vm.uiState.collectAsStateWithLifecycle()
     RefreshOnKeyChange(refreshKey) { vm.refresh() }
+    var localDrafts by remember(ownerId) { mutableStateOf<Map<String, LocalConferenceDraft>>(emptyMap()) }
+    var draftLoadError by remember(ownerId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(ownerId, refreshKey) {
+        when (val loaded = ConferenceDraftStore.list(ownerId)) {
+            is ConferenceDraftResult.Success -> {
+                localDrafts = loaded.value.associateBy { it.categoryId }
+                draftLoadError = null
+            }
+            is ConferenceDraftResult.Failure -> draftLoadError = loaded.message
+        }
+    }
     ConferenceCategoriesScreen(
         title = "Fazer conferência",
         subtitle = "Cada Categoria é uma Conferência independente. Todas as quantidades precisam ser preenchidas.",
         state = state,
+        localDrafts = localDrafts,
+        draftLoadError = draftLoadError,
         onBack = onBack,
         onRefresh = vm::refresh,
         onCategoryClick = onCategoryClick,
@@ -195,6 +209,8 @@ private fun ConferenceCategoriesScreen(
     title: String,
     subtitle: String,
     state: ConferenceCategoriesUiState,
+    localDrafts: Map<String, LocalConferenceDraft> = emptyMap(),
+    draftLoadError: String? = null,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onCategoryClick: (String) -> Unit,
@@ -253,6 +269,9 @@ private fun ConferenceCategoriesScreen(
                     )
                 }
             }
+            draftLoadError?.let { problem ->
+                item { NevesContentCard { Text(problem, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(18.dp)) } }
+            }
             if (state.loading) {
                 item { NevesContentCard { Text("Carregando Categorias…", modifier = Modifier.padding(18.dp)) } }
             }
@@ -262,6 +281,7 @@ private fun ConferenceCategoriesScreen(
             items(state.categories, key = { it.id }) { category ->
                 val enabled = if (historyMode) category.lastConferenceAt != null else category.productCount > 0
                 val saveStatus = if (historyMode) null else saveStatuses[category.id]
+                val draft = if (historyMode) null else localDrafts[category.id]
                 val savingBlocked = saveStatus?.phase in setOf(
                     ConferenceSavePhase.Checking, ConferenceSavePhase.Saving,
                     ConferenceSavePhase.ReviewConsumption, ConferenceSavePhase.ReviewSameDay,
@@ -272,7 +292,8 @@ private fun ConferenceCategoriesScreen(
                         saveStatus.effectiveDate == java.time.LocalDate.now().toString())
                 NevesContentCard(onClick = {
                     if (enabled && !savingBlocked) {
-                        if (!historyMode && conferredToday) selectedCategoryId = category.id
+                        if (!historyMode && draft != null) onCategoryClick(category.id)
+                        else if (!historyMode && conferredToday) selectedCategoryId = category.id
                         else onCategoryClick(category.id)
                     }
                 }) {
@@ -287,6 +308,13 @@ private fun ConferenceCategoriesScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(top = 3.dp),
+                                )
+                            }
+                            if (!historyMode && draft != null) {
+                                Text(
+                                    "Rascunho local · ${draft.filledCount(draft.quantities.keys.toList())}/${category.productCount} preenchidos · toque para continuar",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.labelMedium,
                                 )
                             }
                             if (!historyMode && conferredToday) {
@@ -311,6 +339,7 @@ private fun ConferenceCategoriesScreen(
                                     "Precisa de atenção: " + (saveStatus?.message ?: "revise a contagem.")
                                 saveStatus?.phase == ConferenceSavePhase.Failed ->
                                     "Falha no envio: " + (saveStatus.message ?: "tente novamente.")
+                                draft != null -> "Contagem interrompida, guardada apenas neste aparelho. Não foi enviada."
                                 conferredToday -> "Outra Conferência hoje só deve ser registrada se houve nova contagem física."
                                 category.lastConferenceAt != null ->
                                     "Última Conferência: " + formatConferenceDateShort(category.lastConferenceAt)
