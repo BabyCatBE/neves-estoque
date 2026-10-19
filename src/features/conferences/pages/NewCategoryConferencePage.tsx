@@ -90,6 +90,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
 
   useEffect(() => {
     let cancelled = false;
+    setDraftError(null);
     if (!ownerId) {
       setDraftError("Não foi possível identificar o usuário para recuperar o rascunho.");
       return;
@@ -133,7 +134,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
 
   // Rascunhos não têm caminho de envio: armazenados em tabela IndexedDB separada.
   useEffect(() => {
-    if (!draftLoaded || !ownerId || !dirty || draftError || allowNavigationRef.current) return;
+    if (!draftLoaded || !ownerId || !dirty || draftError || leavingBusy || allowNavigationRef.current) return;
     const timer = window.setTimeout(() => {
       void saveConferenceDraft({
         ownerId, categoryId: setup.category.id, date, responsible, observation, quantities
@@ -141,7 +142,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         .catch(() => setDraftError("Não foi possível guardar o rascunho neste navegador. Não saia da tela."));
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [draftLoaded, ownerId, dirty, date, responsible, observation, quantities, draftError, setup.category.id]);
+  }, [draftLoaded, ownerId, dirty, date, responsible, observation, quantities, draftError, leavingBusy, setup.category.id]);
 
   const saveAndLeave = async (discard: boolean) => {
     if (!ownerId || leavingBusy) return;
