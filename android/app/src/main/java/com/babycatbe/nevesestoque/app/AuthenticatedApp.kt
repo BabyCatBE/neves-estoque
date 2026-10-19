@@ -20,6 +20,9 @@ import com.babycatbe.nevesestoque.data.offline.OfflineBanner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.babycatbe.nevesestoque.feature.conferences.ConferenceDraftStore
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -119,6 +122,7 @@ private const val NOTICE_KEY = "catalog-notice"
 @Composable
 fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
     val navController = rememberNavController()
+    val appScope = rememberCoroutineScope()
     // Escopo do app autenticado, não da tela de formulário: a navegação não cancela envios.
     val conferenceSaves: ConferenceBackgroundSavesViewModel = viewModel()
     val conferenceSaveStatuses by conferenceSaves.statuses.collectAsStateWithLifecycle()
@@ -559,6 +563,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             val notice by entry.savedStateHandle.getStateFlow<String?>(NOTICE_KEY, null).collectAsStateWithLifecycle()
             ConferenceCategoriesRoute(
                 onBack = { navController.popBackStack() },
+                ownerId = authState.appUserId.orEmpty(),
                 onCategoryClick = { navController.navigate("conferences/categories/$it/new") },
                 onEditConference = { navController.navigate("conferences/detail/$it/edit") },
                 onHistoryCategory = { navController.navigate("conferences/history/$it") },
@@ -579,7 +584,11 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
             val categoryId = entry.arguments?.getString("categoryId").orEmpty()
             CategoryConferenceFormRoute(
                 categoryId = categoryId,
-                onBack = { navController.popBackStack() },
+                ownerId = authState.appUserId.orEmpty(),
+                onBack = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(REFRESH_KEY, System.currentTimeMillis())
+                    navController.popBackStack()
+                },
                 onSaved = { message ->
                     navController.previousBackStackEntry?.savedStateHandle?.apply {
                         set(REFRESH_KEY, System.currentTimeMillis())
@@ -590,6 +599,8 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 onReadyToSave = { input, localId, products ->
                     val accepted = conferenceSaves.submit(input, localId, products)
                     if (accepted) {
+                        // A cópia enviável já está persistida; remover apenas o rascunho incompleto.
+                        appScope.launch { ConferenceDraftStore.delete(authState.appUserId.orEmpty(), categoryId) }
                         navController.previousBackStackEntry?.savedStateHandle?.apply {
                             set(REFRESH_KEY, System.currentTimeMillis())
                             set(NOTICE_KEY, "Contagem protegida no aparelho. Verificação e envio em segundo plano.")
