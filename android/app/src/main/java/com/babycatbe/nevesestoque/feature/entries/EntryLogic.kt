@@ -46,6 +46,37 @@ fun parseEntryOptionalPrice(value: String): EntryDecimalResult {
     }
 }
 
+/** O total da nota é auxílio de digitação; o payload oficial continua tendo só unitPrice. */
+fun resolveEntryItemUnitPrice(
+    quantityText: String,
+    unitPriceText: String,
+    totalPriceText: String,
+    fromTotal: Boolean,
+): EntryDecimalResult {
+    if (!fromTotal) return parseEntryOptionalPrice(unitPriceText)
+    val total = parseEntryOptionalPrice(totalPriceText)
+    if (total.error != null) return EntryDecimalResult(null, "Preço total inválido.")
+    if (total.value == null) return EntryDecimalResult(null, null)
+    val quantity = parseEntryPositiveDecimal(quantityText, "Quantidade")
+    if (quantity.error != null) return quantity
+    val unit = total.value / quantity.value!!
+    return if (unit.isFinite() && unit >= 0.0) EntryDecimalResult(unit, null)
+    else EntryDecimalResult(null, "Preço unitário calculado inválido.")
+}
+
+fun entryItemLineTotal(quantityText: String, unitText: String, totalText: String, fromTotal: Boolean): Double? {
+    if (fromTotal) return parseEntryOptionalPrice(totalText).value
+    val q = parseEntryPositiveDecimal(quantityText, "Quantidade").value
+    val p = parseEntryOptionalPrice(unitText).value
+    return if (q != null && p != null) q * p else null
+}
+
+/** Apenas representação a 2 casas; o valor de backend calculado não é arredondado. */
+fun formatEntryPriceInput(value: Double): String =
+    if (!value.isFinite() || value < 0) "" else
+        java.math.BigDecimal.valueOf(value).setScale(2, java.math.RoundingMode.HALF_UP)
+            .toPlainString().replace('.', ',')
+
 fun todayEntryDate(): String = LocalDate.now().toString()
 
 fun entryDateError(value: String, today: LocalDate = LocalDate.now()): String? {
