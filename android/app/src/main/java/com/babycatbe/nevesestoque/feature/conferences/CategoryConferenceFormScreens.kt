@@ -316,9 +316,10 @@ private fun CategoryConferenceFormScreen(
                                 errorMessage = localErrors.quantities[product.id]
                                     ?: state.fieldErrors.quantities[product.id],
                                 onConfirm = {
-                                    val error = parseConferenceQuantity(
-                                        quantities[product.id].orEmpty(),
-                                        "Quantidade de " + product.name,
+                                    val text = quantities[product.id].orEmpty()
+                                    // Próximo permite pular um produto; salvar exige contagem completa.
+                                    val error = if (text.isBlank()) null else parseConferenceQuantity(
+                                        text, "Quantidade de " + product.name,
                                     ).second
                                     if (error != null) {
                                         localErrors = localErrors.copy(quantities = localErrors.quantities + (product.id to error))
