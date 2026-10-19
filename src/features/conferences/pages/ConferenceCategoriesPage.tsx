@@ -21,10 +21,10 @@ import { CONFERENCE_DRAFTS_UPDATED_EVENT, listConferenceDrafts, conferenceDraftF
 export function ConferenceCategoriesPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session, appUserId } = useAuth();
   const { isOnline } = useNetworkStatus();
   const statuses = useConferenceSaveStatuses();
-  const ownerId = session?.user.id ?? "";
+  const ownerId = appUserId ?? session?.user.id ?? "";
   const [drafts, setDrafts] = useState<Record<string, ConferenceDraft>>({});
   const [draftsError, setDraftsError] = useState<string | null>(null);
   useEffect(() => {
