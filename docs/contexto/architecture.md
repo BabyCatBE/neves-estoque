@@ -1,6 +1,6 @@
 # Arquitetura — Neves Estoque
 
-> Estado consolidado em 30/09/2026. Último estado funcional seguro: CHECKPOINT 254 / `develop@c0e2ad41a8ad5d64db700453a28826eaf03b8594`.
+> Atualizada em 19/10/2026 para o CP257. O CP254 foi referência anterior datada; fonte do estado operacional vigente: `task.md`.
 
 ## Visão geral
 
@@ -9,7 +9,7 @@ O repositório contém dois clientes que usam o mesmo backend:
 - Web/PWA em React + TypeScript + Vite;
 - Android nativo em Kotlin + Jetpack Compose;
 - Supabase gerenciado + PostgreSQL;
-- Netlify para hospedagem Web;
+- Cloudflare Pages para Web oficial desde 10/10/2026; Netlify anterior com builds pausados como retorno;
 - GitHub Actions para CI.
 
 Não há servidor de aplicação próprio no V1.
@@ -49,7 +49,7 @@ Stack principal observada:
 - React Hook Form + Zod;
 - Vitest + Playwright.
 
-O Offline Web usa IndexedDB/Dexie. Pendências locais não devem ser enviadas automaticamente ao reconectar.
+O Offline Web usa IndexedDB/Dexie. Pendências locais não devem ser enviadas automaticamente ao reconectar. Conferências incompletas ficam na tabela `conferenceDrafts`, separada de `pendingOperations` e do cache.
 
 ## Android
 
@@ -60,8 +60,8 @@ Configuração atual observada em `android/app/build.gradle.kts`:
 - compileSdk 37;
 - targetSdk 36;
 - minSdk 26;
-- Android `0.35.0-alpha01`;
-- versionCode 35;
+- Android `0.37.0-alpha01`;
+- versionCode 37;
 - `SYSTEM_VERSION = 0.26.0`.
 
 ### Divergência de versão
@@ -105,6 +105,7 @@ Arquivos internos privados separados em:
 Room/SQLite não faz parte da arquitetura vigente.
 
 Regras:
+- conferências incompletas em JSON atômico privado `conference-drafts/`, separado de cache e pendências enviáveis;
 - cache é reconstruível;
 - pendências são persistentes;
 - reconectar não envia automaticamente;
@@ -157,6 +158,12 @@ Web e Android possuem correções consolidadas para evitar truncamento silencios
 - blocos de IDs quando necessário;
 - falha intermediária deve falhar a leitura inteira, não devolver resultado parcial silencioso.
 
+## Cloudflare/Vite — falha e proteção consolidadas em 19/10/2026
+
+Web oficial em https://neves-estoque.pages.dev, deployment via Wrangler a partir de `develop`. Publicação automática geral permanece desativada. `npm run build` no GitHub deve receber **antes da compilação** `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`, ambas públicas e validadas; upload de `dist/` não injeta variáveis depois. PR #89 recupera os dois valores da configuração pública de produção do Cloudflare, valida-os, exige sua presença no bundle e bloqueia deploy ausente. Nunca usar chaves secretas/service_role no frontend ou na documentação.
+
+Android 0.37.0-alpha01, versionCode 37, foi publicado via GitHub Release com APK da Android CI #194 já assinado e verificado, sem recompilar. Teste no aparelho desta versão permanece pendente. Fluxo de publicação de 19/10 é pontual, não automação de todas as versões.
+
 ## CI
 
 ### Web
@@ -177,9 +184,9 @@ Android CI pós-merge:
 
 ## Branches
 
-- `develop`: integração/DEV;
-- `main`: produção;
-- último HEAD **funcional** consolidado: `c0e2ad41a8ad5d64db700453a28826eaf03b8594`;
+- `develop`: integração e fonte da Web Cloudflare publicada nesta rodada;
+- `main`: branch preservada, não é o runtime efetivamente publicado em Cloudflare nesta rodada;
+- último HEAD de **código funcional publicado** CP257: `d0b490b138faa0fad0321e431745560622895f50` (histórico CP254 `c0e2ad41a8ad5d64db700453a28826eaf03b8594`);
 - commits documentais posteriores podem avançar `develop` sem alterar o estado funcional: sempre distinguir os dois.
 
 ## Fontes de referência

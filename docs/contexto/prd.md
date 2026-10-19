@@ -1,6 +1,6 @@
 # PRD — Neves Estoque
 
-> Estado consolidado em 30/09/2026. Último estado funcional seguro: CHECKPOINT 254. O estado operacional imediato fica em `task.md`; histórico completo e decisões substituídas ficam no Contexto Mestre/arquivo histórico.
+> Atualização funcional até 19/10/2026 — CP257; checkpoint 256 permanece última base anterior testada em aparelho. Estado de runtime e testes em `task.md`. O estado operacional imediato fica em `task.md`; histórico completo e decisões substituídas ficam no Contexto Mestre/arquivo histórico.
 
 ## Produto
 
@@ -15,7 +15,7 @@ Objetivos:
 ## Plataformas atuais
 
 - **Web/PWA:** versão `0.26.1`.
-- **Android nativo:** `0.35.0-alpha01`, versionCode 35.
+- **Android nativo:** `0.37.0-alpha01`, versionCode 37 (Release publicada; novos fluxos ainda não testados em aparelho).
 - **Backend:** Supabase/PostgreSQL único para as plataformas.
 - Windows instalado fica para evolução futura.
 - iOS somente se surgir necessidade real.
@@ -62,8 +62,8 @@ O resultado pode incluir consumo, perda, diferença de contagem, Entrada esqueci
 - quantidade de Entrada deve ser maior que zero;
 - preço em branco = não informado;
 - preço zero = bonificação;
-- total de Entrada é calculado pelos itens;
-- Conferência aceita zero e proíbe negativo;
+- total geral da Entrada é calculado pelos itens; cada item pode receber preço unitário ou o total da nota como atalho de cálculo do unitário, exibido a duas casas sem perder a precisão interna;
+- Conferência aceita zero e proíbe negativo; rascunho incompleto pode manter quantidades vazias localmente (não enviável) e finalização exige todos os produtos da categoria preenchidos;
 - Entrada e Conferência usam cabeçalho + itens;
 - Produto usa UUID interno e invisível;
 - nome duplicado é bloqueado ignorando caixa e espaços excedentes;
@@ -105,7 +105,7 @@ Diretrizes consolidadas:
 - Claro/Escuro é preferência local do aparelho;
 - **barra de navegação inferior no Android: A VERIFICAR**. Há decisões históricas conflitantes e o app atual não a implementa; preservar a navegação atual até decisão explícita.
 
-## Estado comprovado mais recente
+## Estado comprovado mais recente (CP256; ver CP257 para publicações de 19/10)
 
 CHECKPOINT 256 — 07/10/2026:
 - Preço inicial editável antes da primeira Entrada ativa com preço real, com proteção no backend;
@@ -117,7 +117,7 @@ CHECKPOINT 256 — 07/10/2026:
 - fluxo testado e aprovado em aparelho por Elias;
 - `main` e Web PROD não foram promovidos.
 
-## Estado dos dados na consolidação documental
+## Estado dos dados na consolidação documental (retrato histórico de 07/10/2026)
 
 Supabase **Neves Estoque**, revalidado em 07/10/2026 após o teste em aparelho:
 - 43 migrations aplicadas;

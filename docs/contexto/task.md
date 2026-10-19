@@ -1,124 +1,45 @@
 # Estado operacional — Neves Estoque
 
-> Atualizado em 07/10/2026 após consolidação do CHECKPOINT 256.
+> Atualizado em 19/10/2026. **CHECKPOINT 257 — [publicações Web/Android e hotfix de login](checkpoints/2026-10-19-cp257-web-android-publicacao.md)**. Histórico anterior: CP256 (07/10/2026) documentado no Contexto Mestre/versões Git; não substituir teste real por aprovação de CI.
 
 ## Fase atual
 
-`CHECKPOINT 256 — PREÇO INICIAL EDITÁVEL ANTES DA PRIMEIRA ENTRADA COM PREÇO — IMPLEMENTADO / CI APROVADA / RELEASE ANDROID PUBLICADA / TESTADO EM APARELHO / CONSOLIDADO`
+**IMPLEMENTADO / CI APROVADA / ANDROID RELEASE PUBLICADA / WEB PROD PUBLICADA / LOGIN WEB CONFIRMADO / TESTE OPERACIONAL DOS NOVOS FLUXOS A VERIFICAR.**
 
-## CHECKPOINT 256 — 07/10/2026
+O responsável autorizou explicitamente publicar sem teste manual imediato e confirmou que **o login Web voltou a funcionar** depois do hotfix de configuração Supabase.
 
-### Regra funcional consolidada
+## Fontes de código, versões e ambientes
 
-O Preço inicial pode ser adicionado, corrigido ou removido na edição de Produto enquanto não existir Entrada ativa desse Produto com `unit_price > 0`.
+- Repositório: `BabyCatBE/neves-estoque`; branch integrada `develop` no último **HEAD funcional publicado** `d0b490b138faa0fad0321e431745560622895f50` (PR #89). Commits de documentação deste CP avançam HEAD mas **não alteram runtime**.
+- `main`: `e0c15eb45fda2f6c68f58ed6f4ccdd24feb20635` (**não atualizada**). No Cloudflare a publicação Web saiu de `develop`; nunca presumir que `main` corresponda ao site publicado.
+- Web/PWA `package.json`: **0.26.1**; hospedagem oficial **https://neves-estoque.pages.dev** (Cloudflare Pages), último deploy verificado `https://b94d1893.neves-estoque.pages.dev`. Netlify com builds pausados permanece fallback histórico.
+- Android `0.37.0-alpha01` / **versionCode 37**; [Release `android-v0.37.0-alpha01`](https://github.com/BabyCatBE/neves-estoque/releases/tag/android-v0.37.0-alpha01), APK oficial `neves-estoque-android.apk` e `SHA256SUMS`. Atualização pelo próprio app, **instalação de 0.37 em aparelho ainda não confirmada**.
+- Android `SYSTEM_VERSION = 0.26.0` × Web `0.26.1`: **A VERIFICAR**. Barra inferior Android: **A VERIFICAR**; preservar navegação.
 
-- Entrada com preço em branco (`NULL`) não bloqueia;
-- bonificação (`0`) não bloqueia;
-- Entrada excluída não bloqueia;
-- depois da primeira Entrada ativa com preço real (> 0), a correção de preço deve ser feita na própria Entrada;
-- vazio continua `NULL`; zero informado explicitamente continua zero;
-- ao corrigir preço inicial existente, `initial_price_at` é preservado;
-- ao definir o primeiro preço inicial em Produto já existente, a referência usa `created_at`;
-- ao remover, `initial_price` e `initial_price_at` ficam coerentemente vazios;
-- a validação final é do backend/banco, protegendo tela desatualizada e gravação concorrente.
+## Entrega funcional da rodada de 19/10
 
-### Implementação
+- **Conferências Web e Android:** rascunhos incompletos locais, `Guardar e sair`, retomar categoria, preservação de quantidades na rotação Android, pular item em branco com `Próximo` sem transformá-lo em zero; salvamento/verificações em segundo plano; correção histórica atualiza ID original. Rascunho não altera estoque e não é pendência de envio. Salvar definitivo continua exigindo todos os produtos preenchidos; envio posterior offline permanece **manual/consciente**.
+- **Entradas Web e Android:** aceitar preço unitário ou total do item da nota e calcular unitário; **exibir 2 casas**, manter maior precisão interna; preço em branco `NULL` distinto de zero/bonificação. Enter/Tab Web e teclado Neves Android preservados.
+- **Impressão:** correção de paginação A4 de categorias grandes.
+- Origem: PRs integradas #81, #82, #83 e #85; preparação/release #86, #87; deploy Cloudflare #88; hotfix #89.
 
-- Backend: migration `20261007111815_editable_initial_price_before_priced_entry`; nova RPC `update_product_details_with_initial_price`; RPC antiga mantida para compatibilidade.
-- Web: edição de Produto permite Preço inicial enquanto elegível; quando bloqueado, mostra somente leitura com orientação.
-- Android: edição de Produto usa `NevesNumericField` e teclado numérico próprio Neves; quando bloqueado, mostra somente leitura.
-- Web/package: `0.26.1`.
-- Android: `0.36.0-alpha01` / versionCode 36.
-- `SYSTEM_VERSION` Android continua `0.26.0`: **A VERIFICAR**; não alterar apenas para alinhar documentação.
+## Verificações reais
 
-### GitHub / CI / Release
-
-- branch integrada: `develop`;
-- commit funcional + ajuste de identidade CI: `e146c50aee843e9616fa024a9c0d07e75a6e70c3`;
-- HEAD técnico/documental antes desta consolidação: `c4006f19ef133d51b495d8b2a49309b40fb257f9`;
-- CI #157 / run `37614753146`: SUCCESS;
-- Android CI #137 / run `37614753154`: SUCCESS;
-- Android CI #136 falhou somente porque o workflow ainda esperava 0.35/35; expectativa atualizada para 0.36/36 e a rodada seguinte passou;
-- Release oficial publicada: `android-v0.36.0-alpha01`;
-- tag resolve para `c4006f19ef133d51b495d8b2a49309b40fb257f9`;
-- APK oficial: `neves-estoque-android.apk`;
-- checksum oficial: `SHA256SUMS`;
-- SHA-256 do APK publicado: `7ad35e2558f1bad5baac2b7293c4542ef2f796eec2c4cb4d84c54619f8a78432`;
-- Release pública, não draft e não prerelease.
-
-### Supabase / dados
-
-Projeto **Neves Estoque**, revalidado após o teste em aparelho em 07/10/2026:
-
-- 43 migrations aplicadas;
-- 13 Categorias;
-- 146 Produtos ativos;
-- 9 Produtos com Preço inicial;
-- 0 Fornecedores ativos;
-- 0 Entradas ativas;
-- 0 itens de Entrada ativos.
-
-A migration foi aplicada e os cenários técnicos de banco foram validados sem deixar dados artificiais. Após o teste em aparelho e o início do preenchimento das referências históricas por Elias, 9 Produtos possuem Preço inicial; continuam 0 Entradas ativas. O estado permanece **CATÁLOGO REAL PREPARADO**.
-
-Não criar Entrada artificial nem preencher preços em massa só para testar. Elias preencherá referências iniciais reais conforme necessidade e fontes históricas.
-
-### Teste em aparelho
-
-**TESTADO / APROVADO EM APARELHO por Elias em 07/10/2026.**
-
-Confirmado no Android:
-
-- atualizador interno encontrou/instalou a Release 0.36.0-alpha01;
-- edição de Produto sem Entrada com preço exibiu Preço inicial;
-- salvar refletiu o valor como preço atual;
-- nova edição/correção do Preço inicial funcionou enquanto não existe Entrada com preço real.
-
-Não interpretar isso como teste manual de todos os cenários Web/Android.
-
-### Limitação de Release descoberta
-
-O workflow `.github/workflows/android-release.yml` está em `develop`, mas não em `main`, branch padrão. Por isso o disparo manual automatizado ficou indisponível neste bloco.
-
-A Release 0.36.0-alpha01 foi publicada manualmente usando exclusivamente o APK assinado e validado pela Android CI #137, sem recompilar.
-
-Pendência futura: estruturar um caminho oficial de Release que possa ser disparado sem promover o código do app para `main`, mediante bloco próprio e decisão consciente.
-
-## Último estado funcional seguro
-
-O CHECKPOINT 256 substitui o CHECKPOINT 254 como último estado funcional seguro consolidado.
-
-Referência funcional principal: `e146c50aee843e9616fa024a9c0d07e75a6e70c3`.
-
-Commits documentais posteriores podem avançar `develop` sem mudar o runtime. Sempre distinguir HEAD funcional de commits somente documentais.
-
-## Pendências vigentes
-
-- próximo bloco funcional: **A DEFINIR**;
-- automatização correta do fluxo de Android Release sem depender de publicação manual: **A DEFINIR / bloco futuro**;
-- `SYSTEM_VERSION` Android = `0.26.0` enquanto Web/package = `0.26.1`: **A VERIFICAR**;
-- barra inferior Android: **A VERIFICAR**; preservar navegação atual;
-- pendências Offline ao trocar usuário: **A DEFINIR**;
-- smoke test autenticado Web 0.26.1: opcional para classificação manual;
-- testes Offline finais/agrupados: pendentes;
-- proteção contra senhas vazadas no Supabase Auth: **A DEFINIR**;
-- splash claro Android 12+ no tema Escuro: limitação conhecida;
-- imagem órfã de teste no Storage: eventual limpeza futura, sem autorização automática;
-- backup/monitoramento e demais itens pré-produção: revisar quando a fase exigir.
+- Android CI **#194**, run `39302190080`: **SUCCESS**. Publicação APK assinado run `39303909499`: **SUCCESS** (0.37.0-alpha01).
+- Web CI **#251**, run `39316512271`: **SUCCESS**. Deploy Cloudflare run `39316512155`: **SUCCESS**. Logs confirmaram `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` presentes no build; deployment concluído.
+- Falhas relevantes do caminho: primeiro deploy Web falhou por falta de `CLOUDFLARE_API_TOKEN` GitHub; com token cadastrado, deploy saiu **sem variáveis públicas Supabase no build**, gerando tela de login bloqueada. PR #89 corrigiu as variáveis **antes** da compilação, falhando seguro quando faltarem; usuário confirmou login normal depois. Não publicar apenas porque `wrangler deploy` teve SUCCESS: verificar configuração do bundle.
+- **Supabase:** projeto Neves Estoque `bwostqcdwfueapfemrwn` ACTIVE_HEALTHY; **43 migrations aplicadas**, última de 07/10. Verificado somente em leitura em 19/10. Sem novas migrations, alterações de schema ou dados reais durante essas publicações. **Não tratar contagens de dados do CP256 como estado atual.**
+- **Testes funcionais do novo fluxo Android/Entradas/Conferências e Web PWA:** **PENDENTES**. Apenas login Web pós-hotfix foi confirmado nesta rodada pelo responsável. CP256/Android 0.36 continua último bloco anterior com teste de aparelho.
 
 ## Próximo passo
 
-**A DEFINIR conforme prioridade real e uso do sistema.**
+Esperar relato do próximo uso real e **verificar eventuais regressões**, sem exigir que o responsável faça teste agora. Preservar rascunhos/pendências locais, não limpar cache/dados PWA nem alterar dados reais para investigar. Se necessário, corrigir em branch, CI, checkpoint e obter autorização antes de publicar nova Release/Cloudflare.
 
-Não inventar novo bloco apenas porque este foi consolidado.
+Acompanhar depois: comportamento de PWA instalada/offline, atualização Android 0.37, edição pendências Web, pendências ao trocar usuário, fluxo duradouro de deploy/release (workflow 19/10 pontual), segurança/backup e `SYSTEM_VERSION`/barra inferior A VERIFICAR.
 
-Não mover `main`, publicar Web PROD, criar outra Release ou realizar operação destrutiva no Supabase sem autorização explícita.
+## Retomada por outra IA
 
-## Retomada por nova IA/chat
-
-1. ler este `task.md`;
-2. ler os arquivos especializados aplicáveis;
-3. conferir `develop` atual no GitHub;
-4. distinguir último HEAD funcional de commits documentais;
-5. consultar Supabase somente quando a tarefa depender do ambiente;
-6. usar BabyCat OS / Drive / Notion conforme a camada de contexto necessária;
-7. aprofundar no histórico apenas quando necessário.
+1. Este `task.md` e [CP257 detalhado](checkpoints/2026-10-19-cp257-web-android-publicacao.md).
+2. Contexto Mestre atual Google Docs, [índice do projeto BabyCat-OS](https://github.com/BabyCatBE/BabyCat-OS/tree/main/neves-os/empresas/panificadora-neves/panificadora-neves-nordestina/projetos/estoque) e documentação especializada pertinente.
+3. Conferir `develop` real, GitHub Actions, Release e deployment oficial; Supabase real quando pertinente.
+4. Preservar CP256/10-10 como **histórico datado**, separar HEAD funcional de commits documentais. Notion é resumo, não prova de CI/DB.

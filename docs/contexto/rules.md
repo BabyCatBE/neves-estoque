@@ -79,7 +79,7 @@ Antes de mudança relevante:
 - sem saída individual rotineira no V1;
 - Entrada = mercadoria realmente recebida;
 - Entrada exige quantidade > 0;
-- Conferência aceita zero e proíbe negativo;
+- Conferência aceita zero e proíbe negativo; quantidade vazia não é zero, rascunho incompleto não pode ser enviado ou alterar o estoque;
 - preço em branco e bonificação são estados diferentes;
 - Preço inicial pode ser adicionado/corrigido/removido enquanto não houver Entrada ativa do Produto com `unit_price > 0`; `NULL`, zero/bonificação e Entrada excluída não bloqueiam; após preço real de Entrada, corrigir pela própria Entrada;
 - validação da elegibilidade do Preço inicial pertence ao backend/banco, não somente à UI;

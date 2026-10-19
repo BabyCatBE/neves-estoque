@@ -1,6 +1,6 @@
 # Design atual — Neves Estoque
 
-> Estado consolidado em 30/09/2026. Registra padrões visuais e de UX vigentes.
+> Padrões vigentes atualizados em 19/10/2026; a rodada recente tem CI aprovada, mas testes de uso pendentes.
 
 ## Princípios
 
@@ -89,6 +89,14 @@ Estado atual:
 - Entrada não usa esses controles;
 - Compras usa esses controles no fluxo atual;
 - qualquer expansão a outros módulos exige avaliação consciente.
+
+## UX de Conferências e Entradas — 19/10/2026
+
+- Conferência Android permite `Próximo` com campo vazio para pular produto, mas salvar definitivamente exige a categoria completa.
+- Voltar em conferência incompleta oferece `Guardar e sair`, `Continuar` e `Descartar`; a lista de categorias sinaliza rascunho e progresso. Rotação não pode apagar valores digitados.
+- Salvar não mantém usuário preso em verificação remota após proteção local; acompanhamento de envio e alertas acontece em segundo plano.
+- Entrada Web: Quantidade → Unitário → Total da nota; Tab passa para total, Enter mantém navegação anterior. Android: alternância discreta unitário/total e teclado numérico Neves. Unitário visível com duas casas sem perder a precisão da divisão.
+- Estado: código IMPLEMENTADO/CI APROVADA; teste visual/funcional dos fluxos novos **A VERIFICAR**.
 
 ## Compras
 
