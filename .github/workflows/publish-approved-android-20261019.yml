@@ -23,6 +23,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       APPROVED_SOURCE_SHA: 6dc69733da8c1a7966a4ec42f8210b8975fb8f75
+      APPROVED_ARTIFACT_SHA: 3b6b72ada769ad7aa9ff9b986c57c367ec2284c0
       APPROVED_ANDROID_CI_RUN_ID: "39302190080"
       EXPECTED_VERSION: 0.37.0-alpha01
       EXPECTED_VERSION_CODE: "37"
@@ -40,6 +41,9 @@ jobs:
           assert obj["conclusion"] == "success", "Android CI has not succeeded"
           assert obj["head_sha"] == os.environ["APPROVED_SOURCE_SHA"], "CI SHA mismatch"
           assert obj["event"] == "pull_request", "Unexpected source CI event"
+          left=json.loads(subprocess.check_output(["gh","api",f"repos/{os.environ['GITHUB_REPOSITORY']}/git/commits/{os.environ['APPROVED_SOURCE_SHA']}"],text=True))
+          right=json.loads(subprocess.check_output(["gh","api",f"repos/{os.environ['GITHUB_REPOSITORY']}/git/commits/{os.environ['APPROVED_ARTIFACT_SHA']}"],text=True))
+          assert left["tree"]["sha"] == right["tree"]["sha"], "Signed artifact tree differs from approved PR source"
           print("Signed-source CI run and commit verified.")
           PY
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
@@ -57,7 +61,7 @@ jobs:
           set -euo pipefail
           mkdir -p signed
           gh run download "$APPROVED_ANDROID_CI_RUN_ID" --repo "$GITHUB_REPOSITORY" \
-            --name "neves-estoque-android-signed-$EXPECTED_VERSION-$APPROVED_SOURCE_SHA" --dir signed
+            --name "neves-estoque-android-signed-$EXPECTED_VERSION-$APPROVED_ARTIFACT_SHA" --dir signed
           test -s signed/app-release.apk
           test -s signed/SHA256SUMS
           ( cd signed && sha256sum -c SHA256SUMS )
