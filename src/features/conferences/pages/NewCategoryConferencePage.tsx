@@ -85,7 +85,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const [hasDraft, setHasDraft] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [leavingBusy, setLeavingBusy] = useState(false);
-  const ownerId = session?.user.id ?? "";
+  const ownerId = appUserId ?? session?.user.id ?? "";
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +99,11 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
       if (cancelled) return;
       setDraftError(null);
       if (draft) {
+        const products = new Set(setup.products.map((product) => product.id));
+        if (Object.keys(draft.quantities).some((id) => !products.has(id))) {
+          setDraftError("O catálogo mudou desde a contagem. Rascunho original preservado para revisão.");
+          return;
+        }
         setDate(draft.date);
         setResponsible(draft.responsible);
         setObservation(draft.observation);
