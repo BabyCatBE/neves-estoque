@@ -26,6 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +51,7 @@ import java.time.LocalDate
 @Composable
 fun CategoryConferenceFormRoute(
     categoryId: String,
+    ownerId: String,
     onBack: () -> Unit,
     onSaved: (String) -> Unit,
     onReadyToSave: (CategoryConferenceWriteInput, String, List<ConferenceProduct>) -> Boolean,
@@ -62,18 +66,21 @@ fun CategoryConferenceFormRoute(
     LaunchedEffect(state.savedPendingMessage) {
         state.savedPendingMessage?.let {
             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+            ConferenceDraftStore.delete(ownerId, categoryId)
             onSaved(it)
         }
     }
     LaunchedEffect(state.savedConferenceId) {
         state.savedConferenceId?.let {
             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+            ConferenceDraftStore.delete(ownerId, categoryId)
             onSaved("Conferência salva com sucesso.")
         }
     }
 
     CategoryConferenceFormScreen(
         state = state,
+        ownerId = ownerId,
         onBack = onBack,
         onSave = { date, responsible, observation, quantities ->
             vm.requestSave(date, responsible, observation, quantities, onReadyToSave)
@@ -85,6 +92,7 @@ fun CategoryConferenceFormRoute(
 @Composable
 private fun CategoryConferenceFormScreen(
     state: CategoryConferenceFormUiState,
+    ownerId: String,
     onBack: () -> Unit,
     onSave: (String, String, String, Map<String, String>) -> Unit,
     onClearError: () -> Unit,
@@ -93,8 +101,8 @@ private fun CategoryConferenceFormScreen(
     var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var responsible by rememberSaveable { mutableStateOf("") }
     var observation by rememberSaveable { mutableStateOf("") }
-    var quantities by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var initialized by remember { mutableStateOf(false) }
+    var quantities by rememberSaveable { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var initialized by rememberSaveable { mutableStateOf(false) }
     var leaveOpen by rememberSaveable { mutableStateOf(false) }
 
     // O último Concluir fecha o teclado; Observação é opcional, somente por toque.
@@ -103,12 +111,50 @@ private fun CategoryConferenceFormScreen(
     var localErrors by remember { mutableStateOf(CategoryConferenceFormErrors()) }
     var initialFocusDone by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(setup?.categoryId) {
+    val draftScope = rememberCoroutineScope()
+    var draftBusy by remember { mutableStateOf(false) }
+    var draftError by remember { mutableStateOf<String?>(null) }
+    var draftLoadBlocked by remember { mutableStateOf(false) }
+    var leaving by remember { mutableStateOf(false) }
+
+    LaunchedEffect(setup?.categoryId, ownerId) {
         if (!initialized && setup != null) {
-            quantities = setup.products.associate { it.id to "" }
-            initialized = true
+            when (val loaded = ConferenceDraftStore.load(ownerId, setup.categoryId)) {
+                is ConferenceDraftResult.Success -> {
+                    val restored = loaded.value?.forProducts(setup.products.map { it.id })
+                    if (restored != null) {
+                        date = restored.date
+                        responsible = restored.responsible
+                        observation = restored.observation
+                        quantities = restored.quantities
+                    } else {
+                        quantities = setup.products.associate { it.id to "" }
+                    }
+                    initialized = true
+                }
+                is ConferenceDraftResult.Failure -> {
+                    draftError = loaded.message
+                    draftLoadBlocked = true
+                }
+            }
         }
     }
+
+    LaunchedEffect(initialized, ownerId, setup?.categoryId, date, responsible, observation, quantities, leaving) {
+        if (!initialized || setup == null || draftLoadBlocked || leaving || ownerId.isBlank()) return@LaunchedEffect
+        val nonempty = responsible.isNotBlank() || observation.isNotBlank() ||
+            date != LocalDate.now().toString() || quantities.values.any { it.isNotBlank() }
+        if (nonempty) {
+            delay(350)
+            when (val result = ConferenceDraftStore.save(
+                LocalConferenceDraft(ownerId, setup.categoryId, date, responsible, observation, quantities)
+            )) {
+                is ConferenceDraftResult.Success -> draftError = null
+                is ConferenceDraftResult.Failure -> draftError = result.message
+            }
+        }
+    }
+
     LaunchedEffect(setup?.categoryId) {
         if (setup != null && !initialFocusDone) {
             initialFocusDone = flow.date.requestFocusSafely()
@@ -121,9 +167,9 @@ private fun CategoryConferenceFormScreen(
 
     val dirty = responsible.isNotBlank() || observation.isNotBlank() ||
         date != LocalDate.now().toString() || quantities.values.any { it.isNotBlank() }
-    val busy = state.checking || state.saving
+    val busy = state.checking || state.saving || draftBusy || draftLoadBlocked
 
-    BackHandler(enabled = busy) {}
+    BackHandler(enabled = busy && !draftLoadBlocked) {}
     BackHandler(enabled = !busy && dirty) { leaveOpen = true }
 
     Scaffold(
@@ -142,6 +188,12 @@ private fun CategoryConferenceFormScreen(
         ) {
             if (state.loading) {
                 NevesContentCard { Text("Carregando Categoria…", modifier = Modifier.padding(18.dp)) }
+            }
+            draftError?.let { message ->
+                NevesContentCard {
+                    Text(message, modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        color = MaterialTheme.colorScheme.error)
+                }
             }
             state.errorMessage?.let { error ->
                 NevesContentCard {
@@ -304,7 +356,7 @@ private fun CategoryConferenceFormScreen(
                 }
 
                 Button(
-                    onClick = { onSave(date, responsible, observation, quantities) },
+                    onClick = { if (!draftLoadBlocked) onSave(date, responsible, observation, quantities) },
                     enabled = !busy && current.products.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -322,14 +374,47 @@ private fun CategoryConferenceFormScreen(
 
     if (leaveOpen) {
         AlertDialog(
-            onDismissRequest = { leaveOpen = false },
-            title = { Text("Descartar Conferência?") },
-            text = { Text("Os dados preenchidos nesta tela serão perdidos.") },
+            onDismissRequest = { if (!draftBusy) leaveOpen = false },
+            title = { Text("Conferência incompleta") },
+            text = { Text("Guarde a contagem neste aparelho para terminar depois. Campos vazios não serão enviados nem alteram o estoque.") },
             confirmButton = {
-                TextButton(onClick = onBack) { Text("Descartar e sair") }
+                TextButton(enabled = !draftBusy && !draftLoadBlocked, onClick = {
+                    val current = setup ?: return@TextButton
+                    draftBusy = true
+                    draftScope.launch {
+                        when (val result = ConferenceDraftStore.save(
+                            LocalConferenceDraft(ownerId, current.categoryId, date, responsible, observation, quantities)
+                        )) {
+                            is ConferenceDraftResult.Success -> {
+                                leaving = true
+                                onBack()
+                            }
+                            is ConferenceDraftResult.Failure -> draftError = result.message
+                        }
+                        draftBusy = false
+                        leaveOpen = false
+                    }
+                }) { Text(if (draftBusy) "Guardando…" else "Guardar e sair") }
             },
             dismissButton = {
-                TextButton(onClick = { leaveOpen = false }) { Text("Continuar") }
+                Row {
+                    TextButton(enabled = !draftBusy, onClick = { leaveOpen = false }) { Text("Continuar") }
+                    TextButton(enabled = !draftBusy && !draftLoadBlocked, onClick = {
+                        draftBusy = true
+                        leaving = true
+                        draftScope.launch {
+                            when (val result = ConferenceDraftStore.delete(ownerId, setup?.categoryId.orEmpty())) {
+                                is ConferenceDraftResult.Success -> onBack()
+                                is ConferenceDraftResult.Failure -> {
+                                    leaving = false
+                                    draftError = result.message
+                                }
+                            }
+                            draftBusy = false
+                            leaveOpen = false
+                        }
+                    }) { Text("Descartar") }
+                }
             },
         )
     }
@@ -367,8 +452,8 @@ private fun EditConferenceScreen(
     var date by rememberSaveable { mutableStateOf("") }
     var responsible by rememberSaveable { mutableStateOf("") }
     var observation by rememberSaveable { mutableStateOf("") }
-    var quantities by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var initialized by remember { mutableStateOf(false) }
+    var quantities by rememberSaveable { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var initialized by rememberSaveable { mutableStateOf(false) }
     var leaveOpen by rememberSaveable { mutableStateOf(false) }
 
     // Mesmo fluxo da Nova Conferência, sem foco automático ao abrir (é uma correção pontual).
