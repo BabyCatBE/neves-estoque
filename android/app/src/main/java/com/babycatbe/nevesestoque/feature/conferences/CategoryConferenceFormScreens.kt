@@ -122,17 +122,24 @@ private fun CategoryConferenceFormScreen(
         if (!initialized && setup != null) {
             when (val loaded = ConferenceDraftStore.load(ownerId, setup.categoryId)) {
                 is ConferenceDraftResult.Success -> {
-                    val restored = loaded.value?.forProducts(setup.products.map { it.id })
-                    if (restored != null) {
-                        hadDraft = true
-                        date = restored.date
-                        responsible = restored.responsible
-                        observation = restored.observation
-                        quantities = restored.quantities
+                    val original = loaded.value
+                    val productIds = setup.products.map { it.id }
+                    if (original != null && original.quantities.keys.any { it !in productIds }) {
+                        draftError = "O catálogo mudou desde a contagem. O rascunho original foi preservado; revise antes de continuar."
+                        draftLoadBlocked = true
                     } else {
-                        quantities = setup.products.associate { it.id to "" }
+                        val restored = original?.forProducts(productIds)
+                        if (restored != null) {
+                            hadDraft = true
+                            date = restored.date
+                            responsible = restored.responsible
+                            observation = restored.observation
+                            quantities = restored.quantities
+                        } else {
+                            quantities = setup.products.associate { it.id to "" }
+                        }
+                        initialized = true
                     }
-                    initialized = true
                 }
                 is ConferenceDraftResult.Failure -> {
                     draftError = loaded.message
