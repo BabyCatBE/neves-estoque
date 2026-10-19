@@ -99,6 +99,7 @@ export function NewEntryPage() {
   const [pendingProductCategoryId, setPendingProductCategoryId] = useState("");
   const [pendingProductError, setPendingProductError] = useState<string | null>(null);
   const [items, setItems] = useState<DraftItem[]>([]);
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [itemErrors, setItemErrors] = useState<ItemFieldErrors>({});
   const [duplicateProduct, setDuplicateProduct] = useState<ProductListItem | null>(null);
   const [missingPriceReview, setMissingPriceReview] = useState(false);
@@ -944,7 +945,10 @@ export function NewEntryPage() {
                     label="Preço unitário"
                     inputMode="decimal"
                     placeholder="Vazio = não informado"
-                    value={item.priceMode === "total" && price !== null ? formatEntryPriceInput(price) : item.unitPrice}
+                    value={editingUnitId === item.localId && item.priceMode !== "total" ? item.unitPrice :
+                      price === null ? item.unitPrice : formatEntryPriceInput(price)}
+                    onFocus={(event) => { setEditingUnitId(item.localId); if (item.priceMode === "total") event.currentTarget.select(); }}
+                    onBlur={() => setEditingUnitId((id) => id === item.localId ? null : id)}
                     error={itemErrors[item.localId]?.unitPrice && item.priceMode !== "total" ? itemErrors[item.localId]?.unitPrice : undefined}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -970,6 +974,7 @@ export function NewEntryPage() {
                   <TextField
                     id={`entry-total-${item.localId}`}
                     label="Preço total da nota"
+                    onFocus={(event) => { if (item.priceMode !== "total") event.currentTarget.select(); }}
                     inputMode="decimal"
                     placeholder="Ou digite o total"
                     value={item.priceMode === "total" ? item.totalPrice ?? "" :
