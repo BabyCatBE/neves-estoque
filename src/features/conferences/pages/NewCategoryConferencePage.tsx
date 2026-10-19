@@ -87,6 +87,8 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const [draftError, setDraftError] = useState<string | null>(null);
   const [leavingBusy, setLeavingBusy] = useState(false);
   const ownerId = appUserId ?? session?.user.id ?? "";
+  const productKey = setup.products.map((product) => product.id).join("|");
+  const productIds = useMemo(() => productKey ? productKey.split("|") : [], [productKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +102,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
       if (cancelled) return;
       setDraftError(null);
       if (draft) {
-        const products = new Set(setup.products.map((product) => product.id));
+        const products = new Set(productIds);
         if (Object.keys(draft.quantities).some((id) => !products.has(id))) {
           setDraftError("O catálogo mudou desde a contagem. Rascunho original preservado para revisão.");
           return;
@@ -108,8 +110,8 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
         setDate(draft.date);
         setResponsible(draft.responsible);
         setObservation(draft.observation);
-        setQuantities(Object.fromEntries(setup.products.map((product) =>
-          [product.id, draft.quantities[product.id] ?? ""])));
+        setQuantities(Object.fromEntries(productIds.map((id) =>
+          [id, draft.quantities[id] ?? ""])));
         setHasDraft(true);
       }
       setDraftLoaded(true);
@@ -117,7 +119,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
       if (!cancelled) setDraftError("Falha ao ler o rascunho. A cópia local não foi substituída.");
     });
     return () => { cancelled = true; };
-  }, [ownerId, setup.category.id, setup.products]);
+  }, [ownerId, setup.category.id, productIds]);
 
   const allowNavigationRef = useRef(false);
 
