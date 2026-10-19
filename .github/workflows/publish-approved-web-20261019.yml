@@ -37,6 +37,8 @@ jobs:
 
       - name: Checkout integrated approved source
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Guard against unreviewed changes in the Web source
         shell: bash
