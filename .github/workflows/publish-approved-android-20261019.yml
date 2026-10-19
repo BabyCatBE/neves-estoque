@@ -1,0 +1,126 @@
+name: Publish approved Neves Android 0.37.0-alpha01 (one time)
+
+# Triggered only when THIS one-time publisher file is added to develop.
+# Never publishes for ordinary feature/CI pushes.
+on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/workflows/publish-approved-android-20261019.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: neves-approved-android-20261019
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_SOURCE_SHA: 6dc69733da8c1a7966a4ec42f8210b8975fb8f75
+      APPROVED_ANDROID_CI_RUN_ID: "39302190080"
+      EXPECTED_VERSION: 0.37.0-alpha01
+      EXPECTED_VERSION_CODE: "37"
+      TAG: android-v0.37.0-alpha01
+    steps:
+      - name: Verify explicitly approved source, CI result and unique release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/develop"
+          test "$GITHUB_REPOSITORY" = "BabyCatBE/neves-estoque"
+          python3 - <<'PY'
+          import json, os, subprocess
+          obj=json.loads(subprocess.check_output(["gh","api",f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['APPROVED_ANDROID_CI_RUN_ID']}"],text=True))
+          assert obj["conclusion"] == "success", "Android CI has not succeeded"
+          assert obj["head_sha"] == os.environ["APPROVED_SOURCE_SHA"], "CI SHA mismatch"
+          assert obj["event"] == "pull_request", "Unexpected source CI event"
+          print("Signed-source CI run and commit verified.")
+          PY
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Official Release already exists. Refusing replacement."
+            exit 1
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag already exists. Refusing replacement."
+            exit 1
+          fi
+
+      - name: Download exact APK signed and tested by Android CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p signed
+          gh run download "$APPROVED_ANDROID_CI_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "neves-estoque-android-signed-$EXPECTED_VERSION-$APPROVED_SOURCE_SHA" --dir signed
+          test -s signed/app-release.apk
+          test -s signed/SHA256SUMS
+          ( cd signed && sha256sum -c SHA256SUMS )
+
+      - name: Install Android verification tools (no APK rebuilding)
+        uses: android-actions/setup-android@v4
+
+      - name: Verify package, version and permanent signing certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager "build-tools;36.0.0" >/dev/null
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs signed/app-release.apk > signed/verified-signature.txt
+          grep -q "Signer #1 certificate SHA-256 digest: 9901a1ea1fac3b993449a981770f63759b3b74e8c007f3ff9f56f1cbc7e6017a" signed/verified-signature.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging signed/app-release.apk > signed/verified-badging.txt
+          grep -q "package: name='com.babycatbe.nevesestoque'.*versionCode='37'.*versionName='0.37.0-alpha01'" signed/verified-badging.txt
+          python3 - <<'PY'
+          import json
+          with open("signed/output-metadata.json",encoding="utf-8") as f: d=json.load(f)
+          assert d["applicationId"]=="com.babycatbe.nevesestoque"
+          assert all(x["versionCode"]==37 and x["versionName"]=="0.37.0-alpha01" for x in d["elements"])
+          print("Package and version verified: com.babycatbe.nevesestoque, 37 / 0.37.0-alpha01.")
+          PY
+
+      - name: Publish official release using unchanged validated APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp signed/app-release.apk signed/neves-estoque-android.apk
+          (cd signed && sha256sum neves-estoque-android.apk > SHA256SUMS-release)
+          printf '%s\n' \
+            'Neves Estoque Android 0.37.0-alpha01' \
+            '' \
+            'versionCode: 37' \
+            '' \
+            '- Conferência: rascunho local, retomada e preservação das contagens após rotação.' \
+            '- Correções e verificações de Conferência em segundo plano.' \
+            '- Entrada: preço unitário ou preço total da nota.' \
+            '- Impressão A4 de categorias mais longas.' \
+            '' \
+            'CI Android validada. Teste funcional em aparelho ficou para uso operacional posterior, conforme autorização.' > release-notes.md
+          gh release create "$TAG" \
+            signed/neves-estoque-android.apk \
+            signed/SHA256SUMS-release#SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$APPROVED_SOURCE_SHA" \
+            --title "Neves Estoque Android $EXPECTED_VERSION" \
+            --notes-file release-notes.md \
+            --latest
+
+      - name: Verify publication for built-in Android updater
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess
+          repo=os.environ["GITHUB_REPOSITORY"]; tag=os.environ["TAG"]
+          d=json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/releases/tags/{tag}"],text=True))
+          assert not d["draft"] and not d["prerelease"]
+          assert d["tag_name"]==tag
+          assert "versionCode: 37" in (d.get("body") or "")
+          assets=[x["name"] for x in d["assets"]]
+          assert assets.count("neves-estoque-android.apk")==1
+          assert assets.count("SHA256SUMS")==1
+          print("Official APK Release published and verified.")
+          PY
