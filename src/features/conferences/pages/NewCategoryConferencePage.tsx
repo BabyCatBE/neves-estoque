@@ -131,6 +131,37 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
       currentLocation.pathname !== nextLocation.pathname
   );
 
+  // Rascunhos não têm caminho de envio: armazenados em tabela IndexedDB separada.
+  useEffect(() => {
+    if (!draftLoaded || !ownerId || !dirty || draftError || allowNavigationRef.current) return;
+    const timer = window.setTimeout(() => {
+      void saveConferenceDraft({
+        ownerId, categoryId: setup.category.id, date, responsible, observation, quantities
+      }).then(() => setHasDraft(true))
+        .catch(() => setDraftError("Não foi possível guardar o rascunho neste navegador. Não saia da tela."));
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [draftLoaded, ownerId, dirty, date, responsible, observation, quantities, draftError, setup.category.id]);
+
+  const saveAndLeave = async (discard: boolean) => {
+    if (!ownerId || leavingBusy) return;
+    setLeavingBusy(true);
+    setDraftError(null);
+    try {
+      if (discard) await discardConferenceDraft(ownerId, setup.category.id);
+      else await saveConferenceDraft({ ownerId, categoryId: setup.category.id, date, responsible, observation, quantities });
+      allowNavigationRef.current = true;
+      blocker.proceed?.();
+    } catch {
+      setDraftError(discard
+        ? "Não foi possível descartar o rascunho. Ele foi preservado."
+        : "Não foi possível guardar o rascunho. Continue nesta tela.");
+      blocker.reset?.();
+    } finally {
+      setLeavingBusy(false);
+    }
+  };
+
   const focusQuantity = (productId: string) => {
     window.setTimeout(() => document.getElementById(`conference-qty-${productId}`)?.focus(), 0);
   };
