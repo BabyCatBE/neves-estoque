@@ -21,7 +21,6 @@ import {
   getEntryErrorMessage,
   getFutureOperationalDateError,
   localDateInputValue,
-  parseOptionalPrice,
   parsePositiveDecimal,
   resolveEntryUnitPrice,
   resolveEntryLineTotal,
