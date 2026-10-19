@@ -65,8 +65,14 @@ export function resolveEntryLineTotal(
 export function formatCalculatedUnitPrice(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 8
+    maximumFractionDigits: 2
   }).format(value);
+}
+
+/** Formato de campo monetário, sem separadores de milhar para manter digitação e parsing simples. */
+export function formatEntryPriceInput(value: number): string {
+  if (!Number.isFinite(value) || value < 0) return "";
+  return value.toFixed(2).replace(".", ",");
 }
 
 export function localDateInputValue(date = new Date()) {
