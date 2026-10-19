@@ -33,6 +33,7 @@ import { readConferenceDraft, saveConferenceDraft, discardConferenceDraft } from
 
 export function NewCategoryConferencePage() {
   const { categoryId } = useParams();
+  const { appUserId } = useAuth();
   const setupQuery = useQuery({
     queryKey: ["conferences", "setup", categoryId],
     queryFn: () => {
@@ -53,7 +54,7 @@ export function NewCategoryConferencePage() {
         </Card>
       ) : null}
       {setupQuery.data ? (
-        <CategoryConferenceForm key={setupQuery.data.category.id} setup={setupQuery.data} />
+        <CategoryConferenceForm key={setupQuery.data.category.id + ":" + (appUserId ?? "")} setup={setupQuery.data} />
       ) : null}
     </AppShell>
   );
