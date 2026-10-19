@@ -4,7 +4,11 @@ import {
   getFutureOperationalDateError,
   localDateInputValue,
   parseOptionalPrice,
-  parsePositiveDecimal
+  parsePositiveDecimal,
+  resolveEntryLineTotal,
+  resolveEntryUnitPrice,
+  formatCalculatedUnitPrice,
+  formatEntryPriceInput
 } from "./entryValidation";
 
 describe("entryValidation", () => {
@@ -19,6 +23,28 @@ describe("entryValidation", () => {
   it("diferencia preço vazio de bonificação", () => {
     expect(parseOptionalPrice("")).toBeNull();
     expect(parseOptionalPrice("0")).toBe(0);
+  });
+
+
+  it("calcula preço unitário a partir do total sem cortar a precisão armazenada", () => {
+    const unit = resolveEntryUnitPrice("3", "", "10,00", "total");
+    expect(unit).toBeCloseTo(10/3, 12);
+    expect(formatCalculatedUnitPrice(unit!)).toBe("3,33");
+    expect(resolveEntryLineTotal("3", "", "10,00", "total")).toBe(10);
+    expect(formatEntryPriceInput(8.5)).toBe("8,50");
+  });
+
+  it("preserva preço unitário digitado e total derivado", () => {
+    expect(resolveEntryUnitPrice("12", "8,50", "", "unit")).toBe(8.5);
+    expect(resolveEntryLineTotal("12", "8,50", "", "unit")).toBe(102);
+  });
+
+  it("distingue vazio, bonificação e valores inválidos ao informar preço total", () => {
+    expect(resolveEntryUnitPrice("4", "", "", "total")).toBeNull();
+    expect(resolveEntryUnitPrice("4", "", "0", "total")).toBe(0);
+    expect(resolveEntryLineTotal("4", "", "0", "total")).toBe(0);
+    expect(() => resolveEntryUnitPrice("0", "", "10", "total")).toThrow();
+    expect(() => resolveEntryUnitPrice("4", "", "-2", "total")).toThrow("Preço total inválido.");
   });
 
   it("gera data local para o input", () => {
