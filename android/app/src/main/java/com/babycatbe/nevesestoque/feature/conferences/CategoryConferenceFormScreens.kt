@@ -115,6 +115,7 @@ private fun CategoryConferenceFormScreen(
     var draftBusy by remember { mutableStateOf(false) }
     var draftError by remember { mutableStateOf<String?>(null) }
     var draftLoadBlocked by remember { mutableStateOf(false) }
+    var hadDraft by rememberSaveable { mutableStateOf(false) }
     var leaving by remember { mutableStateOf(false) }
 
     LaunchedEffect(setup?.categoryId, ownerId) {
@@ -123,6 +124,7 @@ private fun CategoryConferenceFormScreen(
                 is ConferenceDraftResult.Success -> {
                     val restored = loaded.value?.forProducts(setup.products.map { it.id })
                     if (restored != null) {
+                        hadDraft = true
                         date = restored.date
                         responsible = restored.responsible
                         observation = restored.observation
@@ -149,7 +151,7 @@ private fun CategoryConferenceFormScreen(
             when (val result = ConferenceDraftStore.save(
                 LocalConferenceDraft(ownerId, setup.categoryId, date, responsible, observation, quantities)
             )) {
-                is ConferenceDraftResult.Success -> draftError = null
+                is ConferenceDraftResult.Success -> { hadDraft = true; draftError = null }
                 is ConferenceDraftResult.Failure -> draftError = result.message
             }
         }
@@ -170,13 +172,13 @@ private fun CategoryConferenceFormScreen(
     val busy = state.checking || state.saving || draftBusy || draftLoadBlocked
 
     BackHandler(enabled = busy && !draftLoadBlocked) {}
-    BackHandler(enabled = !busy && dirty) { leaveOpen = true }
+    BackHandler(enabled = !busy && (dirty || hadDraft)) { leaveOpen = true }
 
     Scaffold(
         topBar = {
             ConferenceTopBar(
                 title = "Nova Conferência",
-                onBack = { if (dirty) leaveOpen = true else onBack() },
+                onBack = { if (dirty || hadDraft) leaveOpen = true else onBack() },
             )
         },
         bottomBar = { NevesNumericKeypad(keypad) },
@@ -188,6 +190,9 @@ private fun CategoryConferenceFormScreen(
         ) {
             if (state.loading) {
                 NevesContentCard { Text("Carregando Categoria…", modifier = Modifier.padding(18.dp)) }
+            }
+            if (draftLoadBlocked) {
+                TextButton(onClick = onBack) { Text("Sair sem alterar o arquivo local") }
             }
             draftError?.let { message ->
                 NevesContentCard {
