@@ -1,0 +1,70 @@
+name: Publish approved Neves Estoque Web to Cloudflare (one time)
+
+# One-time publication, explicitly approved on 2026-10-19.
+# Normal pushes remain disconnected from Cloudflare production deployments.
+on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/workflows/publish-approved-web-20261019.yml
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: neves-cloudflare-prod-20261019
+  cancel-in-progress: false
+
+jobs:
+  cloudflare-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: f1ec0e028389e5fe668a570cb242dfdb
+    steps:
+      - name: Check Cloudflare access safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/develop"
+          test "$GITHUB_REPOSITORY" = "BabyCatBE/neves-estoque"
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error title=Cloudflare connection required::No Cloudflare Pages API token is configured for this GitHub repository. No deployment attempted."
+            exit 1
+          fi
+
+      - name: Checkout integrated approved source
+        uses: actions/checkout@v5
+
+      - name: Guard against unreviewed changes in the Web source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e 345b3178de7d7f0f2a6984104dcbff88672d1eb9^{commit}
+          git diff --exit-code 345b3178de7d7f0f2a6984104dcbff88672d1eb9 HEAD -- src public package.json package-lock.json vite.config.ts tsconfig.json
+          echo "Web source matches commit with Web CI #247 SUCCESS."
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build static production site
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -s dist/manifest.webmanifest
+
+      - name: Deploy only official Neves Estoque production project
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: f1ec0e028389e5fe668a570cb242dfdb
+          command: pages deploy dist --project-name=neves-estoque --branch=develop --commit-hash=${{ github.sha }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
