@@ -605,9 +605,9 @@ private fun EditConferenceScreen(
                                 errorMessage = localErrors.quantities[item.productId]
                                     ?: state.fieldErrors.quantities[item.productId],
                                 onConfirm = {
-                                    val error = parseConferenceQuantity(
-                                        quantities[item.productId].orEmpty(),
-                                        "Quantidade de " + item.productName,
+                                    val text = quantities[item.productId].orEmpty()
+                                    val error = if (text.isBlank()) null else parseConferenceQuantity(
+                                        text, "Quantidade de " + item.productName,
                                     ).second
                                     if (error != null) {
                                         localErrors = localErrors.copy(quantities = localErrors.quantities + (item.productId to error))
