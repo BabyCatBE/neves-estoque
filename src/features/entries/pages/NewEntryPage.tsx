@@ -34,8 +34,12 @@ import {
   getEntryErrorMessage,
   getFutureOperationalDateError,
   localDateInputValue,
-  parseOptionalPrice,
-  parsePositiveDecimal
+  parsePositiveDecimal,
+  resolveEntryUnitPrice,
+  resolveEntryLineTotal,
+  formatCalculatedUnitPrice,
+  formatEntryPriceInput,
+  type EntryPriceMode
 } from "../lib/entryValidation";
 
 type DraftSupplier = {
@@ -55,6 +59,8 @@ type DraftItem = {
   draftProduct?: DraftProduct;
   quantity: string;
   unitPrice: string;
+  totalPrice?: string;
+  priceMode?: EntryPriceMode;
 };
 
 type ItemFieldErrors = Record<string, {
@@ -92,6 +98,7 @@ export function NewEntryPage() {
   const [pendingProductCategoryId, setPendingProductCategoryId] = useState("");
   const [pendingProductError, setPendingProductError] = useState<string | null>(null);
   const [items, setItems] = useState<DraftItem[]>([]);
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [itemErrors, setItemErrors] = useState<ItemFieldErrors>({});
   const [duplicateProduct, setDuplicateProduct] = useState<ProductListItem | null>(null);
   const [missingPriceReview, setMissingPriceReview] = useState(false);
@@ -342,7 +349,7 @@ export function NewEntryPage() {
 
   const validatePriceNow = (item: DraftItem) => {
     try {
-      parseOptionalPrice(item.unitPrice);
+      resolveEntryUnitPrice(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode);
       setItemError(item.localId, "unitPrice");
       return true;
     } catch (error) {
@@ -358,9 +365,9 @@ export function NewEntryPage() {
     for (const item of items) {
       try {
         const quantity = parsePositiveDecimal(item.quantity, "Quantidade");
-        const price = parseOptionalPrice(item.unitPrice);
+        const price = resolveEntryUnitPrice(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode);
         if (price === null) missingPrices += 1;
-        else totalKnown += quantity * price;
+        else totalKnown += resolveEntryLineTotal(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode) ?? quantity * price;
       } catch {
         // Campos inválidos não entram na prévia de total; serão destacados no salvamento.
       }
@@ -544,7 +551,7 @@ export function NewEntryPage() {
       }
 
       try {
-        unitPrice = parseOptionalPrice(item.unitPrice);
+        unitPrice = resolveEntryUnitPrice(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode);
       } catch (error) {
         errors[item.localId] = {
           ...errors[item.localId],
@@ -875,8 +882,8 @@ export function NewEntryPage() {
         <div className="mt-4 space-y-3">
           {items.map((item, index) => {
             const quantity = safeQuantity(item.quantity);
-            const price = safePrice(item.unitPrice);
-            const lineTotal = quantity !== null && price !== null ? quantity * price : null;
+            const price = (() => { try { return resolveEntryUnitPrice(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode); } catch { return null; } })();
+            const lineTotal = resolveEntryLineTotal(item.quantity, item.unitPrice, item.totalPrice ?? "", item.priceMode);
 
             return (
               <Card id={`entry-item-${item.localId}`} key={item.localId} className="p-4">
@@ -902,7 +909,7 @@ export function NewEntryPage() {
                   </button>
                 </div>
 
-                <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_160px]">
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
                   <TextField
                     id={`entry-qty-${item.localId}`}
                     label="Quantidade *"
@@ -937,47 +944,67 @@ export function NewEntryPage() {
                     label="Preço unitário"
                     inputMode="decimal"
                     placeholder="Vazio = não informado"
-                    value={item.unitPrice}
-                    error={itemErrors[item.localId]?.unitPrice}
-                    aria-invalid={Boolean(itemErrors[item.localId]?.unitPrice)}
+                    value={editingUnitId === item.localId && item.priceMode !== "total" ? item.unitPrice :
+                      price === null ? item.unitPrice : formatEntryPriceInput(price)}
+                    onFocus={(event) => { setEditingUnitId(item.localId); if (item.priceMode === "total") event.currentTarget.select(); }}
+                    onBlur={() => setEditingUnitId((id) => id === item.localId ? null : id)}
+                    error={itemErrors[item.localId]?.unitPrice && item.priceMode !== "total" ? itemErrors[item.localId]?.unitPrice : undefined}
                     onChange={(event) => {
                       const value = event.target.value;
-                      setItems((current) => current.map((candidate) => candidate.localId === item.localId ? { ...candidate, unitPrice: value } : candidate));
-                      if (itemErrors[item.localId]?.unitPrice) {
-                        try {
-                          parseOptionalPrice(value);
-                          setItemError(item.localId, "unitPrice");
-                        } catch {
-                          // Mantém o erro visível até o valor se tornar válido.
-                        }
-                      }
+                      setItems((current) => current.map((candidate) => candidate.localId === item.localId
+                        ? { ...candidate, unitPrice: value, priceMode: "unit" }
+                        : candidate));
+                      setItemError(item.localId, "unitPrice");
                     }}
                     onKeyDown={(event) => {
                       if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
                       if (event.key === "Enter") {
                         event.preventDefault();
-                        if (validatePriceNow(item)) {
-                          const isSinglePreselectedProduct =
-                            Boolean(preselectedProductId) &&
-                            item.product.id === preselectedProductId &&
-                            items.length === 1;
-
-                          if (isSinglePreselectedProduct) {
-                            document
-                              .getElementById(observationOpen ? "entry-observation" : "entry-save")
-                              ?.focus();
-                          } else {
-                            document.getElementById("entry-product-search")?.focus();
-                          }
+                        if (validatePriceNow({ ...item, priceMode: "unit", unitPrice: event.currentTarget.value })) {
+                          const single = Boolean(preselectedProductId) && item.product.id === preselectedProductId && items.length === 1;
+                          document.getElementById(single
+                            ? (observationOpen ? "entry-observation" : "entry-save")
+                            : "entry-product-search")?.focus();
+                        }
+                      }
+                      // Tab normal: vai para o campo Preço total logo abaixo.
+                    }}
+                  />
+                  <TextField
+                    id={`entry-total-${item.localId}`}
+                    label="Preço total da nota"
+                    onFocus={(event) => { if (item.priceMode !== "total") event.currentTarget.select(); }}
+                    inputMode="decimal"
+                    placeholder="Ou digite o total"
+                    value={item.priceMode === "total" ? item.totalPrice ?? "" :
+                      lineTotal === null ? "" : formatEntryPriceInput(lineTotal)}
+                    error={itemErrors[item.localId]?.unitPrice && item.priceMode === "total" ? itemErrors[item.localId]?.unitPrice : undefined}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setItems((current) => current.map((candidate) => candidate.localId === item.localId
+                        ? { ...candidate, priceMode: "total", totalPrice: value }
+                        : candidate));
+                      setItemError(item.localId, "unitPrice");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.ctrlKey || event.metaKey || controlKeyPressed.current) return;
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (validatePriceNow({ ...item, priceMode: "total", totalPrice: event.currentTarget.value })) {
+                          const single = Boolean(preselectedProductId) && item.product.id === preselectedProductId && items.length === 1;
+                          document.getElementById(single
+                            ? (observationOpen ? "entry-observation" : "entry-save")
+                            : "entry-product-search")?.focus();
                         }
                       }
                     }}
                   />
-                  <div className="rounded-xl bg-zinc-50 px-4 py-3">
+                  <div className="rounded-xl bg-zinc-50 px-4 py-3 md:col-span-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Total</p>
                     <p className="mt-2 font-semibold">
                       {price === 0 && quantity !== null ? "Bonificação" : lineTotal === null ? "—" : formatMoney(lineTotal)}
                     </p>
+                    {item.priceMode === "total" && price !== null ? <p className="mt-1 text-xs text-zinc-600">Unitário calculado: R$ {formatCalculatedUnitPrice(price)}</p> : null}
                   </div>
                 </div>
               </Card>
@@ -1269,14 +1296,6 @@ function SelectField({
 function safeQuantity(value: string) {
   try {
     return parsePositiveDecimal(value, "Quantidade");
-  } catch {
-    return null;
-  }
-}
-
-function safePrice(value: string) {
-  try {
-    return parseOptionalPrice(value);
   } catch {
     return null;
   }

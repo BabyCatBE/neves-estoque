@@ -22,6 +22,59 @@ export function parseOptionalPrice(value: string) {
   return parsed;
 }
 
+export type EntryPriceMode = "unit" | "total";
+
+/** Apenas o preço por unidade vai para o backend; total informado nunca perde o valor ao dividir. */
+export function resolveEntryUnitPrice(
+  quantityText: string,
+  unitPriceText: string,
+  totalPriceText: string,
+  mode: EntryPriceMode = "unit"
+): number | null {
+  if (mode === "unit") return parseOptionalPrice(unitPriceText);
+  let total: number | null;
+  try {
+    total = parseOptionalPrice(totalPriceText);
+  } catch {
+    throw new Error("Preço total inválido.");
+  }
+  if (total === null) return null; // branco difere de bonificação (zero)
+  const quantity = parsePositiveDecimal(quantityText, "Quantidade");
+  const unit = total / quantity;
+  if (!Number.isFinite(unit) || unit < 0) throw new Error("Preço unitário calculado inválido.");
+  return unit;
+}
+
+export function resolveEntryLineTotal(
+  quantityText: string,
+  unitPriceText: string,
+  totalPriceText: string,
+  mode: EntryPriceMode = "unit"
+): number | null {
+  if (mode === "total") {
+    try { return parseOptionalPrice(totalPriceText); } catch { return null; }
+  }
+  try {
+    const price = parseOptionalPrice(unitPriceText);
+    return price === null ? null : parsePositiveDecimal(quantityText, "Quantidade") * price;
+  } catch {
+    return null;
+  }
+}
+
+export function formatCalculatedUnitPrice(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
+/** Formato de campo monetário, sem separadores de milhar para manter digitação e parsing simples. */
+export function formatEntryPriceInput(value: number): string {
+  if (!Number.isFinite(value) || value < 0) return "";
+  return value.toFixed(2).replace(".", ",");
+}
+
 export function localDateInputValue(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
