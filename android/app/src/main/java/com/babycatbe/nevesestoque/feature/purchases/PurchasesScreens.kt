@@ -543,7 +543,7 @@ fun ConferencePurchaseOrderRoute(ownerId: String, onBack: () -> Unit) {
     var products by remember(ownerId) { mutableStateOf(emptyList<com.babycatbe.nevesestoque.feature.conferences.ConferencePurchaseProduct>()) }
     var loaded by remember(ownerId) { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
-    var quantities by remember { mutableStateOf(mapOf<String, String>()) }
+    var quantities by rememberSaveable(ownerId) { mutableStateOf(mapOf<String, String>()) }
     var invalid by remember { mutableStateOf(setOf<String>()) }
     var error by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -617,6 +617,7 @@ fun ConferencePurchaseOrderRoute(ownerId: String, onBack: () -> Unit) {
                     }
                 },
                 checked = true,
+                stockHeading = "REF. NA CONFERÊNCIA",
                 quantity = quantities[product.productId].orEmpty(),
                 invalid = product.productId in invalid,
                 onToggle = {
@@ -732,6 +733,7 @@ private fun PurchaseItemCard(
     checked: Boolean,
     quantity: String,
     invalid: Boolean,
+    stockHeading: String = "ESTOQUE ATUAL",
     onToggle: () -> Unit,
     onQuantity: (String) -> Unit,
     onStep: (Int) -> Unit,
@@ -772,7 +774,7 @@ private fun PurchaseItemCard(
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 12.dp, top = 8.dp)) {
                 Column(Modifier.weight(1f)) {
-                    Text("ESTOQUE ATUAL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stockHeading, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(formatPurchaseStock(item.currentQuantity, item.unit), fontWeight = FontWeight.SemiBold)
                 }
                 OutlinedButton(
