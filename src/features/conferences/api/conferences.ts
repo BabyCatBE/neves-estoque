@@ -25,6 +25,7 @@ export type ConferenceProduct = {
   name: string;
   unit: string;
   sortOrder: number | null;
+  currentQuantity: number | null;
 };
 
 export type ConferenceCategorySummary = {
@@ -204,7 +205,8 @@ export async function getCategoryConferenceSetup(
         id: product.id,
         name: product.name,
         unit: product.unit,
-        sortOrder: product.sortOrder
+        sortOrder: product.sortOrder,
+        currentQuantity: product.currentQuantity
       }))
   };
 }
