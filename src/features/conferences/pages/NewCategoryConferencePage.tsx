@@ -30,6 +30,7 @@ import {
 } from "../lib/conferenceValidation";
 import { conferenceBackgroundSaves } from "../lib/conferenceBackgroundSaves";
 import { readConferenceDraft, saveConferenceDraft, discardConferenceDraft } from "../lib/conferenceDrafts";
+import { readMarkedProducts, toggleMarkedProduct } from "../lib/conferencePurchaseSelection";
 
 export function NewCategoryConferencePage() {
   const { categoryId } = useParams();
@@ -87,6 +88,25 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   const [draftError, setDraftError] = useState<string | null>(null);
   const [leavingBusy, setLeavingBusy] = useState(false);
   const ownerId = appUserId ?? session?.user.id ?? "";
+  const [markedProducts, setMarkedProducts] = useState<Set<string>>(new Set());
+  const [markReady, setMarkReady] = useState(false);
+  const [markBusy, setMarkBusy] = useState(false);
+  const [markError, setMarkError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!ownerId) return;
+    void readMarkedProducts(ownerId).then((products) => {
+      if (active) {
+        setMarkedProducts(new Set(products.map((item) => item.productId)));
+        setMarkReady(true);
+        setMarkError(null);
+      }
+    }).catch(() => {
+      if (active) setMarkError("Não foi possível ler os produtos marcados. A seleção local foi preservada.");
+    });
+    return () => { active = false; };
+  }, [ownerId]);
   const productKey = setup.products.map((product) => product.id).join("|");
   const productIds = useMemo(() => productKey ? productKey.split("|") : [], [productKey]);
 
@@ -363,6 +383,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
   return (
     <section className="pb-28">
       {draftError ? <Card className="mb-3 border-red-200 p-4 text-sm text-red-800" role="alert">{draftError}</Card> : null}
+      {markError ? <Card className="mb-3 border-red-200 p-4 text-sm text-red-800" role="alert">{markError}</Card> : null}
       {!isOnline ? (
         <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
           Você está offline. Ao salvar, esta Conferência ficará somente neste aparelho como <strong>PENDENTE DE CONFIRMAÇÃO</strong>. Consumo atípico e possíveis Conferências do mesmo dia serão verificados quando você confirmar o envio online.
@@ -446,8 +467,39 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
             >
               <div>
                 <p className="font-semibold text-zinc-900">{product.name}</p>
+                <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-zinc-600">
+                  <input
+                    type="checkbox"
+                    aria-label={`Marcar ${product.name} para pedir`}
+                    checked={markedProducts.has(product.id)}
+                    disabled={!markReady || markBusy}
+                    className="h-4 w-4 accent-red-700"
+                    onChange={() => {
+                      setMarkBusy(true);
+                      setMarkError(null);
+                      void toggleMarkedProduct(ownerId, {
+                        productId: product.id,
+                        productName: product.name,
+                        unit: product.unit,
+                        currentQuantity: product.currentQuantity
+                      }).then((products) => {
+                        setMarkedProducts(new Set(products.map((item) => item.productId)));
+                      }).catch(() => {
+                        setMarkError("Não foi possível atualizar os produtos marcados. Tente novamente.");
+                      }).finally(() => setMarkBusy(false));
+                    }}
+                  />
+                  Pedir
+                </label>
               </div>
-              <div className="text-sm font-medium text-zinc-500">{product.unit}</div>
+              <div className="text-xs font-medium text-zinc-500">
+                {product.unit}
+                <span className="mt-0.5 block text-[11px]">
+                  Estoque: {product.currentQuantity === null
+                    ? "sem referência"
+                    : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(product.currentQuantity)}
+                </span>
+              </div>
               <div>
                 <label className="sr-only" htmlFor={`conference-qty-${product.id}`}>
                   Quantidade de {product.name}
