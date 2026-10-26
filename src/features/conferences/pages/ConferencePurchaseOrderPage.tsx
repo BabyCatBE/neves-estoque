@@ -76,6 +76,7 @@ export function ConferencePurchaseOrderPage() {
                 currentQuantity: item.currentQuantity
               }))}
               initialSelectedIds={products.map((item) => item.productId)}
+              stockHeading="Referência na contagem"
               onRemoveProduct={removeProduct}
               orderTitle="Lista de compras — Conferência"
               listTitle="Produtos selecionados"
