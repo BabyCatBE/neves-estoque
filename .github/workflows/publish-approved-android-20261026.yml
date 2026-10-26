@@ -40,7 +40,7 @@ jobs:
           obj=json.loads(subprocess.check_output(["gh","api",f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['APPROVED_ANDROID_CI_RUN_ID']}"],text=True))
           assert obj["conclusion"] == "success", "Android CI has not succeeded"
           assert obj["head_sha"] == os.environ["APPROVED_SOURCE_SHA"], "CI SHA mismatch"
-          assert obj["event"] == "pull_request", "Unexpected source CI event"
+          assert obj["event"] == "push", "Unexpected source CI event"
           left=json.loads(subprocess.check_output(["gh","api",f"repos/{os.environ['GITHUB_REPOSITORY']}/git/commits/{os.environ['APPROVED_SOURCE_SHA']}"],text=True))
           right=json.loads(subprocess.check_output(["gh","api",f"repos/{os.environ['GITHUB_REPOSITORY']}/git/commits/{os.environ['APPROVED_ARTIFACT_SHA']}"],text=True))
           assert left["tree"]["sha"] == right["tree"]["sha"], "Signed artifact tree differs from approved PR source"
@@ -83,7 +83,7 @@ jobs:
           with open("signed/output-metadata.json",encoding="utf-8") as f: d=json.load(f)
           assert d["applicationId"]=="com.babycatbe.nevesestoque"
           assert all(x["versionCode"]==38 and x["versionName"]=="0.38.0-alpha01" for x in d["elements"])
-          print("Package and version verified: com.babycatbe.nevesestoque, 37 / 0.38.0-alpha01.")
+          print("Package and version verified: com.babycatbe.nevesestoque, 38 / 0.38.0-alpha01.")
           PY
 
       - name: Publish official release using unchanged validated APK
