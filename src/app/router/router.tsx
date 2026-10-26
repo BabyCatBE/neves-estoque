@@ -23,6 +23,7 @@ import { EditEntryPage } from "../../features/entries/pages/EditEntryPage";
 import { ConferencesHubPage } from "../../features/conferences/pages/ConferencesHubPage";
 import { ConferencePrintPage } from "../../features/conferences/pages/ConferencePrintPage";
 import { ConferenceCategoriesPage } from "../../features/conferences/pages/ConferenceCategoriesPage";
+import { ConferencePurchaseOrderPage } from "../../features/conferences/pages/ConferencePurchaseOrderPage";
 import { NewCategoryConferencePage } from "../../features/conferences/pages/NewCategoryConferencePage";
 import { NewProductConferencePage } from "../../features/conferences/pages/NewProductConferencePage";
 import { ConferenceHistoryCategoriesPage } from "../../features/conferences/pages/ConferenceHistoryCategoriesPage";
@@ -103,6 +104,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <NewCategoryConferencePage />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/conferencias/pedido",
+    element: (
+      <ProtectedRoute>
+        <ConferencePurchaseOrderPage />
       </ProtectedRoute>
     )
   },

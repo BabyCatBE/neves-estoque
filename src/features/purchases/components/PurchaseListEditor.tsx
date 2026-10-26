@@ -30,6 +30,9 @@ type Props = {
   intro: string;
   emptyText: string;
   warning?: string | null;
+  initialSelectedIds?: string[];
+  onRemoveProduct?: (productId: string) => void;
+  stockHeading?: string;
 };
 
 export type PurchaseListEditorHandle = {
@@ -43,9 +46,12 @@ function PurchaseListEditor({
   listTitle,
   intro,
   emptyText,
-  warning = null
+  warning = null,
+  initialSelectedIds = [],
+  onRemoveProduct,
+  stockHeading = "Estoque atual"
 }: Props, ref) {
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(initialSelectedIds));
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [invalidIds, setInvalidIds] = useState<Set<string>>(() => new Set());
   const [actionError, setActionError] = useState<string | null>(null);
@@ -137,6 +143,8 @@ function PurchaseListEditor({
 
     if (willSelect) {
       applySuggestionIfAvailable(productId);
+    } else {
+      onRemoveProduct?.(productId);
     }
 
     if (willSelect && shouldAutoFocusQuantity()) {
@@ -269,7 +277,9 @@ function PurchaseListEditor({
           <div className="border-b border-zinc-100 px-5 py-4">
             <h3 className="font-semibold">{listTitle}</h3>
             <p className="mt-1 text-xs text-zinc-500">
-              Todos começam desmarcados. Digite uma quantidade maior que zero para selecionar. Ao marcar uma recomendação, a sugestão é preenchida e continua editável.
+              {initialSelectedIds.length > 0
+                ? "Produtos marcados durante a Conferência. Informe quanto deseja comprar; desmarque um produto para removê-lo da lista."
+                : "Todos começam desmarcados. Digite uma quantidade maior que zero para selecionar. Ao marcar uma recomendação, a sugestão é preenchida e continua editável."}
             </p>
           </div>
 
@@ -319,7 +329,7 @@ function PurchaseListEditor({
 
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                      Estoque atual
+                      {stockHeading}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-zinc-900">
                       {formatQuantity(product.currentQuantity, product.unit)}

@@ -131,6 +131,7 @@ fun ConferenceCategoriesRoute(
     onBack: () -> Unit,
     ownerId: String,
     onCategoryClick: (String) -> Unit,
+    onPurchaseOrder: () -> Unit,
     onEditConference: (String) -> Unit,
     onHistoryCategory: (String) -> Unit,
     saveStatuses: Map<String, ConferenceSaveStatus> = emptyMap(),
@@ -146,7 +147,13 @@ fun ConferenceCategoriesRoute(
     RefreshOnKeyChange(refreshKey) { vm.refresh() }
     var localDrafts by remember(ownerId) { mutableStateOf<Map<String, LocalConferenceDraft>>(emptyMap()) }
     var draftLoadError by remember(ownerId) { mutableStateOf<String?>(null) }
+    var purchaseCount by remember(ownerId) { mutableStateOf(0) }
+    var purchaseError by remember(ownerId) { mutableStateOf<String?>(null) }
     LaunchedEffect(ownerId, refreshKey) {
+        when (val purchase = ConferencePurchaseSelectionStore.load(ownerId)) {
+            is ConferenceDraftResult.Success -> { purchaseCount = purchase.value.size; purchaseError = null }
+            is ConferenceDraftResult.Failure -> purchaseError = purchase.message
+        }
         when (val loaded = ConferenceDraftStore.list(ownerId)) {
             is ConferenceDraftResult.Success -> {
                 localDrafts = loaded.value.associateBy { it.categoryId }
@@ -161,6 +168,9 @@ fun ConferenceCategoriesRoute(
         state = state,
         localDrafts = localDrafts,
         draftLoadError = draftLoadError,
+        purchaseCount = purchaseCount,
+        purchaseError = purchaseError,
+        onPurchaseOrder = onPurchaseOrder,
         onBack = onBack,
         onRefresh = vm::refresh,
         onCategoryClick = onCategoryClick,
@@ -211,6 +221,9 @@ private fun ConferenceCategoriesScreen(
     state: ConferenceCategoriesUiState,
     localDrafts: Map<String, LocalConferenceDraft> = emptyMap(),
     draftLoadError: String? = null,
+    purchaseCount: Int = 0,
+    purchaseError: String? = null,
+    onPurchaseOrder: () -> Unit = {},
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onCategoryClick: (String) -> Unit,
@@ -383,6 +396,16 @@ private fun ConferenceCategoriesScreen(
                                 }
                             }
                         }
+                    }
+                }
+            }
+            if (!historyMode && purchaseError != null) {
+                item { NevesStatusMessage(purchaseError) }
+            }
+            if (!historyMode && purchaseCount > 0) {
+                item {
+                    Button(onClick = onPurchaseOrder, modifier = Modifier.fillMaxWidth()) {
+                        Text("Fazer pedido dos selecionados ($purchaseCount)")
                     }
                 }
             }

@@ -58,6 +58,7 @@ data class ConferenceProduct(
     val name: String,
     val unit: String,
     val sortOrder: Int?,
+    val currentQuantity: Double? = null,
 )
 
 data class ConferenceCategorySummary(

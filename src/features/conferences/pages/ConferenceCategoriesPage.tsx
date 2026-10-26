@@ -17,6 +17,7 @@ import {
 } from "../lib/conferenceBackgroundSaves";
 import { formatConferenceDate, localDateInputValue } from "../lib/conferenceValidation";
 import { CONFERENCE_DRAFTS_UPDATED_EVENT, listConferenceDrafts, conferenceDraftFilledCount, type ConferenceDraft } from "../lib/conferenceDrafts";
+import { CONFERENCE_PURCHASE_UPDATED_EVENT, readMarkedProducts } from "../lib/conferencePurchaseSelection";
 
 export function ConferenceCategoriesPage() {
   const [searchParams] = useSearchParams();
@@ -27,6 +28,22 @@ export function ConferenceCategoriesPage() {
   const ownerId = appUserId ?? session?.user.id ?? "";
   const [drafts, setDrafts] = useState<Record<string, ConferenceDraft>>({});
   const [draftsError, setDraftsError] = useState<string | null>(null);
+  const [markedCount, setMarkedCount] = useState(0);
+  const [markedError, setMarkedError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      if (!ownerId) return;
+      void readMarkedProducts(ownerId).then((items) => {
+        if (active) { setMarkedCount(items.length); setMarkedError(null); }
+      }).catch(() => {
+        if (active) setMarkedError("Não foi possível recuperar os produtos marcados neste navegador.");
+      });
+    };
+    refresh();
+    window.addEventListener(CONFERENCE_PURCHASE_UPDATED_EVENT, refresh);
+    return () => { active = false; window.removeEventListener(CONFERENCE_PURCHASE_UPDATED_EVENT, refresh); };
+  }, [ownerId]);
   useEffect(() => {
     let active = true;
     const refresh = () => {
@@ -208,6 +225,15 @@ export function ConferenceCategoriesPage() {
             );
           })}
         </div>
+
+        {markedError ? <Card className="mt-4 border-red-200 p-4 text-sm text-red-700" role="alert">{markedError}</Card> : null}
+        {markedCount > 0 ? (
+          <div className="mt-5 flex justify-end">
+            <Button onClick={() => navigate("/conferencias/pedido")}>
+              Fazer pedido dos selecionados ({markedCount})
+            </Button>
+          </div>
+        ) : null}
 
         {!categoriesQuery.isPending && (categoriesQuery.data?.length ?? 0) === 0 ? (
           <Card className="mt-5 p-5 text-sm text-zinc-600">
