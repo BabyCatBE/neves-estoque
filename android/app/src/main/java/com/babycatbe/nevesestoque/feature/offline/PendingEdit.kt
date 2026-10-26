@@ -8,8 +8,8 @@ import java.time.ZoneId
 
 /*
  * Edição de pendência local antes do envio (regra aprovada do V1: enviar, editar, excluir ou manter).
- * Preserva localId e idempotencyKey. Fornecedor/Categoria/Produtos não são trocados aqui: para isso,
- * exclua a pendência e prepare outra. Todas as validações são refeitas pelo banco no envio.
+ * Preserva localId e idempotencyKey. Fornecedor e Categoria não são trocados aqui.
+ * Exceção segura: acrescentar produtos oficiais ausentes na Conferência com quantidade digitada.
  */
 
 data class PendingEditDraft(
@@ -97,6 +97,7 @@ fun applyPendingEdit(
     operation: PendingOperation,
     draft: PendingEditDraft,
     now: String = OffsetDateTime.now().toString(),
+    activeCatalog: List<PendingCatalogProduct>? = null,
 ): PendingEditResult {
     val errors = mutableListOf<String>()
     val updated: PendingOperation? = when (operation.kind) {
@@ -140,6 +141,23 @@ fun applyPendingEdit(
                 val (quantity, error) = parseConferenceQuantity(draft.quantities[item.productId].orEmpty(), item.productName)
                 error?.let { errors += it }
                 item.copy(quantity = quantity ?: item.quantity)
+            }.toMutableList()
+            if (activeCatalog != null) {
+                val difference = comparePendingCategoryCatalog(payload.items, activeCatalog)
+                if (difference.inactiveOrMoved.isNotEmpty() || difference.repeatedIds.isNotEmpty() || difference.expectedCount == 0) {
+                    errors += difference.userMessage()
+                } else {
+                    // Nenhum novo item recebe zero automaticamente: exigir a contagem real informada.
+                    difference.missing.forEach { product ->
+                        val (quantity, error) = parseConferenceQuantity(
+                            draft.quantities[product.id].orEmpty(), product.name
+                        )
+                        if (error != null) errors += error
+                        if (quantity != null) {
+                            items += PendingConferenceItem(product.id, product.name, product.unit, quantity)
+                        }
+                    }
+                }
             }
             if (effectiveAt != null && responsible != null) {
                 operation.copy(
