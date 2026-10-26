@@ -165,7 +165,7 @@ jobs:
           with open("output-metadata.json") as file:
               metadata = json.load(file)
           assert metadata["applicationId"] == "com.babycatbe.nevesestoque"
-          assert all(item["versionCode"] == 37 and item["versionName"] == "0.38.0-alpha01" for item in metadata["elements"])
+          assert all(item["versionCode"] == 38 and item["versionName"] == "0.38.0-alpha01" for item in metadata["elements"])
           print("Release identity verified: 0.38.0-alpha01 / versionCode 38 / permanent certificate")
           PYTHON
 
