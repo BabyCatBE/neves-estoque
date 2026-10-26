@@ -64,7 +64,7 @@ export function ConferencePurchaseOrderPage() {
         {loaded && !error ? (
           <>
             <PurchaseListEditor
-              key={ownerId}
+              key={ownerId + ":" + (products.length === 0 ? "empty" : "active")}
               items={products.map((item) => ({
                 productId: item.productId,
                 productName: item.productName,
