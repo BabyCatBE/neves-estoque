@@ -15,29 +15,33 @@ export function ConferencePurchaseOrderPage() {
   const { appUserId, session } = useAuth();
   const ownerId = appUserId ?? session?.user.id ?? "";
   const [products, setProducts] = useState<MarkedPurchaseProduct[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [loadedOwnerId, setLoadedOwnerId] = useState<string | null>(null);
+  const loaded = loadedOwnerId === ownerId;
   const [error, setError] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
-    setLoaded(false);
     if (!ownerId) {
-      setError("Usuário indisponível para consultar os produtos marcados.");
-      setLoaded(true);
-      return;
+      void Promise.resolve().then(() => {
+        if (active) {
+          setError("Usuário indisponível para consultar os produtos marcados.");
+          setLoadedOwnerId(ownerId);
+        }
+      });
+      return () => { active = false; };
     }
     void readMarkedProducts(ownerId).then((items) => {
       if (active) {
         setProducts(items);
         setError(null);
-        setLoaded(true);
+        setLoadedOwnerId(ownerId);
       }
     }).catch(() => {
       if (active) {
         setError("Não foi possível ler os produtos marcados neste navegador.");
-        setLoaded(true);
+        setLoadedOwnerId(ownerId);
       }
     });
     return () => { active = false; };
