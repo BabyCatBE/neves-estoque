@@ -42,6 +42,13 @@ export type OfflineConferenceDraftRecord = {
   updatedAt: string;
 };
 
+/** Seleção temporária da Conferência para preparar Compras, sem sincronizar com o banco. */
+export type OfflineConferencePurchaseRecord = {
+  ownerId: string;
+  products: Array<{ productId: string; productName: string; unit: string; currentQuantity: number | null }>;
+  updatedAt: string;
+};
+
 export type VerifiedOfflineAccessRecord = {
   authUserId: string;
   appUserId: string;
@@ -59,6 +66,7 @@ class NevesOfflineDatabase extends Dexie {
   illustrationBlobs!: Table<OfflineIllustrationRecord, string>;
   pendingOperations!: Table<OfflinePendingOperationRecord, string>;
   conferenceDrafts!: Table<OfflineConferenceDraftRecord, string>;
+  conferencePurchaseSelections!: Table<OfflineConferencePurchaseRecord, string>;
   verifiedAccess!: Table<VerifiedOfflineAccessRecord, string>;
 
   constructor() {
@@ -88,6 +96,16 @@ class NevesOfflineDatabase extends Dexie {
       illustrationBlobs: "&path,updatedAt",
       pendingOperations: "&id,kind,status,createdAt,effectiveAt,authUserId",
       conferenceDrafts: "&id,ownerId,categoryId,updatedAt",
+      verifiedAccess: "&authUserId,verifiedAt,deviceId"
+    });
+
+    // Adiciona somente a seleção local de compras. Rascunhos, cache e pendências permanecem.
+    this.version(5).stores({
+      snapshots: "&key,updatedAt",
+      illustrationBlobs: "&path,updatedAt",
+      pendingOperations: "&id,kind,status,createdAt,effectiveAt,authUserId",
+      conferenceDrafts: "&id,ownerId,categoryId,updatedAt",
+      conferencePurchaseSelections: "&ownerId,updatedAt",
       verifiedAccess: "&authUserId,verifiedAt,deviceId"
     });
   }
