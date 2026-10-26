@@ -32,6 +32,7 @@ type Props = {
   warning?: string | null;
   initialSelectedIds?: string[];
   onRemoveProduct?: (productId: string) => void;
+  stockHeading?: string;
 };
 
 export type PurchaseListEditorHandle = {
@@ -47,7 +48,8 @@ function PurchaseListEditor({
   emptyText,
   warning = null,
   initialSelectedIds = [],
-  onRemoveProduct
+  onRemoveProduct,
+  stockHeading = "Estoque atual"
 }: Props, ref) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initialSelectedIds));
   const [quantities, setQuantities] = useState<Record<string, string>>({});
@@ -327,7 +329,7 @@ function PurchaseListEditor({
 
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                      Estoque atual
+                      {stockHeading}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-zinc-900">
                       {formatQuantity(product.currentQuantity, product.unit)}
