@@ -72,7 +72,10 @@ class PendingCatalogTest {
         assertEquals(pending.localId, updated.localId)
         assertEquals(pending.idempotencyKey, updated.idempotencyKey)
         assertEquals(pending.createdAt, updated.createdAt)
-        assertEquals(\n            java.time.OffsetDateTime.parse(pending.categoryConference!!.effectiveAt).toInstant(),\n            java.time.OffsetDateTime.parse(updated.categoryConference!!.effectiveAt).toInstant(),\n        )
+        assertEquals(
+            java.time.OffsetDateTime.parse(pending.categoryConference!!.effectiveAt).toInstant(),
+            java.time.OffsetDateTime.parse(updated.categoryConference!!.effectiveAt).toInstant(),
+        )
         assertEquals(pending.categoryConference!!.physicalResponsible, updated.categoryConference!!.physicalResponsible)
         assertEquals(pending.categoryConference!!.observation, updated.categoryConference!!.observation)
         assertEquals(listOf(20.0, 0.0, 0.0), updated.categoryConference!!.items.map { it.quantity })
