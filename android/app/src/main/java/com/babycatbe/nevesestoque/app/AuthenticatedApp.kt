@@ -65,6 +65,7 @@ import com.babycatbe.nevesestoque.feature.offline.PendingListRoute
 import com.babycatbe.nevesestoque.feature.offline.PendingStore
 import com.babycatbe.nevesestoque.feature.alerts.AlertsViewModel
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseCategorySelectRoute
+import com.babycatbe.nevesestoque.feature.purchases.ConferencePurchaseOrderRoute
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseListRoute
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseMode
 import com.babycatbe.nevesestoque.feature.purchases.PurchaseSupplierSelectRoute
@@ -100,6 +101,7 @@ private const val PRODUCT_STOCK_ROUTE = "product/{productId}/stock"
 private const val PRODUCT_CONFERENCE_ROUTE = "product/{productId}/stock/conference"
 private const val PRODUCT_MERGE_ROUTE = "product/{productId}/merge"
 private const val CONFERENCE_CATEGORIES_ROUTE = "conferences/categories"
+private const val CONFERENCE_PURCHASE_ROUTE = "conferences/order"
 private const val CONFERENCE_CATEGORY_CREATE_ROUTE = "conferences/categories/{categoryId}/new"
 private const val CONFERENCE_HISTORY_ROUTE = "conferences/history"
 private const val CONFERENCE_CATEGORY_HISTORY_ROUTE = "conferences/history/{categoryId}"
@@ -565,6 +567,7 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                 onBack = { navController.popBackStack() },
                 ownerId = authState.appUserId.orEmpty(),
                 onCategoryClick = { navController.navigate("conferences/categories/$it/new") },
+                onPurchaseOrder = { navController.navigate(CONFERENCE_PURCHASE_ROUTE) },
                 onEditConference = { navController.navigate("conferences/detail/$it/edit") },
                 onHistoryCategory = { navController.navigate("conferences/history/$it") },
                 saveStatuses = conferenceSaveStatuses,
@@ -609,6 +612,13 @@ fun AuthenticatedApp(authState: AuthUiState, onSignOut: () -> Unit) {
                     }
                     accepted
                 },
+            )
+        }
+
+        composable(CONFERENCE_PURCHASE_ROUTE) {
+            ConferencePurchaseOrderRoute(
+                ownerId = authState.appUserId.orEmpty(),
+                onBack = { navController.popBackStack() },
             )
         }
 
