@@ -481,7 +481,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
                         productId: product.id,
                         productName: product.name,
                         unit: product.unit,
-                        currentQuantity: product.currentQuantity
+                        currentQuantity: product.currentQuantity ?? null
                       }).then((products) => {
                         setMarkedProducts(new Set(products.map((item) => item.productId)));
                       }).catch(() => {
