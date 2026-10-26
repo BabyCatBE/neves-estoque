@@ -8,10 +8,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,7 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -41,8 +40,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
@@ -338,10 +337,10 @@ private fun CategoryConferenceFormScreen(
                                     )
                                 }
                                 val cartShape = RoundedCornerShape(14.dp)
-                                IconToggleButton(
-                                    checked = isMarkedForOrder,
-                                    enabled = marksReady && !marksBusy,
-                                    onCheckedChange = {
+                                // Surface clicável aplica cor + ripple com o MESMO contorno arredondado.
+                                // IconToggleButton anterior animava um círculo dentro do quadrado.
+                                Surface(
+                                    onClick = {
                                         marksBusy = true
                                         marksError = null
                                         draftScope.launch {
@@ -356,35 +355,29 @@ private fun CategoryConferenceFormScreen(
                                             marksBusy = false
                                         }
                                     },
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(cartShape)
-                                        .background(
-                                            if (isMarkedForOrder) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.surfaceVariant,
-                                            cartShape,
-                                        )
-                                        .border(
-                                            BorderStroke(
-                                                1.dp,
-                                                if (isMarkedForOrder) MaterialTheme.colorScheme.primary
-                                                else MaterialTheme.colorScheme.outline,
-                                            ),
-                                            cartShape,
-                                        )
-                                        .semantics {
-                                            contentDescription = if (isMarkedForOrder) {
-                                                "Remover ${product.name} do pedido"
-                                            } else {
-                                                "Marcar ${product.name} para pedir"
-                                            }
-                                        },
-                                ) {
-                                    NevesIcon(
-                                        NevesIcons.Cart,
-                                        tint = if (isMarkedForOrder) MaterialTheme.colorScheme.onPrimary
+                                    enabled = marksReady && !marksBusy,
+                                    shape = cartShape,
+                                    color = if (isMarkedForOrder) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (isMarkedForOrder) MaterialTheme.colorScheme.onPrimary
                                         else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isMarkedForOrder) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.outline,
+                                    ),
+                                    modifier = Modifier.size(48.dp).semantics {
+                                        contentDescription = if (isMarkedForOrder) {
+                                            "Remover ${product.name} do pedido"
+                                        } else {
+                                            "Marcar ${product.name} para pedir"
+                                        }
+                                        stateDescription = if (isMarkedForOrder) "Selecionado" else "Não selecionado"
+                                    },
+                                ) {
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        NevesIcon(NevesIcons.Cart)
+                                    }
                                 }
                             }
                             Text(
