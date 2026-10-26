@@ -495,7 +495,7 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
               <div className="text-xs font-medium text-zinc-500">
                 {product.unit}
                 <span className="mt-0.5 block text-[11px]">
-                  Estoque: {product.currentQuantity === null
+                  Estoque: {product.currentQuantity == null
                     ? "sem referência"
                     : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(product.currentQuantity)}
                 </span>
