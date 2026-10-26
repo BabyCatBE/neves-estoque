@@ -11,12 +11,20 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.time.OffsetDateTime
+
+@Serializable
+private data class ConferenceStockReferenceRow(
+    @SerialName("product_id") val productId: String,
+    @SerialName("current_quantity") val currentQuantity: Double? = null,
+)
 
 class ConferenceModuleRepository {
     private val productConferenceRepository = ProductConferenceRepository()
@@ -88,13 +96,21 @@ class ConferenceModuleRepository {
     suspend fun loadCategorySetup(categoryId: String): CategoryConferenceSetup {
         val category = loadActiveCategories().firstOrNull { it.id == categoryId }
             ?: error("Categoria não encontrada.")
+        // Referência independente da contagem que o operador está digitando.
+        // offlineCachedList permite mostrar apenas a última cópia disponível sem rede.
+        val stockByProduct = offlineCachedList<ConferenceStockReferenceRow>("conference-stock_current") {
+            client().from("stock_current")
+                .select(Columns.list("product_id", "current_quantity")) {
+                    attachRegisteredDevice()
+                }.decodeList<ConferenceStockReferenceRow>()
+        }.associateBy { it.productId }
         val products = loadActiveProducts()
             .filter { it.categoryId == categoryId }
             .sortedWith(
                 compareBy<ConferenceProductRow> { it.sortOrder ?: Int.MAX_VALUE }
                     .thenBy { it.name.lowercase() }
             )
-            .map { ConferenceProduct(it.id, it.name, it.unit, it.sortOrder) }
+            .map { ConferenceProduct(it.id, it.name, it.unit, it.sortOrder, stockByProduct[it.id]?.currentQuantity) }
 
         return CategoryConferenceSetup(
             categoryId = category.id,
