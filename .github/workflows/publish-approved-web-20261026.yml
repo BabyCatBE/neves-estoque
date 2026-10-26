@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           git cat-file -e 4d0931c6f2880f6809b94af07c2305c59ba919d0^{commit}
-          git diff --exit-code 345b3178de7d7f0f2a6984104dcbff88672d1eb9 HEAD -- src public package.json package-lock.json vite.config.ts tsconfig.json
+          git diff --exit-code 4d0931c6f2880f6809b94af07c2305c59ba919d0 HEAD -- src public package.json package-lock.json vite.config.ts tsconfig.json
           echo "Web source matches commit with Web CI run #40390641145 SUCCESS."
 
       - name: Verify approved Web CI and exact source before deployment
