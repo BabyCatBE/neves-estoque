@@ -106,6 +106,8 @@ object OfflineStore {
     fun pendingDir(): File = File(root, "pending")
     /** Rascunhos INCOMPLETOS de conferência: separados do cache e das pendências enviáveis. */
     fun conferenceDraftsDir(): File = File(root, "conference-drafts")
+    /** Marcadores locais de Compra, sem sincronização ou impacto no estoque. */
+    fun conferencePurchasesDir(): File = File(root, "conference-purchases")
     fun accessDir(): File = File(root, "access")
 
     private fun safeName(key: String): String = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
