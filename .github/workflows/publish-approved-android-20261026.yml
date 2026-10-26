@@ -50,9 +50,16 @@ jobs:
             echo "::error::Official Release already exists. Refusing replacement."
             exit 1
           fi
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
-            echo "::error::Tag already exists. Refusing replacement."
-            exit 1
+          # Se existir tag de uma tentativa interrompida, ela só é aceita se
+          # apontar exatamente ao commit aprovado. Não mover/substituir tag.
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" > "$RUNNER_TEMP/previous-tag.json" 2>/dev/null; then
+            python3 - "$RUNNER_TEMP/previous-tag.json" <<'PY'
+          import json, os, sys
+          ref=json.load(open(sys.argv[1], encoding="utf-8"))
+          assert ref["object"]["type"]=="commit", "Existing tag type is not a commit"
+          assert ref["object"]["sha"]==os.environ["APPROVED_SOURCE_SHA"], "Existing tag does not match approved CI SHA"
+          print("Existing tag matches exact approved commit.")
+          PY
           fi
 
       - name: Download exact APK signed and tested by Android CI
@@ -86,6 +93,29 @@ jobs:
           print("Package and version verified: com.babycatbe.nevesestoque, 38 / 0.38.0-alpha01.")
           PY
 
+      - name: Create immutable tag for the exact approved source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_ref="repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG"
+          if ! gh api "$tag_ref" > "$RUNNER_TEMP/source-tag.json" 2>/dev/null; then
+            # GitHub Releases checks workflows permission for unreferenced
+            # target commits. Create the approved lightweight tag beforehand;
+            # this requires contents:write only and never modifies main.
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f "ref=refs/tags/$TAG" \
+              -f "sha=$APPROVED_SOURCE_SHA" > "$RUNNER_TEMP/tag-created.json"
+            gh api "$tag_ref" > "$RUNNER_TEMP/source-tag.json"
+          fi
+          python3 - "$RUNNER_TEMP/source-tag.json" <<'PY'
+          import json, os, sys
+          ref=json.load(open(sys.argv[1], encoding="utf-8"))
+          assert ref["ref"]==f"refs/tags/{os.environ['TAG']}"
+          assert ref["object"]["type"]=="commit"
+          assert ref["object"]["sha"]==os.environ["APPROVED_SOURCE_SHA"]
+          print("Official release tag points to exact verified signed source.")
+          PY
+
       - name: Publish official release using unchanged validated APK
         shell: bash
         run: |
@@ -107,7 +137,7 @@ jobs:
             signed/neves-estoque-android.apk \
             signed/SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$APPROVED_SOURCE_SHA" \
+            --verify-tag \
             --title "Neves Estoque Android $EXPECTED_VERSION" \
             --notes-file release-notes.md \
             --latest
