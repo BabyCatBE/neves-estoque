@@ -7,11 +7,15 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -19,7 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -37,6 +41,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
@@ -311,29 +319,27 @@ private fun CategoryConferenceFormScreen(
                 current.products.forEachIndexed { index, product ->
                     NevesContentCard {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                            Text(
-                                "ITEM " + (index + 1),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                product.name,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 3.dp),
-                            )
+                            val isMarkedForOrder = product.id in markedIds
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                Text(
-                                    "Unidade: " + product.unit +
-                                        "  ·  Estoque: " + (product.currentQuantity?.let(::formatConferenceNumber) ?: "sem referência"),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Checkbox(
-                                    checked = product.id in markedIds,
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "ITEM " + (index + 1),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        product.name,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(top = 3.dp),
+                                    )
+                                }
+                                val cartShape = RoundedCornerShape(14.dp)
+                                IconToggleButton(
+                                    checked = isMarkedForOrder,
                                     enabled = marksReady && !marksBusy,
                                     onCheckedChange = {
                                         marksBusy = true
@@ -350,9 +356,44 @@ private fun CategoryConferenceFormScreen(
                                             marksBusy = false
                                         }
                                     },
-                                )
-                                Text("Pedir", style = MaterialTheme.typography.bodySmall)
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(cartShape)
+                                        .background(
+                                            if (isMarkedForOrder) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.surfaceVariant,
+                                            cartShape,
+                                        )
+                                        .border(
+                                            BorderStroke(
+                                                1.dp,
+                                                if (isMarkedForOrder) MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.outline,
+                                            ),
+                                            cartShape,
+                                        )
+                                        .semantics {
+                                            contentDescription = if (isMarkedForOrder) {
+                                                "Remover ${product.name} do pedido"
+                                            } else {
+                                                "Marcar ${product.name} para pedir"
+                                            }
+                                        },
+                                ) {
+                                    NevesIcon(
+                                        NevesIcons.Cart,
+                                        tint = if (isMarkedForOrder) MaterialTheme.colorScheme.onPrimary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
+                            Text(
+                                "Unidade: " + product.unit +
+                                    "  ·  Estoque: " + (product.currentQuantity?.let(::formatConferenceNumber) ?: "sem referência"),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+                            )
                             val isLast = index == current.products.lastIndex
                             NevesNumericField(
                                 value = quantities[product.id].orEmpty(),
