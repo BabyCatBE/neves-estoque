@@ -98,12 +98,19 @@ class ConferenceModuleRepository {
             ?: error("Categoria não encontrada.")
         // Referência independente da contagem que o operador está digitando.
         // offlineCachedList permite mostrar apenas a última cópia disponível sem rede.
-        val stockByProduct = offlineCachedList<ConferenceStockReferenceRow>("conference-stock_current") {
-            client().from("stock_current")
-                .select(Columns.list("product_id", "current_quantity")) {
-                    attachRegisteredDevice()
-                }.decodeList<ConferenceStockReferenceRow>()
-        }.associateBy { it.productId }
+        val stockByProduct = try {
+            offlineCachedList<ConferenceStockReferenceRow>("conference-stock_current") {
+                client().from("stock_current")
+                    .select(Columns.list("product_id", "current_quantity")) {
+                        attachRegisteredDevice()
+                    }.decodeList<ConferenceStockReferenceRow>()
+            }.associateBy { it.productId }
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            // Referência suplementar: não impedir a Conferência se estiver indisponível.
+            emptyMap()
+        }
         val products = loadActiveProducts()
             .filter { it.categoryId == categoryId }
             .sortedWith(
