@@ -463,35 +463,45 @@ function CategoryConferenceForm({ setup }: { setup: CategoryConferenceSetup }) {
           {setup.products.map((product, index) => (
             <div
               key={product.id}
-              className="grid gap-3 px-5 py-4 md:grid-cols-[1fr_100px_180px] md:items-center"
+              className="relative grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_100px_180px_48px] md:items-start"
             >
-              <div>
+              <div className="min-w-0 pr-14 md:pr-0">
                 <p className="font-semibold text-zinc-900">{product.name}</p>
-                <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-zinc-600">
-                  <input
-                    type="checkbox"
-                    aria-label={`Marcar ${product.name} para pedir`}
-                    checked={markedProducts.has(product.id)}
-                    disabled={!markReady || markBusy}
-                    className="h-4 w-4 accent-red-700"
-                    onChange={() => {
-                      setMarkBusy(true);
-                      setMarkError(null);
-                      void toggleMarkedProduct(ownerId, {
-                        productId: product.id,
-                        productName: product.name,
-                        unit: product.unit,
-                        currentQuantity: product.currentQuantity ?? null
-                      }).then((products) => {
-                        setMarkedProducts(new Set(products.map((item) => item.productId)));
-                      }).catch(() => {
-                        setMarkError("Não foi possível atualizar os produtos marcados. Tente novamente.");
-                      }).finally(() => setMarkBusy(false));
-                    }}
-                  />
-                  Pedir
-                </label>
               </div>
+              <button
+                type="button"
+                aria-label={markedProducts.has(product.id)
+                  ? `Remover ${product.name} do pedido`
+                  : `Marcar ${product.name} para pedir`}
+                title={markedProducts.has(product.id) ? "Remover do pedido" : "Marcar para pedir"}
+                aria-pressed={markedProducts.has(product.id)}
+                disabled={!markReady || markBusy}
+                onClick={() => {
+                  setMarkBusy(true);
+                  setMarkError(null);
+                  void toggleMarkedProduct(ownerId, {
+                    productId: product.id,
+                    productName: product.name,
+                    unit: product.unit,
+                    currentQuantity: product.currentQuantity ?? null
+                  }).then((products) => {
+                    setMarkedProducts(new Set(products.map((item) => item.productId)));
+                  }).catch(() => {
+                    setMarkError("Não foi possível atualizar os produtos marcados. Tente novamente.");
+                  }).finally(() => setMarkBusy(false));
+                }}
+                className={`absolute right-5 top-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-50 md:static md:col-start-4 md:row-start-1 md:justify-self-end ${
+                  markedProducts.has(product.id)
+                    ? "border-red-700 bg-red-700 text-white shadow-sm"
+                    : "border-zinc-400 bg-transparent text-zinc-600 hover:border-red-600 hover:text-red-600"
+                }`}
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                  <circle cx="9" cy="21" r="1" />
+                  <circle cx="20" cy="21" r="1" />
+                  <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" />
+                </svg>
+              </button>
               <div className="text-xs font-medium text-zinc-500">
                 {product.unit}
                 <span className="mt-0.5 block text-[11px]">
