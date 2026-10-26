@@ -25,7 +25,7 @@ export type ConferenceProduct = {
   name: string;
   unit: string;
   sortOrder: number | null;
-  currentQuantity: number | null;
+  currentQuantity?: number | null;
 };
 
 export type ConferenceCategorySummary = {
