@@ -203,6 +203,31 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
     val loaded by PendingStore.loaded.collectAsStateWithLifecycle()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val operation = pending.firstOrNull { it.localId == localId }
+    val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
+    var activeCatalog by remember(localId) { mutableStateOf<List<PendingCatalogProduct>?>(null) }
+    var catalogBusy by remember(localId) { mutableStateOf(false) }
+    var catalogError by remember(localId) { mutableStateOf<String?>(null) }
+
+    androidx.compose.runtime.LaunchedEffect(localId, operation?.updatedAt, online) {
+        val current = operation ?: return@LaunchedEffect
+        if (current.kind != PendingKind.CategoryConference && current.kind != PendingKind.CategoryConferenceCorrection) return@LaunchedEffect
+        if (!online) {
+            if (activeCatalog == null) catalogError = "Conecte-se à internet para conferir produtos adicionados à categoria. A pendência está preservada."
+            return@LaunchedEffect
+        }
+        catalogBusy = true
+        catalogError = null
+        try {
+            val categoryId = current.categoryConference?.categoryId ?: error("Categoria não identificada.")
+            activeCatalog = PendingCatalogRepository().currentProducts(categoryId)
+        } catch (error: Throwable) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            activeCatalog = null
+            catalogError = "Não foi possível conferir o catálogo oficial. Os valores salvos foram preservados. Verifique a conexão e reabra Editar."
+        } finally {
+            catalogBusy = false
+        }
+    }
 
     androidx.compose.runtime.LaunchedEffect(localId, loaded) {
         if (!loaded) PendingStore.reload()
@@ -229,17 +254,24 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
     val listState = rememberLazyListState()
     val fields = remember { mutableMapOf<String, FocusRequester>() }
     val observationFocus = remember { FocusRequester() }
+    val catalogDifference = if (operation.kind == PendingKind.CategoryConference ||
+        operation.kind == PendingKind.CategoryConferenceCorrection
+    ) activeCatalog?.let { comparePendingCategoryCatalog(operation.categoryConference?.items.orEmpty(), it) } else null
+    val extraProducts = catalogDifference?.missing.orEmpty()
     val rows = when (operation.kind) {
         PendingKind.Entry -> operation.entry?.items.orEmpty().indices.map { "entry-$it" }
-        PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection -> operation.categoryConference?.items.orEmpty().map { "conf-${it.productId}" }
+        PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection ->
+            operation.categoryConference?.items.orEmpty().map { "conf-${it.productId}" } +
+                extraProducts.map { "conf-new-${it.id}" }
         PendingKind.ProductConference -> listOf("unit-${operation.productConference?.productId}")
     }
     val order = when (operation.kind) {
         PendingKind.Entry -> operation.entry?.items.orEmpty().indices
             .filterNot { it in draft.removedItems }
             .flatMap { listOf("$it-q" to "entry-$it", "$it-p" to "entry-$it") }
-        PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection -> operation.categoryConference?.items.orEmpty()
-            .map { it.productId to "conf-${it.productId}" }
+        PendingKind.CategoryConference, PendingKind.CategoryConferenceCorrection ->
+            operation.categoryConference?.items.orEmpty().map { it.productId to "conf-${it.productId}" } +
+                extraProducts.map { it.id to "conf-new-${it.id}" }
         PendingKind.ProductConference -> operation.productConference?.let { listOf(it.productId to "unit-${it.productId}") }.orEmpty()
     }
     fun focusAfter(fieldId: String) {
@@ -264,7 +296,7 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
                 Text(operation.kindLabel.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 Text(operation.summaryTitle, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
-                    "A edição mantém a mesma identificação da pendência. Para trocar Fornecedor, Categoria ou Produto, exclua e prepare outra.",
+                    "A edição preserva a identificação da pendência. Produtos novos da categoria podem ser acrescentados após conferência online; não exclua a pendência para corrigir o catálogo.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -283,7 +315,33 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
         if (operation.kind != PendingKind.Entry) {
             item { Field("Responsável pela contagem física", draft.responsible) { draft = draft.copy(responsible = it) } }
         }
+        if (catalogBusy) item { Text("Verificando produtos atuais da categoria…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        catalogError?.let { message -> item { Warning(message) } }
+        if (catalogDifference != null && !catalogDifference.matches) {
+            item { Warning(catalogDifference.userMessage()) }
+        }
         editItems(operation, draft, keypad, fields, ::focusAfter, !saving) { draft = it }
+        if (extraProducts.isNotEmpty()) {
+            item {
+                Text(
+                    "Produtos adicionados à categoria — informe a contagem física de cada um (zero é permitido).",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            items(extraProducts, key = { "conf-new-${it.id}" }) { product ->
+                QuantityRow(
+                    "${product.name} (${product.unit}) · NOVO",
+                    draft.quantities[product.id].orEmpty(),
+                    keypad,
+                    remember(fields, product.id) { fields.getOrPut(product.id) { FocusRequester() } },
+                    { focusAfter(product.id) },
+                    !saving,
+                ) { value ->
+                    draft = draft.copy(quantities = draft.quantities + (product.id to value))
+                }
+            }
+        }
         item(key = "observation") {
             Field("Observação", draft.observation, singleLine = false, modifier = Modifier.focusRequester(observationFocus)) {
                 draft = draft.copy(observation = it)
@@ -296,7 +354,7 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    val result = applyPendingEdit(operation, draft)
+                    val result = applyPendingEdit(operation, draft, activeCatalog = activeCatalog)
                     val updated = result.operation
                     if (updated == null) {
                         errors = result.errors
@@ -311,7 +369,7 @@ fun PendingEditRoute(localId: String, onBack: () -> Unit, onSaved: (String) -> U
                         }
                     }
                 },
-                enabled = !saving,
+                enabled = !saving && !catalogBusy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(if (saving) "Salvando…" else "Salvar edição") }
         }
@@ -494,7 +552,7 @@ fun PendingConfirmFlow(operation: PendingOperation, onDone: (String) -> Unit) {
     var step by remember(operation.localId) { mutableStateOf<ConfirmStep>(ConfirmStep.Checking) }
     var chosenPosition by remember(operation.localId) { mutableStateOf<String?>(null) }
 
-    androidx.compose.runtime.LaunchedEffect(operation.localId) {
+    androidx.compose.runtime.LaunchedEffect(operation.localId, operation.updatedAt) {
         step = try {
             if (operation.kind == PendingKind.Entry) {
                 val conflicts = repository.entryConflicts(operation)
@@ -504,8 +562,16 @@ fun PendingConfirmFlow(operation: PendingOperation, onDone: (String) -> Unit) {
                     ConfirmStep.EntryConflicts(conflicts, buildEntryConflictPositions(conflicts, operation.effectiveAt))
                 }
             } else {
-                val (warnings, sameDay) = repository.conferenceReview(operation)
-                if (warnings.isEmpty() && sameDay.isEmpty()) ConfirmStep.Final(null) else ConfirmStep.ConferenceReview(warnings, sameDay)
+                val categoryDifference = if (
+                    operation.kind == PendingKind.CategoryConference ||
+                    operation.kind == PendingKind.CategoryConferenceCorrection
+                ) repository.categoryCatalogDifference(operation) else null
+                if (categoryDifference != null && !categoryDifference.matches) {
+                    ConfirmStep.Error(categoryDifference.userMessage())
+                } else {
+                    val (warnings, sameDay) = repository.conferenceReview(operation)
+                    if (warnings.isEmpty() && sameDay.isEmpty()) ConfirmStep.Final(null) else ConfirmStep.ConferenceReview(warnings, sameDay)
+                }
             }
         } catch (error: Throwable) {
             if (error is kotlinx.coroutines.CancellationException) throw error

@@ -141,6 +141,11 @@ class PendingSyncRepository {
     private val entries = EntriesRepository()
     private val conferences = ConferenceModuleRepository()
     private val productConferences = ProductConferenceRepository()
+    private val pendingCatalog = PendingCatalogRepository()
+
+    /** Leitura online real antes de oferecer envio (sem cache). */
+    suspend fun categoryCatalogDifference(operation: PendingOperation): PendingCatalogDifference =
+        pendingCatalog.compare(operation)
 
     private fun client() = SupabaseProvider.client ?: error("Supabase não está configurado nesta build.")
 
@@ -236,6 +241,18 @@ class PendingSyncRepository {
         val deviceId = DeviceIdentityStore.registeredDeviceId()
             ?: return PendingSendResult.Failed("Este dispositivo não está autorizado para esta ação.")
         return try {
+            // Revalidar antes do RPC; nunca enviar silenciosamente uma contagem de catálogo antigo.
+            if (operation.kind == PendingKind.CategoryConference ||
+                operation.kind == PendingKind.CategoryConferenceCorrection
+            ) {
+                val difference = pendingCatalog.compare(operation)
+                if (!difference.matches) return PendingSendResult.Failed(difference.userMessage())
+            }
+            if (PendingStore.find(operation.localId) != operation) {
+                return PendingSendResult.Failed(
+                    "Esta pendência foi alterada neste aparelho. Feche e reabra a confirmação antes de enviar."
+                )
+            }
             when (operation.kind) {
                 PendingKind.Entry -> entries.createEntry(operation.toEntryCreateInput(entryEffectiveAt))
                 PendingKind.CategoryConference -> conferences.createCategoryConference(operation.toCategoryConferenceInput(deviceId))
