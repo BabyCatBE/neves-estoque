@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
@@ -117,6 +119,25 @@ private fun CategoryConferenceFormScreen(
     var draftLoadBlocked by remember { mutableStateOf(false) }
     var hadDraft by rememberSaveable(ownerId) { mutableStateOf(false) }
     var leaving by remember { mutableStateOf(false) }
+    var markedIds by remember(ownerId) { mutableStateOf(setOf<String>()) }
+    var marksReady by remember(ownerId) { mutableStateOf(false) }
+    var marksBusy by remember { mutableStateOf(false) }
+    var marksError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(ownerId, setup?.categoryId) {
+        if (setup == null) return@LaunchedEffect
+        when (val loaded = ConferencePurchaseSelectionStore.load(ownerId)) {
+            is ConferenceDraftResult.Success -> {
+                markedIds = loaded.value.map { it.productId }.toSet()
+                marksReady = true
+                marksError = null
+            }
+            is ConferenceDraftResult.Failure -> {
+                marksReady = false
+                marksError = loaded.message
+            }
+        }
+    }
 
     LaunchedEffect(setup?.categoryId, ownerId) {
         if (!initialized && setup != null) {
@@ -200,6 +221,9 @@ private fun CategoryConferenceFormScreen(
             }
             if (draftLoadBlocked) {
                 TextButton(onClick = onBack) { Text("Sair sem alterar o arquivo local") }
+            }
+            marksError?.let { message ->
+                Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             draftError?.let { message ->
                 NevesContentCard {
@@ -297,11 +321,38 @@ private fun CategoryConferenceFormScreen(
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(top = 3.dp),
                             )
-                            Text(
-                                "Unidade: " + product.unit,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    "Unidade: " + product.unit +
+                                        "  ·  Estoque: " + (product.currentQuantity?.let(::formatConferenceNumber) ?: "sem referência"),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Checkbox(
+                                    checked = product.id in markedIds,
+                                    enabled = marksReady && !marksBusy,
+                                    onCheckedChange = {
+                                        marksBusy = true
+                                        marksError = null
+                                        draftScope.launch {
+                                            val result = ConferencePurchaseSelectionStore.toggle(
+                                                ownerId,
+                                                ConferencePurchaseProduct(product.id, product.name, product.unit, product.currentQuantity)
+                                            )
+                                            when (result) {
+                                                is ConferenceDraftResult.Success -> markedIds = result.value.map { it.productId }.toSet()
+                                                is ConferenceDraftResult.Failure -> marksError = result.message
+                                            }
+                                            marksBusy = false
+                                        }
+                                    },
+                                )
+                                Text("Pedir", style = MaterialTheme.typography.bodySmall)
+                            }
                             val isLast = index == current.products.lastIndex
                             NevesNumericField(
                                 value = quantities[product.id].orEmpty(),
