@@ -528,6 +528,200 @@ fun PurchaseListRoute(
     }
 }
 
+/**
+ * Simulação local montada com os itens sinalizados durante as Conferências.
+ * Não precisa do histórico de Compras nem da rede para ser aberta.
+ */
+@Composable
+fun ConferencePurchaseOrderRoute(ownerId: String, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val keypad = rememberNumericKeypadState()
+    val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val listState = rememberLazyListState()
+    val focusById = remember { mutableMapOf<String, FocusRequester>() }
+    var products by remember(ownerId) { mutableStateOf(emptyList<com.babycatbe.nevesestoque.feature.conferences.ConferencePurchaseProduct>()) }
+    var loaded by remember(ownerId) { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var quantities by remember { mutableStateOf(mapOf<String, String>()) }
+    var invalid by remember { mutableStateOf(setOf<String>()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var notice by remember { mutableStateOf<String?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
+    var confirmExit by remember { mutableStateOf(false) }
+    val orderTitle = "Lista de compras — Conferência"
+
+    androidx.compose.runtime.LaunchedEffect(ownerId) {
+        when (val result = com.babycatbe.nevesestoque.feature.conferences.ConferencePurchaseSelectionStore.load(ownerId)) {
+            is com.babycatbe.nevesestoque.feature.conferences.ConferenceDraftResult.Success -> {
+                products = result.value
+                error = null
+            }
+            is com.babycatbe.nevesestoque.feature.conferences.ConferenceDraftResult.Failure -> error = result.message
+        }
+        loaded = true
+    }
+
+    val items = products.map { product ->
+        PurchaseListItem(product.productId, product.name, product.unit, product.currentQuantity, null)
+    }
+    val selected = items.map { it.productId }.toSet()
+    val dirty = quantities.values.any { it.isNotBlank() }
+    fun requestExit() {
+        if (dirty) confirmExit = true else onBack()
+    }
+    BackHandler(enabled = dirty) { confirmExit = true }
+
+    fun orderText(): String? = when (val result = buildPurchaseOrderText(orderTitle, items, selected, quantities)) {
+        is PurchaseOrderResult.Ready -> {
+            invalid = emptySet()
+            error = null
+            result.text
+        }
+        is PurchaseOrderResult.Invalid -> {
+            invalid = result.invalidProductIds
+            error = result.message
+            null
+        }
+    }
+
+    PurchaseScaffold(
+        title = "Pedido da Conferência",
+        onBack = ::requestExit,
+        keypad = keypad,
+        listState = listState,
+    ) {
+        item {
+            Header("PRODUTOS MARCADOS", "Preparar pedido",
+                "Informe a quantidade que deseja comprar. A contagem física não define a quantidade do pedido.")
+        }
+        if (!loaded) item { InfoCard("Carregando produtos marcados…") }
+        if (loaded && items.isEmpty()) item { InfoCard("Nenhum produto marcado. Volte à Conferência para escolher.") }
+        items(items, key = { it.productId }) { product ->
+            PurchaseItemCard(
+                item = product,
+                keypad = keypad,
+                focusRequester = remember(focusById, product.productId) {
+                    focusById.getOrPut(product.productId) { FocusRequester() }
+                },
+                isLast = product.productId == items.lastOrNull()?.productId,
+                onNext = {
+                    val index = items.indexOfFirst { it.productId == product.productId }
+                    val next = items.getOrNull(index + 1)
+                    if (next == null) focusManager.clearFocus()
+                    else scope.launch {
+                        val row = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == product.productId }
+                        if (row != null) listState.scrollToItem(row.index + 1)
+                        withFrameNanos { }
+                        focusById[next.productId]?.requestFocusSafely()
+                    }
+                },
+                checked = true,
+                quantity = quantities[product.productId].orEmpty(),
+                invalid = product.productId in invalid,
+                onToggle = {
+                    if (!busy) {
+                        busy = true
+                        scope.launch {
+                            when (val result = com.babycatbe.nevesestoque.feature.conferences.ConferencePurchaseSelectionStore.toggle(
+                                ownerId,
+                                products.first { it.productId == product.productId }
+                            )) {
+                                is com.babycatbe.nevesestoque.feature.conferences.ConferenceDraftResult.Success -> {
+                                    products = result.value
+                                    quantities = quantities - product.productId
+                                    invalid = invalid - product.productId
+                                }
+                                is com.babycatbe.nevesestoque.feature.conferences.ConferenceDraftResult.Failure -> error = result.message
+                            }
+                            busy = false
+                        }
+                    }
+                },
+                onQuantity = { value ->
+                    quantities = quantities + (product.productId to value)
+                    invalid = invalid - product.productId
+                    error = null
+                },
+                onStep = { direction ->
+                    quantities = quantities + (product.productId to stepPurchaseQuantity(quantities[product.productId].orEmpty(), direction))
+                    invalid = invalid - product.productId
+                    error = null
+                },
+            )
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                notice?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                if (items.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                focusManager.clearFocus()
+                                orderText()?.let {
+                                    if (copyPurchaseText(context, orderTitle, it)) notice = "Texto copiado."
+                                    else error = "Não foi possível copiar o pedido."
+                                }
+                            },
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Copiar texto") }
+                        OutlinedButton(
+                            onClick = {
+                                focusManager.clearFocus()
+                                orderText()?.let {
+                                    if (sharePurchaseText(context, orderTitle, it)) notice = null
+                                    else if (copyPurchaseText(context, orderTitle, it)) notice = "Texto copiado."
+                                    else error = "Não foi possível compartilhar o pedido."
+                                }
+                            },
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Compartilhar") }
+                    }
+                    TextButton(onClick = { confirmClear = true }, enabled = !busy) {
+                        Text("Limpar produtos marcados")
+                    }
+                }
+                Text("Simulação temporária: não altera estoque, Entradas nem fornecedores.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    if (confirmClear) AlertDialog(
+        onDismissRequest = { confirmClear = false },
+        title = { Text("Limpar a seleção?") },
+        text = { Text("Remover os produtos marcados para compra neste aparelho? A Conferência não será alterada.") },
+        confirmButton = {
+            TextButton(enabled = !busy, onClick = {
+                busy = true
+                scope.launch {
+                    when (val result = com.babycatbe.nevesestoque.feature.conferences.ConferencePurchaseSelectionStore.clear(ownerId)) {
+                        is com.babycatbe.nevesestoque.feature.conferences.ConferenceDraftResult.Success -> {
+                            products = emptyList()
+                            quantities = emptyMap()
+                            invalid = emptySet()
+                        }
+                        is com.babycatbe.nevesestoque.feature.conferences.ConferenceDraftResult.Failure -> error = result.message
+                    }
+                    busy = false
+                    confirmClear = false
+                }
+            }) { Text("Limpar") }
+        },
+        dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancelar") } },
+    )
+    if (confirmExit) AlertDialog(
+        onDismissRequest = { confirmExit = false },
+        title = { Text("Sair do pedido?") },
+        text = { Text("As quantidades digitadas não serão salvas. Os produtos marcados continuarão disponíveis.") },
+        confirmButton = { TextButton(onClick = { confirmExit = false; onBack() }) { Text("Sair") } },
+        dismissButton = { TextButton(onClick = { confirmExit = false }) { Text("Continuar") } },
+    )
+}
+
 @Composable
 private fun PurchaseItemCard(
     item: PurchaseListItem,
