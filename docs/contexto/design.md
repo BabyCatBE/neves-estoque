@@ -1,6 +1,6 @@
 # Design atual — Neves Estoque
 
-> Padrões vigentes atualizados em 19/10/2026; a rodada recente tem CI aprovada, mas testes de uso pendentes.
+> Consolidado em 26/10/2026 — CP265. Controle do carrinho/reparo testado parcialmente em Android; fluxo completo do pedido ainda A VERIFICAR.
 
 ## Princípios
 
@@ -105,6 +105,15 @@ Estado atual:
 - zero, vazio ou valor inválido desmarca;
 - controles de quantidade usam destaque coerente com o vermelho institucional;
 - Copiar/Compartilhar preservam o texto da lista.
+
+## Conferência → pedido (Web e Android) — CP265
+
+- Card da Conferência por Categoria exibe **Estoque de referência** discretamente ao lado da unidade.
+- Ícone **único de carrinho** em botão pequeno no canto superior direito; **sem checkbox quadrado e sem texto “Pedir”**.
+- Desmarcado: botão discreto e contornado; marcado: destaque vermelho, ícone contrastante. No Android, o **fundo, borda e animação/ripple** devem seguir o mesmo contorno arredondado; evitar preenchimento circular dentro do quadrado. Solução atual: `Surface(onClick)` com `RoundedCornerShape`.
+- Alvo de toque Android de 48dp, estados semânticos; Web usa `aria-label`, `aria-pressed`, foco acessível e responsividade.
+- `Fazer pedido dos selecionados (N)` aparece no fim da lista de categorias quando houver seleção, não automaticamente após salvar a Conferência. Pedido independe da gravação da contagem física.
+- Editor de pendência Android com catálogo desatualizado destaca Produto **NOVO** e usa teclado numérico Neves, exigindo quantidade física real e nunca presumindo zero.
 
 ## Responsividade e acessibilidade
 
