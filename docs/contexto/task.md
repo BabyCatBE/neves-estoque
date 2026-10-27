@@ -1,45 +1,39 @@
 # Estado operacional — Neves Estoque
 
-> Atualizado em 19/10/2026. **CHECKPOINT 257 — [publicações Web/Android e hotfix de login](checkpoints/2026-10-19-cp257-web-android-publicacao.md)**. Histórico anterior: CP256 (07/10/2026) documentado no Contexto Mestre/versões Git; não substituir teste real por aprovação de CI.
+> **Consolidação de 26/10/2026 — CP265** (base técnica: CP258–CP264). Fonte de continuidade: Contexto Mestre operacional no Google Drive; detalhes e testes em `docs/contexto/checkpoints/`. Não reabrir o Contexto Mestre histórico como ponto de entrada.
 
-## Fase atual
+## Fase e último estado funcional seguro
 
-**IMPLEMENTADO / CI APROVADA / ANDROID RELEASE PUBLICADA / WEB PROD PUBLICADA / LOGIN WEB CONFIRMADO / TESTE OPERACIONAL DOS NOVOS FLUXOS A VERIFICAR.**
+**IMPLEMENTADO / CI APROVADA / WEB PROD PUBLICADA / ANDROID RELEASE PUBLICADA / TESTADO EM APARELHO PARCIALMENTE / FLUXO DE PEDIDO COMPLETO A VERIFICAR.**
 
-O responsável autorizou explicitamente publicar sem teste manual imediato e confirmou que **o login Web voltou a funcionar** depois do hotfix de configuração Supabase.
+- **Web/PWA PROD:** versão **0.26.3**, publicada em https://neves-estoque.pages.dev pelo workflow **40400225641 SUCCESS**; Cloudflare Pages `neves-estoque` production, deployment `6136621e-0d2b-4538-af2c-40a7804fcf36`, origem `b58c3ae2182b5a764f40881ca3800a0c8b2148bc`. CI de código **40399328785 SUCCESS**. Teste manual do pedido em navegador autenticado **A VERIFICAR**.
+- **Android RELEASE oficial:** **0.40.0-alpha01 / versionCode 40**, tag [android-v0.40.0-alpha01](https://github.com/BabyCatBE/neves-estoque/releases/tag/android-v0.40.0-alpha01), `releases/latest` verificado, APK e `SHA256SUMS` publicados. Android CI **40408834376 SUCCESS**, publicador **40411239982 SUCCESS**; APK assinado originalmente na CI sem recompilar, SHA/certificado validados. Usuário relatou **TESTADO em aparelho**: reparo/edição de pendência com produto ausente, correção visual do ripple e botão de marcar produtos para compra. **Envio final e efeito no banco não auditados neste relato.**
+- **Último código funcional Android integrado:** PR #95 / merge `d8ce748cce30f71f251e5bb8236423e78ccbdd46`; código testado da PR `34951d66799ae2c34162853b491f3e148c7e5178` (mesma árvore). **Último código funcional Web publicado:** PR #93 / merge `0450b1135efa8b77f6c402019840c603f129b796` (origem `525fc807475fa0bf54d42c8ccd0d5ca6cc82ce6f`). `develop` possui commits adicionais de workflows/checkpoints/documentação que **não são nova funcionalidade**.
+- `main` preservada no commit `e0c15eb45fda2f6c68f58ed6f4ccdd24feb20635`; Web PROD é publicada de `develop` por procedimento consciente. Não pressupor promoção automática de `main`.
 
-## Fontes de código, versões e ambientes
+## Funções entregues em CP258–CP264
 
-- Repositório: `BabyCatBE/neves-estoque`; branch integrada `develop` no último **HEAD funcional publicado** `d0b490b138faa0fad0321e431745560622895f50` (PR #89). Commits de documentação deste CP avançam HEAD mas **não alteram runtime**.
-- `main`: `e0c15eb45fda2f6c68f58ed6f4ccdd24feb20635` (**não atualizada**). No Cloudflare a publicação Web saiu de `develop`; nunca presumir que `main` corresponda ao site publicado.
-- Web/PWA `package.json`: **0.26.1**; hospedagem oficial **https://neves-estoque.pages.dev** (Cloudflare Pages), último deploy verificado `https://b94d1893.neves-estoque.pages.dev`. Netlify com builds pausados permanece fallback histórico.
-- Android `0.37.0-alpha01` / **versionCode 37**; [Release `android-v0.37.0-alpha01`](https://github.com/BabyCatBE/neves-estoque/releases/tag/android-v0.37.0-alpha01), APK oficial `neves-estoque-android.apk` e `SHA256SUMS`. Atualização pelo próprio app, **instalação de 0.37 em aparelho ainda não confirmada**.
-- Android `SYSTEM_VERSION = 0.26.0` × Web `0.26.1`: **A VERIFICAR**. Barra inferior Android: **A VERIFICAR**; preservar navegação.
+- Conferência por categoria mostra **Estoque de referência** discretamente junto à unidade. Marcação independente da quantidade física com **botão de carrinho arredondado no canto superior direito** (Android e Web). No Android, o preenchimento e efeito de toque usam a mesma forma arredondada (0.40).
+- Seleção de produtos de diversas categorias **persistida localmente por usuário/dispositivo**, não sincronizada entre Web e Android. Ao fim da lista **Conferência → Fazer conferência**, aparece `Fazer pedido dos selecionados (N)` quando houver itens marcados. O pedido é **simulação temporária**, separa quantidade de compra da contagem, permite copiar/compartilhar, não cria Entrada ou movimentação.
+- Android 0.40: pendência local com catálogo desatualizado compara **IDs do servidor (sem cache)**; editor mostra produtos novos, exige contagem real digitada (inclusive zero explícito), mantém itens anteriores e `localId`/`idempotencyKey`; bloqueia envio se faltarem/duplicarem/moverem produtos. Sem sincronização automática.
+- **TESTADO pelo usuário:** reparo da pendência, ripple do carrinho e seleção de produtos. **A VERIFICAR:** ação ao fim das categorias → abertura do Pedido → quantidades independentes → Copiar/Compartilhar (Android e Web). Não é preciso gerar outra Conferência oficial só para isso: marcar itens e voltar sem salvar contagem; o botão fica no fim da lista de categorias, não abre automaticamente após salvar.
 
-## Entrega funcional da rodada de 19/10
+## Supabase real — conferência em 26/10/2026 (somente leitura)
 
-- **Conferências Web e Android:** rascunhos incompletos locais, `Guardar e sair`, retomar categoria, preservação de quantidades na rotação Android, pular item em branco com `Próximo` sem transformá-lo em zero; salvamento/verificações em segundo plano; correção histórica atualiza ID original. Rascunho não altera estoque e não é pendência de envio. Salvar definitivo continua exigindo todos os produtos preenchidos; envio posterior offline permanece **manual/consciente**.
-- **Entradas Web e Android:** aceitar preço unitário ou total do item da nota e calcular unitário; **exibir 2 casas**, manter maior precisão interna; preço em branco `NULL` distinto de zero/bonificação. Enter/Tab Web e teclado Neves Android preservados.
-- **Impressão:** correção de paginação A4 de categorias grandes.
-- Origem: PRs integradas #81, #82, #83 e #85; preparação/release #86, #87; deploy Cloudflare #88; hotfix #89.
+Projeto `bwostqcdwfueapfemrwn` (Neves Estoque): **43 migrations aplicadas**, última `20261007111815_editable_initial_price_before_priced_entry`; **13 Categorias ativas, 152 Produtos ativos, 18 Entradas ativas e 69 Conferências ativas**. Esses números são fotografia datada; não inferir que os registros sejam testes nem apagar dados. A natureza real/de teste de cada registro não foi auditada. **Nenhuma migration ou modificação de dados feita nos CP258–264/consolidação.**
 
-## Verificações reais
+Caso real investigado: categoria **MANTEIGAS, MARGARINAS E REQUEIJOES** passou a 11 produtos quando `Delicia 250g` foi cadastrado em 21/10. Pendência antiga tinha dez; 0.40 implementa reparo seguro. Comprovação de envio oficial ao banco dessa pendência **A VERIFICAR**, não presumir.
 
-- Android CI **#194**, run `39302190080`: **SUCCESS**. Publicação APK assinado run `39303909499`: **SUCCESS** (0.37.0-alpha01).
-- Web CI **#251**, run `39316512271`: **SUCCESS**. Deploy Cloudflare run `39316512155`: **SUCCESS**. Logs confirmaram `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` presentes no build; deployment concluído.
-- Falhas relevantes do caminho: primeiro deploy Web falhou por falta de `CLOUDFLARE_API_TOKEN` GitHub; com token cadastrado, deploy saiu **sem variáveis públicas Supabase no build**, gerando tela de login bloqueada. PR #89 corrigiu as variáveis **antes** da compilação, falhando seguro quando faltarem; usuário confirmou login normal depois. Não publicar apenas porque `wrangler deploy` teve SUCCESS: verificar configuração do bundle.
-- **Supabase:** projeto Neves Estoque `bwostqcdwfueapfemrwn` ACTIVE_HEALTHY; **43 migrations aplicadas**, última de 07/10. Verificado somente em leitura em 19/10. Sem novas migrations, alterações de schema ou dados reais durante essas publicações. **Não tratar contagens de dados do CP256 como estado atual.**
-- **Testes funcionais do novo fluxo Android/Entradas/Conferências e Web PWA:** **PENDENTES**. Apenas login Web pós-hotfix foi confirmado nesta rodada pelo responsável. CP256/Android 0.36 continua último bloco anterior com teste de aparelho.
+## Pendências e próximo passo
 
-## Próximo passo
+1. **Prioridade de teste:** fluxo Pedido dos selecionados ao fim da lista de categorias, inclusive múltiplas categorias, edição de quantidade de compra, Copiar/Compartilhar. Não criar Conferência duplicada: a seleção local é independente do salvamento físico.
+2. Observar uso real da recuperação de pendências: conferir que as quantidades existentes ficaram intactas e, se houve envio conscientemente confirmado, verificar histórico/estoque no backend antes de marcar TESTADO E2E.
+3. **Web:** confirmar visualmente o botão e o fluxo da lista; avaliar paridade da correção de catálogo antigo no editor de pendências Web (não implementada neste bloco).
+4. Monitorar PWA/offline, troca de usuário com pendências, backup, fluxo sustentável de publicação. `SYSTEM_VERSION` Android × Web/package e barra inferior Android seguem **A VERIFICAR**; não mudar navegação nem código para alinhar documentação.
+5. Respeitar confirmação explícita antes de nova Release/PROD/`main`, banco ou operações destrutivas.
 
-Esperar relato do próximo uso real e **verificar eventuais regressões**, sem exigir que o responsável faça teste agora. Preservar rascunhos/pendências locais, não limpar cache/dados PWA nem alterar dados reais para investigar. Se necessário, corrigir em branch, CI, checkpoint e obter autorização antes de publicar nova Release/Cloudflare.
+## Retomada
 
-Acompanhar depois: comportamento de PWA instalada/offline, atualização Android 0.37, edição pendências Web, pendências ao trocar usuário, fluxo duradouro de deploy/release (workflow 19/10 pontual), segurança/backup e `SYSTEM_VERSION`/barra inferior A VERIFICAR.
-
-## Retomada por outra IA
-
-1. Este `task.md` e [CP257 detalhado](checkpoints/2026-10-19-cp257-web-android-publicacao.md).
-2. Contexto Mestre atual Google Docs, [índice do projeto BabyCat-OS](https://github.com/BabyCatBE/BabyCat-OS/tree/main/neves-os/empresas/panificadora-neves/panificadora-neves-nordestina/projetos/estoque) e documentação especializada pertinente.
-3. Conferir `develop` real, GitHub Actions, Release e deployment oficial; Supabase real quando pertinente.
-4. Preservar CP256/10-10 como **histórico datado**, separar HEAD funcional de commits documentais. Notion é resumo, não prova de CI/DB.
+1. Contexto Mestre operacional Google Drive + **este `task.md`**; **CP265** (consolidação) e [CP264](checkpoints/2026-10-26-cp264-retorno-teste-em-aparelho-android-040.md) para última evidência de teste. CP258–263 guardam implementações, falhas e publicações.
+2. Conferir GitHub `develop`/CI/Release e Cloudflare para estado de runtime; Supabase **ao vivo** para operações/dados/migrations.
+3. Separar último estado publicado, commits documentais posteriores e trabalho novo; não depender deste chat nem tratar CI como teste em aparelho.
