@@ -115,9 +115,9 @@ Bloco consolidado:
 
 ## Versões — cuidado
 
-Web/package está em `0.26.1`.
+Web/package atual está em `0.26.3` (26/10/2026).
 
-Android está em `0.36.0-alpha01`, mas `SYSTEM_VERSION` ainda é `0.26.0`.
+Android Release atual está em `0.40.0-alpha01` / code 40. O alinhamento do antigo `SYSTEM_VERSION` 0.26.0 permanece A VERIFICAR; não alterar apenas para seguir documentação.
 
 Estado: A VERIFICAR.
 
@@ -180,3 +180,13 @@ Pendência futura: criar um fluxo oficial de Release disparável sem promover o 
 ## Consolidação no ecossistema Neves
 
 Quando Elias pedir consolidação de bloco do Neves Estoque, além do repositório técnico, Contexto Mestre no Drive e painel Notion, atualizar também a camada correspondente em `BabyCatBE/BabyCat-OS` quando houver mudança relevante de estado, decisão ou pendência.
+
+## Aprendizados CP258–CP265 — 26/10/2026
+
+- Seleção de Compras durante a Conferência é **simulação local independente** da quantidade física, do rascunho e do estoque oficial. Android e Web persistem os marcados por usuário/dispositivo, **sem sincronização entre plataformas**. Não gera Entrada nem movimentação. A opção fica no final da lista de categorias quando houver itens marcados; não abre automaticamente ao salvar e pode ser testada sem registrar nova Conferência.
+- Catálogo offline pode estar desatualizado: comparar **IDs ativos no servidor**, não apenas o total, antes do envio. Caso real investigado: dez itens salvos contra onze ativos (Delicia 250g acrescentado em 21/10/2026). Preservar mesma pendência e idempotência, exigir quantidade digitada conscientemente para novos produtos, aceitar zero explícito e jamais inventar zero ou enviar ao reconectar.
+- No Android Compose, `IconToggleButton` exibia ripple circular sobre botão arredondado quadrangular, deixando cantos vazios. Correção aplicada: `Surface(onClick)` com `RoundedCornerShape` único para fundo, borda e ripple.
+- A Release Android 0.40 é assinada e aprovada pela CI e o responsável relatou ter testado as correções no aparelho; isso **não comprova envio da pendência ao Supabase nem o fluxo completo do pedido**. Histórico técnico está nos CP258–CP264; CP265 consolida.
+- Na publicação, verificar GitHub/CI, árvore de código, APK assinado, SHA256SUMS e a Release real, além do Cloudflare em produção com variáveis públicas no build. Não alterar `main` inadvertidamente. Publicações recentes foram conscientemente autorizadas.
+- Fotografia Supabase em 26/10: 43 migrations, 13 Categorias, 152 Produtos, 18 Entradas e 69 Conferências ativas. Não considerar essas contagens descartáveis; antigas contagens CP256/CP257 são datadas, não atuais.
+
