@@ -1,6 +1,6 @@
 # PRD — Neves Estoque
 
-> Atualização funcional até 19/10/2026 — CP257; checkpoint 256 permanece última base anterior testada em aparelho. Estado de runtime e testes em `task.md`. O estado operacional imediato fica em `task.md`; histórico completo e decisões substituídas ficam no Contexto Mestre/arquivo histórico.
+> Consolidado em 26/10/2026 — CP265. Versões, CI, publicações e testes atuais estão em `task.md`; marcos CP256/CP257 abaixo são **histórico datado**, não estado vigente.
 
 ## Produto
 
@@ -14,8 +14,8 @@ Objetivos:
 
 ## Plataformas atuais
 
-- **Web/PWA:** versão `0.26.1`.
-- **Android nativo:** `0.37.0-alpha01`, versionCode 37 (Release publicada; novos fluxos ainda não testados em aparelho).
+- **Web/PWA PROD:** versão `0.26.3` (Cloudflare Pages).
+- **Android nativo:** `0.40.0-alpha01`, versionCode 40 (Release oficial; correções recentes testadas em aparelho parcialmente).
 - **Backend:** Supabase/PostgreSQL único para as plataformas.
 - Windows instalado fica para evolução futura.
 - iOS somente se surgir necessidade real.
@@ -85,6 +85,14 @@ Diretrizes consolidadas:
 - digitar quantidade válida maior que zero seleciona o Produto no fluxo atual;
 - limpar, zerar ou invalidar a quantidade desmarca de forma coerente;
 - Web e Android preservam paridade funcional quando aplicável.
+
+## Seleção de Compras durante a Conferência — CP258–CP264
+
+- Conferência por Categoria exibe **Estoque de referência** ao lado da unidade, como informação contextual, sem alterar a quantidade física.
+- O ícone de **carrinho arredondado** no canto superior direito marca/desmarca itens para pedido. A seleção é **local, por usuário/aparelho**, não sincronizada entre plataformas e independente de rascunho/registro da Conferência.
+- Na lista **Fazer conferência**, quando houver marcados, o botão **Fazer pedido dos selecionados (N)** fica **ao final das categorias**. Não abre automaticamente depois de salvar. Quantidades de compra são digitadas separadamente da contagem; lista temporária pode ser copiada/compartilhada. Não altera estoque, não cria Entrada nem salva pedido oficial.
+- Android 0.40: pendência local criada com catálogo antigo pode mostrar produto acrescentado na edição (após consulta online) e exigir **quantidade real informada**, inclusive zero quando explicitamente digitado, mantendo demais valores e identificadores. IDs são comparados com o catálogo ativo atual antes de enviar; diferença bloqueia e preserva a pendência.
+- **TESTADO parcialmente no Android:** reparo da pendência, ripple/carrinho e seleção. **A VERIFICAR:** lista completa de compras após seleção, quantidades e Copiar/Compartilhar; no Web o novo fluxo ainda carece de teste manual autenticado. Não registrar outra Conferência física apenas para testar uma seleção.
 
 ## Offline
 
