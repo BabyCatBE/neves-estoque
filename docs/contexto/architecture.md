@@ -1,6 +1,6 @@
 # Arquitetura — Neves Estoque
 
-> Atualizada em 19/10/2026 para o CP257. O CP254 foi referência anterior datada; fonte do estado operacional vigente: `task.md`.
+> Consolidada em 26/10/2026 — CP265. Referência operacional: `task.md`; snapshots de CP254/CP257 abaixo são históricos quando explicitamente datados.
 
 ## Visão geral
 
@@ -35,7 +35,7 @@ Não há servidor de aplicação próprio no V1.
 
 ## Web/PWA
 
-Versão do pacote: **0.26.1**.
+Versão do pacote: **0.26.3** (Cloudflare Pages PROD).
 
 Stack principal observada:
 - React 19.3.0;
@@ -60,13 +60,13 @@ Configuração atual observada em `android/app/build.gradle.kts`:
 - compileSdk 37;
 - targetSdk 36;
 - minSdk 26;
-- Android `0.37.0-alpha01`;
-- versionCode 37;
+- Android `0.40.0-alpha01`;
+- versionCode 40;
 - `SYSTEM_VERSION = 0.26.0`.
 
 ### Divergência de versão
 
-Web/package está em `0.26.1`, enquanto o `SYSTEM_VERSION` compilado no Android permanece `0.26.0`.
+Web/package está em `0.26.3`, enquanto `SYSTEM_VERSION` no Android historicamente era `0.26.0` (**verificar o código compilado antes de decidir alteração**).
 
 Estado: **A VERIFICAR**.
 
@@ -117,9 +117,9 @@ Regras:
 
 Projeto operacional: **Neves Estoque**, região `sa-east-1`.
 
-Estado verificado em 30/09/2026:
-- status ACTIVE_HEALTHY;
-- 42 migrations aplicadas;
+Fotografia **histórica** de 30/09/2026 (não usar como estado vigente):
+- status ACTIVE_HEALTHY à época;
+- 42 migrations aplicadas à época;
 - 10 tabelas públicas principais com RLS ativa;
 - 13 Categorias;
 - 146 Produtos;
@@ -140,6 +140,15 @@ Uma migration no Git não prova aplicação. O Supabase real é a autoridade ope
 Os três primeiros arquivos Git usam timestamps diferentes dos identificadores aplicados no Supabase, mas os nomes lógicos correspondem.
 
 Regra: não renomear retroativamente migrations já aplicadas.
+
+## Componentes confirmados — 26/10/2026 (CP265)
+
+- **Web PROD 0.26.3:** `src/features/conferences/` mostra estoque de referência e botão de carrinho, `src/features/conferences/lib/conferencePurchaseSelection.ts` persiste seleção por usuário em IndexedDB/Dexie (schema de seleção separado dos rascunhos e pendências); rota `/conferencias/pedido` monta simulação local.
+- **Android 0.40:** seleção local privada em `ConferencePurchaseSelectionStore` e diretório `conferencePurchasesDir`, separados das contagens/pendências; `ConferencePurchaseOrderRoute` é simulação de quantidade de compra independente. `PendingCatalogRepository` consulta o catálogo ativo online diretamente, compara IDs de pendência e permite completar registros com quantidade explicitamente digitada; `PendingStore.save` efetua escrita local atômica; `PendingSyncRepository` revalida antes do RPC.
+- A UI Android do carrinho usa `Surface(onClick)` com `RoundedCornerShape` único para borda/fundo/ripple. Web e Android têm paridade da seleção/pedido, **não sincronização da seleção**.
+- **Banco real somente lido em 26/10:** 43 migrations aplicadas, última `20261007111815_editable_initial_price_before_priced_entry`; 13 Categorias, 152 Produtos, 18 Entradas, 69 Conferências ativas. Não pressupor que sejam dados descartáveis; nenhum schema/migration alterado nos CP258–264.
+- Cloudflare Pages `neves-estoque`/production `develop`, deploy confirmado `6136621e-0d2b-4538-af2c-40a7804fcf36` (Web 0.26.3); GitHub Android Release `android-v0.40.0-alpha01` é Latest e tem APK e SHA256SUMS. O workflow da Release reutiliza o artefato assinado aprovado na CI, sem recompilar. `main` segue preservada.
+- A paridade Web do **reparo de pendências cujo catálogo mudou** ainda é A VERIFICAR (não declarar implementada); testes reais de pedido e PWA/offline permanecem pendentes.
 
 ## Autenticação e autorização
 
