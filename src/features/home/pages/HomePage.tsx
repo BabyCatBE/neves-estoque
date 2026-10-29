@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AppShell } from "../../../shared/components/AppShell";
 import { InteractiveCard } from "../../../shared/components/ui/InteractiveCard";
-import { APP_VERSION, SHOW_DEVELOPMENT_VERSION } from "../../../shared/config/appVersion";
+import { APP_ENVIRONMENT_LABEL, APP_VERSION } from "../../../shared/config/appVersion";
 import { listRestorableTrashItems } from "../../trash/api/trash";
 import { listActiveSuppliers } from "../../suppliers/api/suppliers";
 import { listActiveProducts } from "../../products/api/products";
@@ -50,15 +50,9 @@ export function HomePage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-                <span>DEV</span>
-                {SHOW_DEVELOPMENT_VERSION ? (
-                  <>
-                    <span aria-hidden="true" className="text-amber-600">
-                      •
-                    </span>
-                    <span>v{APP_VERSION}</span>
-                  </>
-                ) : null}
+                <span>{APP_ENVIRONMENT_LABEL}</span>
+                <span aria-hidden="true" className="text-amber-600">•</span>
+                <span>v{APP_VERSION}</span>
               </span>
               <Link
                 to="/alertas"
