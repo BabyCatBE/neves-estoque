@@ -1,5 +1,7 @@
 # Estado operacional — Neves Estoque
 
+> **Atualização pontual posterior, ainda NÃO consolidada no Contexto Mestre — CP266 (29/10/2026):** melhoria `Lançar outra entrada` no recibo de Entrada salva da **Web** integrada no PR #96 (merge `1b89dfaac792d152ecad083fc9dd9d00b8fa38c2`) e publicada em PROD pelo workflow [40951370993](https://github.com/BabyCatBE/neves-estoque/actions/runs/40951370993) SUCCESS; deployment Cloudflare `700bed58-6125-4fa3-89aa-9cdc8e2ce868` production. CI Web integrada [40951239386](https://github.com/BabyCatBE/neves-estoque/actions/runs/40951239386) SUCCESS. Continua **Web/package 0.26.3** (sem incremento de versão), Android 0.40 inalterado, `main` preservada, nenhuma mudança no banco. Teste manual autenticado do fluxo e verificação de cache **A VERIFICAR**. Detalhes/rollback no [CP266](checkpoints/2026-10-29-cp266-web-entrada-sequencial-rascunho.md). O CP265 abaixo continua a **última consolidação geral**; números de deploy Web nele são históricos, não o último deployment.
+
 > **Consolidação de 26/10/2026 — CP265** (base técnica: CP258–CP264). Fonte de continuidade: Contexto Mestre operacional no Google Drive; detalhes e testes em `docs/contexto/checkpoints/`. Não reabrir o Contexto Mestre histórico como ponto de entrada.
 
 ## Fase e último estado funcional seguro
