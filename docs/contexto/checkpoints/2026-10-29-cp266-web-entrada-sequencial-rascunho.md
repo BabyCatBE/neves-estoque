@@ -20,7 +20,7 @@ No PC, o operador lança várias notas consecutivas. Hoje `Ctrl+Enter` salva uma
 - Escopo exclusivo da **Web/PWA**. Android não foi alterado. Não há migration, alteração de schema, RPC, banco, dados ou regra de Estoque.
 
 ## Validação
-- PR #96 draft aciona workflow CI (typecheck, lint, unit test, build). Rodada observada durante preparação: https://github.com/BabyCatBE/neves-estoque/actions/runs/40949939459, inicialmente em execução. **Resultado final A VERIFICAR** antes de integrar.
+- **CI do código APROVADA:** PR #96 draft, run https://github.com/BabyCatBE/neves-estoque/actions/runs/40949939459, HEAD de código `7b4880502f9908bee5ac3a15227ae4f737ce1c9c`, conclusão **SUCCESS** (typecheck, lint, unit test e build do workflow). Commits documentais posteriores devem ter CI mais recente revalidada antes de integrar.
 - Teste visual, atalho em navegador e fluxo real com notas do operador: **A VERIFICAR**. Não criar Entradas de teste em banco real.
 - Não confundir commit de código com ambiente publicado, CI com teste funcional, ou PR draft com integração.
 
