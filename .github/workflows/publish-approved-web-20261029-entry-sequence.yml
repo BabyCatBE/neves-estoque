@@ -1,0 +1,133 @@
+name: Publish Neves Estoque Web sequential Entries (approved 2026-10-29)
+
+# One-time publication of sequential entry creation feature. Explicit user authorization 2026-10-29.
+# Normal pushes remain disconnected from Cloudflare production deployments.
+on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/workflows/publish-approved-web-20261029-entry-sequence.yml
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: neves-cloudflare-prod-20261029-entry-sequence
+  cancel-in-progress: false
+
+jobs:
+  cloudflare-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: f1ec0e028389e5fe668a570cb242dfdb
+    steps:
+      - name: Check Cloudflare access safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/develop"
+          test "$GITHUB_REPOSITORY" = "BabyCatBE/neves-estoque"
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error title=Cloudflare connection required::No Cloudflare Pages API token is configured for this GitHub repository. No deployment attempted."
+            exit 1
+          fi
+
+      - name: Checkout integrated approved source
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Guard against unreviewed changes in the Web source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e 1b89dfaac792d152ecad083fc9dd9d00b8fa38c2^{commit}
+          git diff --exit-code 1b89dfaac792d152ecad083fc9dd9d00b8fa38c2 HEAD -- src public package.json package-lock.json vite.config.ts tsconfig.json
+          echo "Web source matches approved merged source with Web CI run #40951239386 SUCCESS."
+
+      - name: Verify approved Web CI and exact source before deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/40951239386" > "$RUNNER_TEMP/approved-web-ci.json"
+          python3 - "$RUNNER_TEMP/approved-web-ci.json" <<'PY'
+          import json, sys
+          run=json.load(open(sys.argv[1], encoding="utf-8"))
+          assert run["conclusion"] == "success", "Approved Web CI did not succeed"
+          assert run["head_sha"] == "1b89dfaac792d152ecad083fc9dd9d00b8fa38c2", "Web CI SHA mismatch"
+          print("Approved Web CI and source verified")
+          PY
+
+      - name: Restore public Supabase build variables from Cloudflare Pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 2 \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/neves-estoque" \
+            -o "$RUNNER_TEMP/neves-pages-project.json"
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+          p=pathlib.Path(os.environ["RUNNER_TEMP"])/"neves-pages-project.json"
+          data=json.loads(p.read_text(encoding="utf-8"))
+          if data.get("success") is not True or (data.get("result") or {}).get("name")!="neves-estoque":
+              sys.exit("Cloudflare project configuration could not be verified; refusing to deploy.")
+          production=((data["result"].get("deployment_configs") or {}).get("production") or {})
+          values=production.get("env_vars") or {}
+          names=("VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY")
+          missing=[k for k in names if k not in values or not isinstance(values[k],dict)
+                   or values[k].get("type")!="plain_text" or not values[k].get("value")]
+          if missing:
+              print("Cloudflare Pages production build environment is missing usable plaintext variables:",
+                    ", ".join(missing))
+              print("Configure the two PUBLIC Vite variables in Cloudflare Pages; no deployment attempted.")
+              sys.exit(1)
+          url=values[names[0]]["value"]
+          key=values[names[1]]["value"]
+          if not url.startswith("https://") or not url.endswith(".supabase.co") or not (key.startswith("sb_publishable_") or key.startswith("eyJ")):
+              sys.exit("Invalid public Supabase configuration: deployment blocked.")
+          with open(os.environ["GITHUB_ENV"],"a",encoding="utf-8") as out:
+              for name,value in zip(names,(url,key)):
+                  if "\n" in value or "\r" in value:
+                      sys.exit("Unexpected newline in build variable.")
+                  out.write(f"{name}={value}\n")
+          print("Verified and injected both PUBLIC Supabase build settings; values not logged.")
+          PY
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build static production site
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -s dist/manifest.webmanifest
+          python3 - <<'PY'
+          import os, pathlib, sys
+          chunks=[p.read_text(encoding="utf-8") for p in pathlib.Path("dist").rglob("*.js")]
+          url=os.environ["VITE_SUPABASE_URL"]
+          key=os.environ["VITE_SUPABASE_PUBLISHABLE_KEY"]
+          if not chunks or not any(url in c and key in c for c in chunks):
+              sys.exit("Supabase public config not found in built JavaScript. Deployment aborted.")
+          print("Built frontend includes both Supabase public configuration values.")
+          PY
+
+      - name: Deploy only official Neves Estoque production project
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: f1ec0e028389e5fe668a570cb242dfdb
+          command: pages deploy dist --project-name=neves-estoque --branch=develop --commit-hash=${{ github.sha }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
