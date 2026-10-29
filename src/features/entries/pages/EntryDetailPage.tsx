@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../../shared/components/AppShell";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
@@ -8,6 +8,9 @@ import { Card } from "../../../shared/components/ui/Card";
 import { useAuth } from "../../auth/context/AuthContext";
 import { getEntryDetails, softDeleteEntry } from "../api/entries";
 import { formatMoney, getEntryErrorMessage } from "../lib/entryValidation";
+import { isNextEntryShortcut } from "../lib/entrySequenceShortcut";
+
+const NEXT_ENTRY_PATH = "/entradas/nova?sequence=1";
 
 export function EntryDetailPage() {
   const { entryId } = useParams();
@@ -17,6 +20,21 @@ export function EntryDetailPage() {
   const { deviceId } = useAuth();
   const [deleteReviewOpen, setDeleteReviewOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const isFreshlySaved = searchParams.get("saved") === "1";
+
+  useEffect(() => {
+    if (!isFreshlySaved || deleteReviewOpen) return;
+
+    const handleNextEntryShortcut = (event: KeyboardEvent) => {
+      if (!isNextEntryShortcut(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      navigate(NEXT_ENTRY_PATH);
+    };
+
+    document.addEventListener("keydown", handleNextEntryShortcut, true);
+    return () => document.removeEventListener("keydown", handleNextEntryShortcut, true);
+  }, [deleteReviewOpen, isFreshlySaved, navigate]);
 
   const entryQuery = useQuery({
     queryKey: ["entries", "detail", entryId],
@@ -60,10 +78,20 @@ export function EntryDetailPage() {
     <AppShell title="Entrada" showBack backTo="/entradas/historico">
       <section>
         {searchParams.get("saved") ? (
-          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {searchParams.get("saved") === "edit"
-              ? "Alterações da Entrada salvas com sucesso."
-              : "Entrada salva com sucesso."}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <span>
+              {searchParams.get("saved") === "edit"
+                ? "Alterações da Entrada salvas com sucesso."
+                : "Entrada salva com sucesso."}
+            </span>
+            {isFreshlySaved ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs text-emerald-900">Atalho: Ctrl + Shift + Enter</span>
+                <Button size="sm" onClick={() => navigate(NEXT_ENTRY_PATH)}>
+                  + Lançar outra entrada
+                </Button>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
