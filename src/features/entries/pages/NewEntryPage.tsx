@@ -108,6 +108,14 @@ export function NewEntryPage() {
   const preselectedProductHandledRef = useRef(false);
   const preselectedProductId = searchParams.get("productId");
 
+  useEffect(() => {
+    if (searchParams.get("sequence") !== "1") return;
+    const focusTimer = window.setTimeout(() => {
+      document.getElementById("entry-supplier-search")?.focus();
+    }, 0);
+    return () => window.clearTimeout(focusTimer);
+  }, [searchParams]);
+
   const dirty = useMemo(
     () =>
       Boolean(
